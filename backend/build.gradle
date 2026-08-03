@@ -1,0 +1,106 @@
+plugins {
+	id 'java'
+	id 'checkstyle'
+	id 'org.springframework.boot' version '4.1.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.diffplug.spotless' version '8.9.0'
+}
+
+group = 'com.expo'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudAwsVersion', '4.1.0')
+	set('mybatisStarterVersion', '4.0.1')
+	set('springdocVersion', '3.1.0')
+	set('jjwtVersion', '0.13.0')
+	set('springDotenvVersion', '5.1.0')
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "io.awspring.cloud:spring-cloud-aws-dependencies:${springCloudAwsVersion}"
+	}
+}
+
+dependencies {
+	// --- Web / API ---
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+	// --- Persistence ---
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation "org.mybatis.spring.boot:mybatis-spring-boot-starter:${mybatisStarterVersion}"
+	// Boot 4 는 자동설정이 기술별 모듈로 쪼개져 있다. flyway-core 만 넣으면
+	// 의존성은 해석되지만 자동설정이 없어 마이그레이션이 조용히 실행되지 않는다.
+	// 반드시 starter 를 써야 한다. (flyway-core 는 starter 가 끌고 온다)
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	// PostgreSQL 은 별도 방언 모듈이 필요하다 (Flyway 10+ 에서 분리됨).
+	runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// --- Security / Auth ---
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+	implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
+	// --- Object Storage (S3 / LocalStack) ---
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+
+	// --- Ops ---
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation "me.paulschwarz:springboot4-dotenv:${springDotenvVersion}"
+
+	// --- Dev ---
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// --- Test ---
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client-test'
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	testRuntimeOnly 'com.h2database:h2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+	systemProperty 'spring.profiles.active', 'test'
+}
+
+spotless {
+	java {
+		target 'src/**/*.java'
+		googleJavaFormat()
+		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+}
+
+checkstyle {
+	toolVersion = '13.9.0'
+	configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+	// 초기 단계에서는 경고로만 다루고, 규칙이 팀에 정착하면 0으로 조인다.
+	maxWarnings = 500
+	ignoreFailures = false
+}

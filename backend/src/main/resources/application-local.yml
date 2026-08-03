@@ -1,0 +1,42 @@
+# 로컬 개발 프로필. PostgreSQL + Flyway.
+# 스키마는 Flyway 가 만들고 JPA 는 검증만 한다(validate). 엔티티와 스키마가 어긋나면 기동 시점에 잡힌다.
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:expo}
+    username: ${POSTGRES_USER:expo}
+    password: ${POSTGRES_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      s3:
+        # LocalStack 은 가상 호스트 스타일 주소를 쓰지 않으므로 path-style 이 필수다.
+        endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
+        path-style-access-enabled: true
+
+logging:
+  level:
+    com.expo: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.flywaydb: INFO

@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  expo 프로젝트 Checkstyle 룰셋.
+
+  포맷(들여쓰기, 줄바꿈, import 순서)은 Spotless + google-java-format 이 자동으로 잡아준다.
+  따라서 이 파일은 "자동 포맷으로는 못 잡는 것"만 검사한다.
+    - 네이밍 규칙
+    - 실수하기 쉬운 코드 패턴
+    - 팀 합의 사항 (System.out 금지 등)
+
+  severity 는 warning 으로 두고 build.gradle 의 maxWarnings 로 총량을 제한한다.
+  팀에 규칙이 정착하면 maxWarnings 를 0 으로 내린다.
+-->
+<module name="Checker">
+  <property name="severity" value="warning"/>
+  <property name="fileExtensions" value="java"/>
+  <property name="charset" value="UTF-8"/>
+
+  <!-- 탭 대신 스페이스 -->
+  <module name="FileTabCharacter"/>
+
+  <!-- 파일 끝 개행 -->
+  <module name="NewlineAtEndOfFile"/>
+
+  <module name="LineLength">
+    <property name="max" value="120"/>
+    <property name="ignorePattern" value="^package.*|^import.*|^\s*//.*|^\s*\*.*"/>
+  </module>
+
+  <module name="TreeWalker">
+
+    <!-- ===== 네이밍 ===== -->
+    <module name="PackageName">
+      <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+    </module>
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="LocalVariableName"/>
+    <module name="MemberName"/>
+    <module name="ParameterName"/>
+    <module name="ConstantName"/>
+    <module name="StaticVariableName"/>
+
+    <!-- ===== import ===== -->
+    <module name="AvoidStarImport"/>
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <module name="IllegalImport">
+      <!-- JPA/Validation 은 jakarta 를 쓴다. javax 가 섞이면 컴파일은 되어도 동작이 어긋난다. -->
+      <property name="illegalPkgs" value="sun, javax.persistence, javax.validation"/>
+    </module>
+
+    <!-- ===== 실수하기 쉬운 패턴 ===== -->
+    <module name="EqualsHashCode"/>
+    <module name="CovariantEquals"/>
+    <module name="StringLiteralEquality"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="FallThrough"/>
+    <module name="EmptyStatement"/>
+    <module name="MultipleVariableDeclarations"/>
+    <module name="OneStatementPerLine"/>
+    <module name="NeedBraces"/>
+    <module name="DefaultComesLast"/>
+    <module name="IllegalCatch">
+      <property name="illegalClassNames"
+                value="java.lang.Throwable, java.lang.Error, java.lang.RuntimeException"/>
+    </module>
+    <module name="IllegalThrows"/>
+
+    <!-- ===== 팀 합의 ===== -->
+    <!-- 로그는 Logback(@Slf4j)으로만. System.out/err 는 운영에서 수집되지 않는다. -->
+    <module name="Regexp">
+      <property name="format" value="System\.(out|err)\.print"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="message" value="System.out/err 대신 @Slf4j 로거를 사용한다."/>
+    </module>
+    <!-- e.printStackTrace() 는 스택트레이스를 로그 수집 밖으로 흘린다. -->
+    <module name="Regexp">
+      <property name="format" value="printStackTrace\(\)"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="message" value="printStackTrace() 대신 log.error(msg, e) 를 사용한다."/>
+    </module>
+
+    <!-- ===== 복잡도 (초기값은 느슨하게) ===== -->
+    <module name="CyclomaticComplexity">
+      <property name="max" value="15"/>
+    </module>
+    <module name="MethodLength">
+      <property name="max" value="120"/>
+    </module>
+    <module name="ParameterNumber">
+      <property name="max" value="8"/>
+    </module>
+
+    <!-- 억제 주석: // CHECKSTYLE:OFF ... // CHECKSTYLE:ON -->
+    <module name="SuppressionCommentFilter"/>
+  </module>
+</module>
