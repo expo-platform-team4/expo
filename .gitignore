@@ -2,5 +2,8 @@
 .env
 .env.*
 
+# S3Mock 을 bind mount 로 쓸 때 생기는 로컬 오브젝트 저장소
+.s3data/
+
 # macOS
 .DS_Store

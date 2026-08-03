@@ -58,7 +58,10 @@ dependencies {
 	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
 	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
 
-	// --- Object Storage (S3 / LocalStack) ---
+	// --- Object Storage (S3) ---
+	// 이건 AWS SDK 연동 라이브러리일 뿐이다. S3 에뮬레이터는 애플리케이션이 아니라
+	// docker-compose.yml 에 별도 서버(Adobe S3Mock)로 떠 있고, 여기서는 그저
+	// application-local.yml 의 endpoint 로 HTTP 를 쏠 뿐이다.
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
 
 	// --- Ops ---
