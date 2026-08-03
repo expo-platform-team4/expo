@@ -31,8 +31,11 @@ spring:
         access-key: ${AWS_ACCESS_KEY_ID:test}
         secret-key: ${AWS_SECRET_ACCESS_KEY:test}
       s3:
-        # LocalStack 은 가상 호스트 스타일 주소를 쓰지 않으므로 path-style 이 필수다.
-        endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
+        # 로컬 S3 에뮬레이터(Adobe S3Mock, docker-compose.yml 참고)를 가리킨다.
+        # 운영에서는 이 endpoint 를 지우면 실제 AWS S3 로 붙는다.
+        endpoint: ${AWS_S3_ENDPOINT:http://localhost:9090}
+        # 에뮬레이터는 bucket.s3.amazonaws.com 같은 가상 호스트 스타일 주소를 쓰지 않는다.
+        # path-style(=/{bucket}/{key})이 아니면 요청이 엉뚱한 호스트로 나간다.
         path-style-access-enabled: true
 
 logging:

@@ -1,0 +1,91 @@
+# 로컬 개발용 인프라 (PostgreSQL + S3 에뮬레이터).
+#
+#   docker compose up -d      기동
+#   docker compose ps         상태 확인
+#   docker compose logs -f    로그
+#   docker compose down       중지 (데이터는 남는다)
+#   docker compose down -v    중지 + 데이터까지 삭제
+#
+# down -v 는 DB 와 S3 를 "함께" 지운다. 한쪽만 지우면 DB 에는 이미지 키가 남았는데
+# 실제 객체는 없는 상태가 되어 화면에서 이미지가 깨진다. 초기화는 항상 같이 한다.
+#
+# 비밀번호를 바꾸려면 이 저장소 루트에 .env 를 만들어 POSTGRES_PASSWORD 를 지정하고,
+# backend/.env 의 POSTGRES_PASSWORD 도 같은 값으로 맞춘다.
+# 아무것도 안 만들면 아래 기본값(expo_local_pw)으로 뜬다.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: expo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-expo}
+      POSTGRES_USER: ${POSTGRES_USER:-expo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expo_local_pw}
+      # 컨테이너 안에서 psql 을 칠 때 매번 -U 를 안 붙여도 되게 한다.
+      PGUSER: ${POSTGRES_USER:-expo}
+      # 한글 데이터 정렬·비교를 위해 로케일을 명시한다.
+      # 초기화 시점에만 적용되므로 나중에 바꾸려면 down -v 로 볼륨을 지워야 한다.
+      LANG: ko_KR.utf8
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8'
+    ports:
+      # 호스트 5432 가 이미 쓰이고 있으면 왼쪽 숫자만 바꾸고
+      # backend/.env 의 POSTGRES_PORT 도 같이 바꾼다.
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18+ 는 마운트 지점이 /var/lib/postgresql 이다 (/data 가 아니다).
+      # 데이터는 그 아래 메이저 버전별 하위 디렉터리에 들어간다.
+      # 예전 규약대로 /var/lib/postgresql/data 에 걸면 이미지가 기동을 거부한다.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # 애플리케이션이 붙기 전에 DB 가 실제로 준비됐는지 확인한다.
+      test: ['CMD-SHELL', 'pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # S3 에뮬레이터.
+  #
+  # LocalStack 이 아니라 Adobe S3Mock 을 쓴다. LocalStack 은 2026-03-23 부터
+  # localstack/localstack:latest 가 인증 토큰을 요구하게 됐고(팀원 각자 가입 필요),
+  # 데이터 영속성(PERSISTENCE=1)은 유료 플랜 기능이라 무료로는 재기동 시 전부 날아간다.
+  # S3Mock 은 Apache 2.0 이고 계정이 필요 없으며 영속성이 무료로 동작한다.
+  #
+  # 애플리케이션은 이게 무엇인지 모른다. spring-cloud-aws-starter-s3(AWS SDK)가
+  # application-local.yml 의 endpoint 로 HTTP 를 쏠 뿐이라, 나중에 진짜 S3 로 바꿔도
+  # endpoint 값만 달라진다.
+  s3mock:
+    image: adobe/s3mock:5.1.0
+    container_name: expo-s3mock
+    restart: unless-stopped
+    environment:
+      # 기동 시 버킷을 만들어 둔다. 이게 없으면 첫 업로드에서 NoSuchBucket 이 난다.
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${AWS_S3_BUCKET:-expo-local}
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3data
+      # 종료 후에도 파일을 남긴다. 아래 볼륨과 짝으로 있어야 의미가 있다.
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: 'true'
+      # S3Mock 은 리전을 검증하지 않지만 애플리케이션 설정과 맞춰 둔다.
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ${AWS_REGION:-ap-northeast-2}
+    ports:
+      # 바꾸면 backend/.env 의 AWS_S3_ENDPOINT 도 같이 바꾼다.
+      - '${AWS_S3_PORT:-9090}:9090'
+    volumes:
+      - s3mock-data:/s3data
+      # 업로드된 파일을 파일 탐색기로 직접 열어보고 싶으면 위 줄 대신 아래를 쓴다.
+      # 저장 위치가 눈에 보이는 대신 macOS 에서 권한 문제가 생길 수 있다.
+      # - ./.s3data:/s3data
+    healthcheck:
+      # /favicon.ico 는 별도 설정 없이 항상 200 을 반환한다.
+      # 이 이미지에는 curl 이 없고 wget 만 있다.
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:9090/favicon.ico || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  postgres-data:
+    name: expo-postgres-data
+  s3mock-data:
+    name: expo-s3mock-data

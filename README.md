@@ -92,8 +92,8 @@
 
 | 구분 | 기술 | 버전 | 상태 |
 |-|-|-|-|
-| 컨테이너 | Docker | 29.5.2 | 사용 중 |
-| 로컬 Object Storage | LocalStack | (태그 미고정) | 예정 |
+| 컨테이너 | Docker / Compose | 29.5.2 | 사용 중 (`docker-compose.yml`) |
+| 로컬 Object Storage | Adobe S3Mock | 5.1.0 | 사용 중 |
 | Reverse Proxy | Caddy | 2.x | 예정 |
 | 배포 인프라 | OCI (ARM, Oracle Linux) | — | 예정 |
 | CI/CD 파이프라인 | GitHub Actions | — | **미구성** |
@@ -109,6 +109,7 @@ Caddy 가 `/` → Next, `/api` → Spring 으로 분기한다.
 
 ```
 expo/
+├── docker-compose.yml                      로컬 인프라 (PostgreSQL + S3Mock)
 ├── backend/                                Spring Boot
 │   ├── config/checkstyle/                  Checkstyle 룰셋
 │   ├── env.sample                          환경변수 템플릿 (.env 는 커밋 금지)
@@ -187,11 +188,29 @@ notification  settlement  client  admin  recruitment  participation  venue  boot
 - Docker
 - Bun 1.3+
 
-### 2. PostgreSQL 기동
+### 2. 로컬 인프라 기동
+
+저장소 루트에서 실행한다. PostgreSQL 과 S3Mock 이 함께 뜬다.
 
 ```bash
-docker run -d --name expo-pg -e POSTGRES_DB=expo -e POSTGRES_USER=expo -e POSTGRES_PASSWORD=변경할비밀번호 -p 5432:5432 postgres:18-alpine
+docker compose up -d
 ```
+
+준비될 때까지 기다렸다가 상태를 확인한다. 둘 다 `healthy` 가 떠야 한다.
+
+```bash
+docker compose ps
+```
+
+| 서비스 | 주소 | 비고 |
+|-|-|-|
+| PostgreSQL | `localhost:5432` | 계정 `expo / expo_local_pw`, DB `expo` |
+| S3Mock | `http://localhost:9090` | 버킷 `expo-local` 자동 생성 |
+
+비밀번호를 바꾸려면 루트에 `.env` 를 만들어 `POSTGRES_PASSWORD` 를 지정하고 `backend/.env` 도 같은 값으로 맞춘다.
+
+> 포트가 이미 쓰이고 있으면 `docker-compose.yml` 의 `ports` 왼쪽 숫자와
+> `backend/.env` 의 `POSTGRES_PORT` / `AWS_S3_ENDPOINT` 를 같이 바꾼다.
 
 ### 3. 환경변수 설정
 
@@ -201,7 +220,7 @@ cp backend/env.sample backend/.env
 
 `backend/.env` 를 열어 최소 두 개는 반드시 채운다.
 
-- `POSTGRES_PASSWORD` — 위에서 지정한 값
+- `POSTGRES_PASSWORD` — 위 compose 기본값을 쓴다면 `expo_local_pw`
 - `JWT_SECRET` — `openssl rand -base64 48` 로 생성
 
 프론트도 동일하게 한다.
@@ -225,6 +244,7 @@ cd front && bun install && bun run dev
 - Backend: http://localhost:8080
 - Frontend: http://localhost:3000
 - Swagger UI: http://localhost:8080/swagger-ui.html
+- S3Mock: http://localhost:9090
 
 브라우저의 `/api` 요청은 `next.config.ts` 의 rewrites 가 8080 으로 넘긴다.
 브라우저 기준 same-origin 이라 CORS 설정이 필요 없다.
@@ -242,6 +262,64 @@ cd backend && ./gradlew build
 ```bash
 cd front && bun run format && bun run lint && bun run typecheck
 ```
+
+---
+
+## Object Storage 동작 방식
+
+박람회·부스 이미지는 S3 에 올린다. 로컬에서는 **Adobe S3Mock** 이 S3 인 척한다.
+
+### 에뮬레이터는 라이브러리가 아니다
+
+백엔드에 들어 있는 건 `io.awspring.cloud:spring-cloud-aws-starter-s3` 하나뿐이고,
+이건 **AWS SDK 와 Spring 을 이어주는 코드**일 뿐이다. S3Mock 과는 아무 관계가 없다.
+S3Mock 은 `docker-compose.yml` 에 별도로 떠 있는 **서버**다.
+
+### 업로드한 파일은 어디에 있나
+
+```
+[ 호스트: ./gradlew bootRun ]
+  │  POST /expos/1/images  (multipart)
+  ▼
+Controller → S3Template.upload("expo-local", "expo/1/hero.png", stream)
+  │
+  │  AWS SDK 가 S3 PutObject "HTTP 요청" 을 만든다
+  │  대상: spring.cloud.aws.s3.endpoint = http://localhost:9090
+  ▼
+──── HTTP ────▶ [ Docker: S3Mock 컨테이너 ]
+                      └ 컨테이너 안 /s3data 에 저장 (볼륨 expo-s3mock-data)
+```
+
+**호스트 파일시스템에는 저장되지 않는다.** 프로젝트 폴더를 뒤져도 없다.
+파일은 HTTP 로 컨테이너에 넘어가 볼륨에 쌓인다. 확인하려면 S3 에 물어봐야 한다.
+
+```bash
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=ap-northeast-2 \
+aws --endpoint-url http://localhost:9090 s3 ls s3://expo-local --recursive
+```
+
+애플리케이션 코드는 로컬이든 운영이든 똑같다. `endpoint` 값만 다르다.
+운영에서는 이 설정을 지우면 진짜 AWS S3 로 붙는다. 그게 에뮬레이터를 쓰는 이유다.
+
+### 팀 개발 시 알아둘 것
+
+**데이터는 개발자별로 격리된다.** 각자 자기 컨테이너를 돌리므로 A 가 올린 이미지는 B 에게 없다.
+이건 정상이고 의도한 것이다.
+
+**버킷은 자동으로 만들어진다.** `docker compose up -d` 하면 `expo-local` 이 이미 있다.
+따로 만들 필요 없고, 없으면 첫 업로드에서 `NoSuchBucket` 이 난다.
+
+**데이터는 재기동해도 남는다.** `restart` 든 `down` 이든 유지되고, `down -v` 로만 지워진다.
+
+**DB 와 S3 의 수명을 맞춰라.** 둘은 별도 볼륨이다. 한쪽만 지우면 DB 에는 이미지 키가 남았는데
+실제 객체는 없는 상태가 되어 화면에서 이미지가 깨진다. 원인을 찾기 까다로우니
+초기화는 `docker compose down -v` 로 **양쪽을 같이** 한다.
+
+### 알려진 제약: presigned URL 이 검증되지 않는다
+
+S3Mock 은 presigned URL 을 받아주기만 하고 **서명·만료시간·HTTP 메서드를 검증하지 않는다.**
+즉 만료 계산이 틀렸거나 서명 로직에 버그가 있어도 **로컬에서는 멀쩡히 동작하고 운영에서 터진다.**
+presigned URL 관련 코드는 로컬 테스트를 믿지 말고 코드 리뷰로 잡아야 한다.
 
 ---
 
