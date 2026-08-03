@@ -92,8 +92,8 @@
 
 | 구분 | 기술 | 버전 | 상태 |
 |-|-|-|-|
-| 컨테이너 | Docker | 29.5.2 | 사용 중 |
-| 로컬 Object Storage | LocalStack | (태그 미고정) | 예정 |
+| 컨테이너 | Docker / Compose | 29.5.2 | 사용 중 (`docker-compose.yml`) |
+| 로컬 Object Storage | LocalStack | (태그 미고정) | 예정 — compose 에 서비스 추가 |
 | Reverse Proxy | Caddy | 2.x | 예정 |
 | 배포 인프라 | OCI (ARM, Oracle Linux) | — | 예정 |
 | CI/CD 파이프라인 | GitHub Actions | — | **미구성** |
@@ -109,6 +109,7 @@ Caddy 가 `/` → Next, `/api` → Spring 으로 분기한다.
 
 ```
 expo/
+├── docker-compose.yml                      로컬 인프라 (PostgreSQL)
 ├── backend/                                Spring Boot
 │   ├── config/checkstyle/                  Checkstyle 룰셋
 │   ├── env.sample                          환경변수 템플릿 (.env 는 커밋 금지)
@@ -189,9 +190,23 @@ notification  settlement  client  admin  recruitment  participation  venue  boot
 
 ### 2. PostgreSQL 기동
 
+저장소 루트에서 실행한다.
+
 ```bash
-docker run -d --name expo-pg -e POSTGRES_DB=expo -e POSTGRES_USER=expo -e POSTGRES_PASSWORD=변경할비밀번호 -p 5432:5432 postgres:18-alpine
+docker compose up -d
 ```
+
+준비될 때까지 기다렸다가 상태를 확인한다. `healthy` 가 떠야 한다.
+
+```bash
+docker compose ps
+```
+
+기본 계정은 `expo / expo_local_pw`, DB 이름은 `expo` 다.
+비밀번호를 바꾸려면 루트에 `.env` 를 만들어 `POSTGRES_PASSWORD` 를 지정하고 `backend/.env` 도 같은 값으로 맞춘다.
+
+> 5432 포트가 이미 쓰이고 있으면 `docker-compose.yml` 의 `ports` 왼쪽 숫자와
+> `backend/.env` 의 `POSTGRES_PORT` 를 같이 바꾼다.
 
 ### 3. 환경변수 설정
 
@@ -201,7 +216,7 @@ cp backend/env.sample backend/.env
 
 `backend/.env` 를 열어 최소 두 개는 반드시 채운다.
 
-- `POSTGRES_PASSWORD` — 위에서 지정한 값
+- `POSTGRES_PASSWORD` — 위 compose 기본값을 쓴다면 `expo_local_pw`
 - `JWT_SECRET` — `openssl rand -base64 48` 로 생성
 
 프론트도 동일하게 한다.

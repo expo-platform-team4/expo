@@ -1,0 +1,6 @@
+# docker compose 가 읽는 변수 파일. 비밀번호가 들어가므로 커밋하지 않는다.
+.env
+.env.*
+
+# macOS
+.DS_Store
