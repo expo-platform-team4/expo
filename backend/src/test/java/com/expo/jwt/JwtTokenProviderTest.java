@@ -1,7 +1,8 @@
-package com.expo.auth;
+package com.expo.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.expo.auth.Role;
 import io.jsonwebtoken.Jwts;
 import java.util.Date;
 import javax.crypto.SecretKey;
