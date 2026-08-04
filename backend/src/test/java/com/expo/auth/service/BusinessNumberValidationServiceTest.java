@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
+import com.expo.auth.exception.BusinessException;
+import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.repository.ClientProfileRepository;
 import org.junit.jupiter.api.Test;
@@ -134,5 +136,29 @@ class BusinessNumberValidationServiceTest {
         .isInstanceOf(InvalidBusinessNumberException.class);
     assertThatThrownBy(() -> service.checkAvailability("123.45.67890"))
         .isInstanceOf(InvalidBusinessNumberException.class);
+  }
+
+  @Test
+  void validateForClientSignupReturnsNormalizedNumber() {
+    when(clientProfileRepository.existsByBusinessNumber("1234567890")).thenReturn(false);
+
+    assertThat(service.validateForClientSignup("123-45-67890")).isEqualTo("1234567890");
+  }
+
+  @Test
+  void validateForClientSignupRejectsNonTestNumber() {
+    assertThatThrownBy(() -> service.validateForClientSignup("999-99-99999"))
+        .isInstanceOf(InvalidBusinessNumberException.class)
+        .hasMessage("테스트용으로 등록되지 않은 사업자등록번호입니다.");
+  }
+
+  @Test
+  void validateForClientSignupRejectsDuplicate() {
+    when(clientProfileRepository.existsByBusinessNumber("1234567890")).thenReturn(true);
+
+    assertThatThrownBy(() -> service.validateForClientSignup("1234567890"))
+        .isInstanceOf(BusinessException.class)
+        .extracting(ex -> ((BusinessException) ex).getErrorCode())
+        .isEqualTo(ErrorCode.DUPLICATE_BUSINESS_NUMBER);
   }
 }

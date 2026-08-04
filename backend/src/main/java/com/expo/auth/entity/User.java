@@ -1,6 +1,7 @@
 package com.expo.auth.entity;
 
 import com.expo.auth.Role;
+import com.expo.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,13 +11,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 /** USERS 테이블 — 일반 회원·클라이언트·관리자 공통 계정. */
 @Entity
 @Table(name = "users")
-public class User {
+public class User extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,14 +56,6 @@ public class User {
   @Column(name = "profile_image_updated_at")
   private Instant profileImageUpdatedAt;
 
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
-
-  @UpdateTimestamp
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
-
   protected User() {}
 
   /** 일반 회원 로컬 회원가입용 계정을 생성한다. */
@@ -75,6 +66,19 @@ public class User {
     user.nickname = nickname;
     user.role = Role.MEMBER;
     user.accountStatus = AccountStatus.ACTIVE;
+    return user;
+  }
+
+  /** 클라이언트 로컬 회원가입용 계정을 생성한다. role 은 CLIENT 로 고정한다. */
+  public static User createClient(
+      String email, String passwordHash, String nickname, String phoneNumber) {
+    User user = new User();
+    user.email = email;
+    user.passwordHash = passwordHash;
+    user.nickname = nickname;
+    user.role = Role.CLIENT;
+    user.accountStatus = AccountStatus.ACTIVE;
+    user.phoneNumber = phoneNumber;
     return user;
   }
 
@@ -124,13 +128,5 @@ public class User {
 
   public Instant getProfileImageUpdatedAt() {
     return profileImageUpdatedAt;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
   }
 }

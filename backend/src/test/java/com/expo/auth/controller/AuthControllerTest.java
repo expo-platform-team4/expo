@@ -9,7 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.expo.auth.Role;
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
+import com.expo.auth.dto.ClientSignupResponse;
 import com.expo.auth.dto.SignupResponse;
+import com.expo.auth.exception.BusinessException;
+import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
@@ -196,5 +199,119 @@ class AuthControllerTest {
         .perform(
             get("/api/auth/business-number-availability").param("businessNumber", "12a-45-67890"))
         .andExpect(status().isBadRequest());
+  }
+
+  // ----- 클라이언트 회원가입 (A-API-002) -----
+
+  @Test
+  void clientSignupWithoutTokenIsAllowed() throws Exception {
+    when(authService.clientSignup(any()))
+        .thenReturn(
+            new ClientSignupResponse(
+                1L, Role.CLIENT, "client@espotic.com", "주식회사 에스포틱", "클라이언트 회원가입이 완료되었습니다."));
+
+    mockMvc
+        .perform(
+            post("/api/auth/client-signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "email": "client@espotic.com",
+                      "password": "Test1234!",
+                      "passwordConfirm": "Test1234!",
+                      "nickname": "espotic_manager",
+                      "phoneNumber": "01012345678",
+                      "companyName": "주식회사 에스포틱",
+                      "businessNumber": "123-45-67890",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
+                    }
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.userId").value(1))
+        .andExpect(jsonPath("$.data.role").value("CLIENT"))
+        .andExpect(jsonPath("$.data.email").value("client@espotic.com"))
+        .andExpect(jsonPath("$.data.companyName").value("주식회사 에스포틱"));
+  }
+
+  @Test
+  void clientSignupWithPasswordMismatchReturnsBadRequest() throws Exception {
+    when(authService.clientSignup(any()))
+        .thenThrow(new BusinessException(ErrorCode.PASSWORD_MISMATCH));
+
+    mockMvc
+        .perform(
+            post("/api/auth/client-signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "email": "client@espotic.com",
+                      "password": "Test1234!",
+                      "passwordConfirm": "Different1!",
+                      "nickname": "espotic_manager",
+                      "phoneNumber": "01012345678",
+                      "companyName": "주식회사 에스포틱",
+                      "businessNumber": "123-45-67890",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
+  }
+
+  @Test
+  void clientSignupWithoutRequiredTermsReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/client-signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "email": "client@espotic.com",
+                      "password": "Test1234!",
+                      "passwordConfirm": "Test1234!",
+                      "nickname": "espotic_manager",
+                      "phoneNumber": "01012345678",
+                      "companyName": "주식회사 에스포틱",
+                      "businessNumber": "123-45-67890",
+                      "serviceTermsAgreed": false,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
+  }
+
+  @Test
+  void clientSignupWithWeakPasswordReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/client-signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "email": "client@espotic.com",
+                      "password": "onlyletters",
+                      "passwordConfirm": "onlyletters",
+                      "nickname": "espotic_manager",
+                      "phoneNumber": "01012345678",
+                      "companyName": "주식회사 에스포틱",
+                      "businessNumber": "123-45-67890",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
   }
 }

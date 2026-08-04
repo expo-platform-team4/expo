@@ -3,6 +3,7 @@ package com.expo.auth.exception;
 import com.expo.auth.controller.AuthController;
 import com.expo.auth.dto.AuthApiResponse;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,6 +42,34 @@ public class AuthExceptionHandler {
   public ResponseEntity<AuthApiResponse<Void>> handleInvalidBusinessNumber(
       InvalidBusinessNumberException ex) {
     return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
+  }
+
+  /**
+   * 동시 가입 등으로 DB unique 제약이 위반된 경우 처리.
+   *
+   * <p>Service 내부에서도 변환하지만, User 저장 직후 ClientProfile 저장 전에 다른 요청이 먼저 가입하는 경우를 대비한다.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<AuthApiResponse<Void>> handleDataIntegrityViolation(
+      DataIntegrityViolationException ex) {
+    String message = ex.getMostSpecificCause().getMessage();
+    if (message != null) {
+      String lower = message.toLowerCase();
+      if (lower.contains("business_number")) {
+        return ResponseEntity.status(ErrorCode.DUPLICATE_BUSINESS_NUMBER.getStatus())
+            .body(AuthApiResponse.fail(ErrorCode.DUPLICATE_BUSINESS_NUMBER.getMessage()));
+      }
+      if (lower.contains("email")) {
+        return ResponseEntity.status(ErrorCode.DUPLICATE_EMAIL.getStatus())
+            .body(AuthApiResponse.fail(ErrorCode.DUPLICATE_EMAIL.getMessage()));
+      }
+      if (lower.contains("nickname")) {
+        return ResponseEntity.status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
+            .body(AuthApiResponse.fail(ErrorCode.DUPLICATE_NICKNAME.getMessage()));
+      }
+    }
+    return ResponseEntity.badRequest()
+        .body(AuthApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
   }
 
   /**

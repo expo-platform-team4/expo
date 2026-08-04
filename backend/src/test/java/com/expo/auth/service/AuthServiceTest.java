@@ -8,12 +8,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.auth.Role;
+import com.expo.auth.converter.ClientProfileConverter;
 import com.expo.auth.converter.UserConverter;
 import com.expo.auth.dto.SignupRequest;
 import com.expo.auth.dto.SignupResponse;
 import com.expo.auth.entity.User;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
+import com.expo.auth.repository.ClientProfileRepository;
 import com.expo.auth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,8 +28,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class AuthServiceTest {
 
   @Mock private UserRepository userRepository;
+  @Mock private ClientProfileRepository clientProfileRepository;
   @Mock private UserConverter userConverter;
+  @Mock private ClientProfileConverter clientProfileConverter;
   @Mock private PasswordEncoder passwordEncoder;
+  @Mock private BusinessNumberValidationService businessNumberValidationService;
 
   @InjectMocks private AuthService authService;
 

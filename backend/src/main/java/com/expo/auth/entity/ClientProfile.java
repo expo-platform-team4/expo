@@ -1,24 +1,21 @@
 package com.expo.auth.entity;
 
+import com.expo.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 /**
  * CLIENT_PROFILES — role=CLIENT 인 사용자의 사업자 상세 프로필.
  *
  * <p>ERD v16 의 CLIENT_PROFILES 규격을 그대로 매핑한다. 이 작업(A-API-005)에서는 사업자등록번호 존재 여부 조회만 필요하지만, {@code
  * ddl-auto: validate} 환경에서 부팅이 실패하지 않도록 NOT NULL 컬럼을 모두 매핑해 둔다.
- *
- * <p>회원가입 저장 로직(A-API-002)은 이 작업 범위가 아니므로 setter 나 factory 는 두지 않는다.
  */
 @Entity
 @Table(name = "client_profiles")
-public class ClientProfile {
+public class ClientProfile extends BaseTimeEntity {
 
   /** USERS.id 와 동일한 값을 PK 로 사용한다(1:1). FK 매핑은 회원가입 API 구현 시점에 채운다. */
   @Id
@@ -31,10 +28,12 @@ public class ClientProfile {
   @Column(name = "company_name", nullable = false, length = 150)
   private String companyName;
 
-  @Column(name = "representative_name", nullable = false, length = 100)
+  /** 대표자명. MVP 회원가입 화면에서는 입력받지 않아 nullable 로 완화한다. (ERD 는 NOT NULL 이므로 팀 마이그레이션에서 함께 조정 예정.) */
+  @Column(name = "representative_name", length = 100)
   private String representativeName;
 
-  @Column(name = "business_address", nullable = false, length = 255)
+  /** 사업장 주소. 위와 동일한 이유로 nullable. */
+  @Column(name = "business_address", length = 255)
   private String businessAddress;
 
   @Column(name = "business_type", length = 100)
@@ -49,15 +48,21 @@ public class ClientProfile {
   @Column(name = "verification_provider", length = 30)
   private String verificationProvider;
 
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
-
-  @UpdateTimestamp
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
-
   protected ClientProfile() {}
+
+  /**
+   * 클라이언트 회원가입 시 사업자 프로필을 생성한다.
+   *
+   * <p>MVP 테스트 환경에서는 실제 국세청 API 를 호출하지 않으므로 {@code businessNumberVerified} 는 {@code false} 로 저장한다.
+   */
+  public static ClientProfile create(Long userId, String businessNumber, String companyName) {
+    ClientProfile profile = new ClientProfile();
+    profile.userId = userId;
+    profile.businessNumber = businessNumber;
+    profile.companyName = companyName;
+    profile.businessNumberVerified = false;
+    return profile;
+  }
 
   public Long getUserId() {
     return userId;
@@ -93,13 +98,5 @@ public class ClientProfile {
 
   public String getVerificationProvider() {
     return verificationProvider;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
   }
 }

@@ -1,6 +1,8 @@
 package com.expo.auth.service;
 
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
+import com.expo.auth.exception.BusinessException;
+import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.repository.ClientProfileRepository;
 import java.util.Set;
@@ -71,7 +73,7 @@ public class BusinessNumberValidationService {
   public BusinessNumberAvailabilityResponse checkAvailability(String businessNumber) {
     String normalized = normalize(businessNumber);
 
-    //입력한 사업자등록번호가 MVP 테스트용 허용 목록에 없으면 “테스트 번호가 아님” 응답을 돌려주는 검사
+    // 입력한 사업자등록번호가 MVP 테스트용 허용 목록에 없으면 “테스트 번호가 아님” 응답을 돌려주는 검사
     if (!TEST_BUSINESS_NUMBERS.contains(normalized)) {
       return BusinessNumberAvailabilityResponse.notTestNumber(normalized);
     }
@@ -79,5 +81,27 @@ public class BusinessNumberValidationService {
       return BusinessNumberAvailabilityResponse.duplicate(normalized);
     }
     return BusinessNumberAvailabilityResponse.available(normalized);
+  }
+
+  /**
+   * 클라이언트 회원가입(A-API-002)용 사업자등록번호 최종 검증.
+   *
+   * <p>A-API-005 HTTP API 를 호출하지 않고, 동일 Service 에서 형식·테스트 번호·DB 중복을 다시 확인한다. 프론트에서 사전 조회했더라도 백엔드는 이
+   * 메서드로 반드시 재검증한다.
+   *
+   * @return 하이픈이 제거된 숫자 10자리 사업자등록번호
+   * @throws InvalidBusinessNumberException 형식 오류 또는 테스트 번호 목록에 없는 경우
+   * @throws BusinessException 이미 가입된 사업자등록번호 ({@link ErrorCode#DUPLICATE_BUSINESS_NUMBER})
+   */
+  @Transactional(readOnly = true)
+  public String validateForClientSignup(String businessNumber) {
+    String normalized = normalize(businessNumber);
+    if (!TEST_BUSINESS_NUMBERS.contains(normalized)) {
+      throw new InvalidBusinessNumberException("테스트용으로 등록되지 않은 사업자등록번호입니다.");
+    }
+    if (clientProfileRepository.existsByBusinessNumber(normalized)) {
+      throw new BusinessException(ErrorCode.DUPLICATE_BUSINESS_NUMBER);
+    }
+    return normalized;
   }
 }
