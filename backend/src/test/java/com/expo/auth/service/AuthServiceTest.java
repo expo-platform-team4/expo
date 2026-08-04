@@ -36,9 +36,21 @@ class AuthServiceTest {
 
   @InjectMocks private AuthService authService;
 
+  private SignupRequest validRequest() {
+    return new SignupRequest(
+        "member@espotic.com",
+        "Test1234!",
+        "Test1234!",
+        "expo_member",
+        "01012345678",
+        true,
+        true,
+        false);
+  }
+
   @Test
   void signupCreatesMember() {
-    SignupRequest request = new SignupRequest("member@example.com", "password123", "expo_member");
+    SignupRequest request = validRequest();
 
     when(userRepository.existsByEmail(request.email())).thenReturn(false);
     when(userRepository.existsByNickname(request.nickname())).thenReturn(false);
@@ -57,8 +69,30 @@ class AuthServiceTest {
   }
 
   @Test
+  void signupRejectsPasswordMismatch() {
+    SignupRequest request =
+        new SignupRequest(
+            "member@espotic.com",
+            "Test1234!",
+            "Different1!",
+            "expo_member",
+            "01012345678",
+            true,
+            true,
+            false);
+
+    assertThatThrownBy(() -> authService.signup(request))
+        .isInstanceOf(BusinessException.class)
+        .extracting(ex -> ((BusinessException) ex).getErrorCode())
+        .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
+
+    verify(userRepository, never()).existsByEmail(any());
+    verify(userRepository, never()).save(any(User.class));
+  }
+
+  @Test
   void signupRejectsDuplicateEmail() {
-    SignupRequest request = new SignupRequest("dup@example.com", "password123", "nickname");
+    SignupRequest request = validRequest();
 
     when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
@@ -72,7 +106,7 @@ class AuthServiceTest {
 
   @Test
   void signupRejectsDuplicateNickname() {
-    SignupRequest request = new SignupRequest("new@example.com", "password123", "taken");
+    SignupRequest request = validRequest();
 
     when(userRepository.existsByEmail(request.email())).thenReturn(false);
     when(userRepository.existsByNickname(request.nickname())).thenReturn(true);

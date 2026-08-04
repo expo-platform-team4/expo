@@ -38,7 +38,7 @@ class AuthControllerTest {
   @Test
   void signupWithoutTokenIsAllowed() throws Exception {
     when(authService.signup(any()))
-        .thenReturn(new SignupResponse(1L, "member@example.com", "expo_member", Role.MEMBER));
+        .thenReturn(new SignupResponse(1L, "member@espotic.com", "expo_member", Role.MEMBER));
 
     mockMvc
         .perform(
@@ -47,15 +47,20 @@ class AuthControllerTest {
                 .content(
                     """
                     {
-                      "email": "member@example.com",
-                      "password": "password123",
-                      "nickname": "expo_member"
+                      "email": "member@espotic.com",
+                      "password": "Test1234!",
+                      "passwordConfirm": "Test1234!",
+                      "nickname": "expo_member",
+                      "phoneNumber": "01012345678",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
                     }
                     """))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.userId").value(1))
-        .andExpect(jsonPath("$.data.email").value("member@example.com"))
+        .andExpect(jsonPath("$.data.email").value("member@espotic.com"))
         .andExpect(jsonPath("$.data.nickname").value("expo_member"))
         .andExpect(jsonPath("$.data.role").value("MEMBER"));
   }
@@ -70,8 +75,13 @@ class AuthControllerTest {
                     """
                     {
                       "email": "invalid-email",
-                      "password": "password123",
-                      "nickname": "expo_member"
+                      "password": "Test1234!",
+                      "passwordConfirm": "Test1234!",
+                      "nickname": "expo_member",
+                      "phoneNumber": "01012345678",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
                     }
                     """))
         .andExpect(status().isBadRequest())
@@ -79,7 +89,7 @@ class AuthControllerTest {
   }
 
   @Test
-  void signupWithShortPasswordReturnsBadRequest() throws Exception {
+  void signupWithWeakPasswordReturnsBadRequest() throws Exception {
     mockMvc
         .perform(
             post("/api/auth/signup")
@@ -87,9 +97,37 @@ class AuthControllerTest {
                 .content(
                     """
                     {
-                      "email": "member@example.com",
-                      "password": "short",
-                      "nickname": "expo_member"
+                      "email": "member@espotic.com",
+                      "password": "onlyletters",
+                      "passwordConfirm": "onlyletters",
+                      "nickname": "expo_member",
+                      "phoneNumber": "01012345678",
+                      "serviceTermsAgreed": true,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
+  }
+
+  @Test
+  void signupWithoutRequiredTermsReturnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "email": "member@espotic.com",
+                      "password": "Test1234!",
+                      "passwordConfirm": "Test1234!",
+                      "nickname": "expo_member",
+                      "phoneNumber": "01012345678",
+                      "serviceTermsAgreed": false,
+                      "privacyPolicyAgreed": true,
+                      "marketingAgreed": false
                     }
                     """))
         .andExpect(status().isBadRequest())

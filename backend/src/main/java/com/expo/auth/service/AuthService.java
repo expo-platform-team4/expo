@@ -45,18 +45,20 @@ public class AuthService {
   /** 일반 회원 로컬 회원가입. role 은 MEMBER, account_status 는 ACTIVE 로 고정한다. */
   @Transactional
   public SignupResponse signup(SignupRequest request) {
+    if (!request.password().equals(request.passwordConfirm())) {
+      throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
+    }
     if (userRepository.existsByEmail(request.email())) {
       throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
     }
     if (userRepository.existsByNickname(request.nickname())) {
       throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
     }
-    // 비밀번호 해시화
     String passwordHash = passwordEncoder.encode(request.password());
-    // User 엔티티 생성
-    User user = User.createMember(request.email(), passwordHash, request.nickname());
+    User user =
+        User.createMember(
+            request.email(), passwordHash, request.nickname(), request.phoneNumber());
     User saved = userRepository.save(user);
-    // SignupResponse 반환
     return userConverter.toSignupResponse(saved);
   }
 

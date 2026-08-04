@@ -59,13 +59,15 @@ public class User extends BaseTimeEntity {
   protected User() {}
 
   /** 일반 회원 로컬 회원가입용 계정을 생성한다. */
-  public static User createMember(String email, String passwordHash, String nickname) {
+  public static User createMember(
+      String email, String passwordHash, String nickname, String phoneNumber) {
     User user = new User();
     user.email = email;
     user.passwordHash = passwordHash;
     user.nickname = nickname;
     user.role = Role.MEMBER;
     user.accountStatus = AccountStatus.ACTIVE;
+    user.phoneNumber = phoneNumber;
     return user;
   }
 
