@@ -2,13 +2,17 @@ package com.expo.auth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.expo.auth.Role;
+import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.SignupResponse;
+import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.service.AuthService;
+import com.expo.auth.service.BusinessNumberValidationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,6 +28,9 @@ class AuthControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private AuthService authService;
+  @MockitoBean private BusinessNumberValidationService businessNumberValidationService;
+
+  // ----- 회원가입 (A-API-001) -----
 
   @Test
   void signupWithoutTokenIsAllowed() throws Exception {
@@ -84,5 +91,110 @@ class AuthControllerTest {
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false));
+  }
+
+  // ----- 사업자등록번호 사용 가능 여부 (A-API-005) -----
+
+  @Test
+  void businessNumberAvailabilityWithoutTokenIsAllowed() throws Exception {
+    when(businessNumberValidationService.checkAvailability("123-45-67890"))
+        .thenReturn(BusinessNumberAvailabilityResponse.available("1234567890"));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "123-45-67890"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.businessNumber").value("1234567890"))
+        .andExpect(jsonPath("$.data.valid").value(true))
+        .andExpect(jsonPath("$.data.duplicate").value(false))
+        .andExpect(jsonPath("$.data.available").value(true));
+  }
+
+  @Test
+  void businessNumberAvailabilityWithPlainDigitsReturnsAvailable() throws Exception {
+    when(businessNumberValidationService.checkAvailability("1234567890"))
+        .thenReturn(BusinessNumberAvailabilityResponse.available("1234567890"));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "1234567890"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.available").value(true))
+        .andExpect(jsonPath("$.data.businessNumber").value("1234567890"));
+  }
+
+  @Test
+  void businessNumberAvailabilityForNonTestNumberReturnsUnavailable() throws Exception {
+    when(businessNumberValidationService.checkAvailability("999-99-99999"))
+        .thenReturn(BusinessNumberAvailabilityResponse.notTestNumber("9999999999"));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "999-99-99999"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.valid").value(false))
+        .andExpect(jsonPath("$.data.available").value(false))
+        .andExpect(jsonPath("$.data.message").value("테스트용으로 등록되지 않은 사업자등록번호입니다."));
+  }
+
+  @Test
+  void businessNumberAvailabilityForDuplicateReturnsUnavailable() throws Exception {
+    when(businessNumberValidationService.checkAvailability("1234567890"))
+        .thenReturn(BusinessNumberAvailabilityResponse.duplicate("1234567890"));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "1234567890"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.valid").value(true))
+        .andExpect(jsonPath("$.data.duplicate").value(true))
+        .andExpect(jsonPath("$.data.available").value(false))
+        .andExpect(jsonPath("$.data.message").value("이미 가입된 사업자등록번호입니다."));
+  }
+
+  @Test
+  void businessNumberAvailabilityWithBlankReturnsBadRequest() throws Exception {
+    when(businessNumberValidationService.checkAvailability(""))
+        .thenThrow(new InvalidBusinessNumberException("사업자등록번호를 입력해 주세요."));
+
+    mockMvc
+        .perform(get("/api/auth/business-number-availability").param("businessNumber", ""))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.message").value("사업자등록번호를 입력해 주세요."));
+  }
+
+  @Test
+  void businessNumberAvailabilityWithNineDigitsReturnsBadRequest() throws Exception {
+    when(businessNumberValidationService.checkAvailability("123456789"))
+        .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
+
+    mockMvc
+        .perform(get("/api/auth/business-number-availability").param("businessNumber", "123456789"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false));
+  }
+
+  @Test
+  void businessNumberAvailabilityWithMisplacedHyphenReturnsBadRequest() throws Exception {
+    when(businessNumberValidationService.checkAvailability("1234-56-7890"))
+        .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "1234-56-7890"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void businessNumberAvailabilityWithNonDigitReturnsBadRequest() throws Exception {
+    when(businessNumberValidationService.checkAvailability("12a-45-67890"))
+        .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
+
+    mockMvc
+        .perform(
+            get("/api/auth/business-number-availability").param("businessNumber", "12a-45-67890"))
+        .andExpect(status().isBadRequest());
   }
 }
