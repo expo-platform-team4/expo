@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.jar binary
+*.png binary
+*.jpg binary
+*.ico binary
+
+# 리뷰에서 diff 를 접는다.
+bun.lock -diff
