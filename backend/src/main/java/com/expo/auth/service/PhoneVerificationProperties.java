@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
+
 // application.yml 설정을 읽어 들이는 설정 클래스(Properties)
 /** 휴대폰 본인인증 MVP 설정 ({@code app.phone-verification}). */
 @ConfigurationProperties(prefix = "app.phone-verification")

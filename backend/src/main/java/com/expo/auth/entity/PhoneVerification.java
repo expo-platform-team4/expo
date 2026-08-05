@@ -58,6 +58,20 @@ public class PhoneVerification {
     this.status = PhoneVerificationStatus.EXPIRED;
   }
 
+  public void markFailed() {
+    this.status = PhoneVerificationStatus.FAILED;
+  }
+
+  public void markVerified(String signupTokenHash, Instant verifiedAt) {
+    this.status = PhoneVerificationStatus.VERIFIED;
+    this.verifiedAt = verifiedAt;
+    this.verificationTokenHash = signupTokenHash;
+  }
+
+  public boolean isExpired(Instant now) {
+    return expiresAt.isBefore(now);
+  }
+
   public Long getId() {
     return id;
   }
