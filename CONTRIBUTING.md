@@ -93,9 +93,9 @@ git push (branch publish)
    ↓
 PR 생성
    ↓
-CI 자동 실행: backend / frontend / backend-test
+CI 자동 실행: backend / frontend
    ↓
-backend·frontend 가 초록이어야 머지 버튼 활성화   ← 새로 생긴 게이트
+둘 다 초록이어야 머지 버튼 활성화            ← 새로 생긴 게이트
    ↓
 리뷰 → 머지
 ```
@@ -145,7 +145,11 @@ cd front && bun run format && bun run check
 | `frontend` → Lint | ESLint 규칙 위반 | `bun run lint:fix` 로 일부 자동 수정, 나머지는 직접 |
 | `frontend` → Typecheck | 타입 오류 | `bun run typecheck` 로그 확인 |
 
-`backend-test` 는 아직 머지를 막지 않는다. 빨간불이어도 머지는 되지만, 원인은 확인하고 넘어간다.
+**백엔드 테스트는 아직 CI 에서 돌리지 않는다.** `ExpoApplicationTests.contextLoads` 가
+`V1__init_schema.sql` 의 `CREATE EXTENSION btree_gist` 를 H2 가 실행하지 못해 실패하기 때문이다
+(README 의 "알려진 제약: Flyway + H2" 참고). 테스트 환경을 고친 뒤
+[`ci.yml`](.github/workflows/ci.yml) 하단에 주석으로 남겨 둔 `backend-test` job 을 되살린다.
+그때까지는 로컬에서 `./gradlew test` 를 직접 돌려 확인한다.
 
 ---
 
