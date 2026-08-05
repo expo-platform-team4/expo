@@ -116,8 +116,10 @@ spotless {
 checkstyle {
 	toolVersion = '13.9.0'
 	configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-	// 초기 단계에서는 경고로만 다루고, 규칙이 팀에 정착하면 0으로 조인다.
-	maxWarnings = 500
+	// 실측 결과 현재 경고가 0건이라 0으로 내렸다. 이 값이 500 이면 규칙을 추가해도
+	// 아무것도 막지 못한다 — 경고가 곧 게이트여야 규칙에 힘이 생긴다.
+	// 새 규칙 때문에 기존 코드가 대량으로 걸리면, 값을 올리지 말고 그 규칙을 먼저 정리한다.
+	maxWarnings = 0
 	ignoreFailures = false
 }
 
