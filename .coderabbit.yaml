@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit 설정 — expo 모노레포
+# Docs: https://docs.coderabbit.ai/reference/configuration
+#
+# expo/
+# ├── backend/   Spring Boot 4 (Java 21, Gradle, JPA, JWT)
+# ├── front/     Next.js 16 (TypeScript, Bun)
+# └── README.md
+
+language: ko-KR
+
+tone_instructions: >
+  리뷰와 요약은 한국어로 작성한다. 변경 의도와 영향 범위를 먼저 짚고,
+  문제가 있으면 파일·라인과 함께 수정 제안을 제시한다. 사소한 스타일 지적은
+  Spotless/ESLint로 자동화 가능한 항목은 생략한다.
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  review_status: true
+  poem: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - dev
+      - staging
+      - main
+    ignore_title_keywords:
+      - WIP
+      - DRAFT
+      - DO NOT MERGE
+
+  # 빌드 산출물·의존성·로컬 설정은 리뷰 대상에서 제외
+  path_filters:
+    - "!**/.gradle/**"
+    - "!**/build/**"
+    - "!**/.next/**"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/coverage/**"
+    - "!**/*.lock"
+    - "!**/.env"
+    - "!**/.env.*"
+    - "!**/env.sample"
+    - "!**/*.class"
+    - "!**/*.jar"
+
+  path_instructions:
+    - path: "backend/**/*.java"
+      instructions: >
+        Spring Boot 4 / Java 21 프로젝트다. 도메인 패키지(auth, member, order 등)는
+        controller·service·repository·entity·dto·converter·exception·event 8개 하위
+        패키지 규칙을 따른다. 공통 코드는 com.expo.common, JWT 인프라는 com.expo.jwt에 둔다.
+        Controller는 요청 검증·DTO 변환만, 비즈니스 로직은 Service에 둔다.
+        Entity를 API 응답으로 직접 노출하지 말고 DTO/record를 사용한다.
+        비밀키·JWT secret·.env 값이 커밋되지 않았는지 확인한다.
+        Flyway 마이그레이션은 db/migration에만 추가한다.
+
+    - path: "backend/**/db/migration/**"
+      instructions: >
+        Flyway SQL 마이그레이션이다. 기존 테이블/컬럼과 충돌하지 않는지, 롤백 전략과
+        운영 반영 순서를 고려해 리뷰한다. 파괴적 변경(DROP, TRUNCATE)은 반드시 지적한다.
+
+    - path: "front/**/*.{ts,tsx}"
+      instructions: >
+        Next.js 16 App Router + React 19 + TypeScript 프로젝트다. Node 24 LTS를 사용한다
+        (Node 26은 rewrites 오류로 금지). 서버 상태는 TanStack Query, 폼은 React Hook Form +
+        Zod를 우선한다. API 호출은 src/lib/api.ts axios 인스턴스를 재사용한다.
+        환경변수(.env.local) 노출과 any 남용을 지적한다.
+
+    - path: "**/*.{yml,yaml}"
+      instructions: >
+        application-*.yml 변경 시 프로필(local/test/prod)별 영향을 구분해 리뷰한다.
+        secret은 환경 변수 참조(${...})만 허용하고 평문 커밋을 금지한다.
+
+  tools:
+    gitleaks:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: local
+  issues:
+    scope: local
