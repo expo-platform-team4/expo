@@ -93,8 +93,18 @@ tasks.named('test') {
 spotless {
 	java {
 		target 'src/**/*.java'
-		googleJavaFormat()
+		// 버전을 고정하지 않으면 Spotless 를 올릴 때 포맷 결과가 바뀌어 전 파일 diff 가 난다.
+		// 1.28.0 은 Spotless 8.9.0 이 현재 해석하는 버전이다.
+		googleJavaFormat('1.28.0')
+			.aosp()                 // 4칸 들여쓰기 + 100컬럼
+			.formatJavadoc(false)   // 한글을 폭 1 로 계산해 Javadoc 을 이상하게 접는 문제 회피
 		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+		toggleOffOn()               // // spotless:off ~ // spotless:on 으로 부분 예외
+	}
+	format 'misc', {
+		target '*.gradle', '.gitignore', 'src/**/*.yml', 'src/**/*.sql'
 		trimTrailingWhitespace()
 		endWithNewline()
 	}
@@ -106,4 +116,12 @@ checkstyle {
 	// 초기 단계에서는 경고로만 다루고, 규칙이 팀에 정착하면 0으로 조인다.
 	maxWarnings = 500
 	ignoreFailures = false
+}
+
+// 로컬에서는 컴파일 전에 자동으로 고쳐 준다. CI 에서는 소스를 고치지 않고 검사만 한다.
+// (CI 가 소스를 고치면 커밋되지 않은 위반이 통과해 버려 게이트 의미가 없다)
+// GitHub Actions 는 CI=true 를 자동으로 넣어 준다.
+def isCi = System.getenv('CI') != null
+tasks.named('compileJava') {
+	dependsOn(isCi ? 'spotlessCheck' : 'spotlessApply')
 }

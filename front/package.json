@@ -11,9 +11,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check": "bun run format:check && bun run lint && bun run typecheck"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
