@@ -15,19 +15,19 @@ package com.expo.auth.exception;
  */
 public class BusinessException extends RuntimeException {
 
-  /** 이 예외에 대응하는 HTTP 상태·메시지 정의. */
-  private final ErrorCode errorCode;
+    /** 이 예외에 대응하는 HTTP 상태·메시지 정의. */
+    private final ErrorCode errorCode;
 
-  /**
-   * @param errorCode 발생한 비즈니스 오류 종류 (상태 코드·메시지 포함)
-   */
-  public BusinessException(ErrorCode errorCode) {
-    super(errorCode.getMessage());
-    this.errorCode = errorCode;
-  }
+    /**
+     * @param errorCode 발생한 비즈니스 오류 종류 (상태 코드·메시지 포함)
+     */
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+    }
 
-  /** {@link AuthExceptionHandler}가 응답 HTTP 상태를 결정할 때 사용한다. */
-  public ErrorCode getErrorCode() {
-    return errorCode;
-  }
+    /** {@link AuthExceptionHandler}가 응답 HTTP 상태를 결정할 때 사용한다. */
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
 }
