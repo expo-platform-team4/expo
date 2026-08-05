@@ -1,6 +1,7 @@
 package com.expo.auth.repository;
 
 import com.expo.auth.entity.User;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -31,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
    * @return 존재하면 {@code true} (회원가입 시 {@link com.expo.auth.exception.ErrorCode#DUPLICATE_NICKNAME})
    */
   boolean existsByNickname(String nickname);
+
+  Optional<User> findByEmail(String email);
 }
