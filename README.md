@@ -99,9 +99,9 @@
 | 로컬 Object Storage | Adobe S3Mock | 5.1.0 | 사용 중 |
 | Reverse Proxy | Caddy | 2.x | 예정 |
 | 배포 인프라 | OCI (ARM, Oracle Linux) | — | 예정 |
-| CI/CD 파이프라인 | GitHub Actions | — | **미구성** |
+| CI/CD 파이프라인 | GitHub Actions | — | 사용 중 (`.github/workflows/ci.yml`) |
 | 컨테이너 레지스트리 | GHCR | — | **미구성** |
-| 코드 리뷰 자동화 | CodeRabbit | — | 예정 |
+| 코드 리뷰 자동화 | CodeRabbit | — | 사용 중 (`.coderabbit.yaml`) |
 
 배포 시 Next 는 `output: 'standalone'` 빌드를 Docker 컨테이너로 띄우고,
 Caddy 가 `/` → Next, `/api` → Spring 으로 분기한다.
@@ -177,9 +177,21 @@ notification  settlement  client  admin  recruitment  participation  venue  boot
 |-|-|
 | `annotation` | 커스텀 어노테이션 (`@LoginMember` 등) |
 | `config` | `SecurityConfig`, `RestClient`(토스 호출), S3, Swagger, CORS |
-| `exception` | `GlobalExceptionHandler`, `BusinessException`, `ErrorCode` |
+| `exception` | 여러 도메인이 공유할 예외·에러코드·핸들러 자리. **현재는 비어 있다** — 아래 참고 |
 | `response` | `ApiResponse`, `PageResponse` 등 공통 응답 포맷 |
 | `util` | 특정 도메인에 속하지 않는 순수 유틸리티 |
+
+> `BusinessException`, `ErrorCode`, `AuthExceptionHandler` 는 지금 `auth/exception` 에 있다.
+> 아직 auth 하나만 쓰고 있어서다. **두 번째 도메인이 같은 예외를 쓰게 되면 그때
+> `common/exception` 으로 옮기고 핸들러를 `GlobalExceptionHandler` 로 승격한다.**
+
+### jwt (집합체 아님)
+
+JWT 발급·검증과 인증 필터. 여러 도메인이 쓰는 인증 인프라라 8개 구조를 따르지 않는다.
+`JwtTokenProvider`, `JwtAuthenticationFilter`, `JwtProperties`, `AuthPrincipal` 이 여기 있다.
+
+`auth` 는 회원가입·로그인이라는 **업무**를 다루고, `jwt` 는 토큰이라는 **기술**을 다룬다.
+토큰 자체를 손볼 일이면 `jwt`, 가입·인증 흐름을 손볼 일이면 `auth` 다.
 
 모든 패키지에 `package-info.java` 가 들어 있고 그 자리에서 위 규칙을 다시 확인할 수 있다.
 클래스를 추가하면 `package-info.java` 는 그대로 두면 된다(지우지 않는다).
