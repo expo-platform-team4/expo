@@ -6,3 +6,7 @@
 # chore: 전체 코드베이스에 포매터 일괄 적용
 # google-java-format aosp(4칸) 전환 + Prettier. 로직 변경 없음.
 d4defa017cce10912991dad09cb12809b30f78fe
+
+# chore: 포매터 재적용 (feat/login 병합분)
+# PR #8 머지 시점에 Actions 가 꺼져 있어 CI 가 잡지 못한 30개 파일. 로직 변경 없음.
+1f267a82f29a36ad1dded7141ac0a60c082d1a7f
