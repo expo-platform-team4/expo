@@ -104,7 +104,10 @@ spotless {
 		toggleOffOn()               // // spotless:off ~ // spotless:on 으로 부분 예외
 	}
 	format 'misc', {
-		target '*.gradle', '.gitignore', 'src/**/*.yml', 'src/**/*.sql'
+		target '*.gradle', '.gitignore', 'src/**/*.yml'
+		// Flyway 마이그레이션(.sql)은 절대 대상에 넣지 않는다.
+		// 공백 하나만 바뀌어도 체크섬이 달라져 이미 적용된 모든 DB 가 기동에 실패한다.
+		// 지금 프로젝트의 .sql 은 전부 db/migration 아래에 있다.
 		trimTrailingWhitespace()
 		endWithNewline()
 	}
