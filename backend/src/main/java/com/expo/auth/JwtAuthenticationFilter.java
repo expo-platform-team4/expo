@@ -40,79 +40,80 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  /** HTTP 헤더 이름. 클라이언트는 {@code Authorization: Bearer <JWT>} 형태로 전송한다. */
-  private static final String AUTHORIZATION_HEADER = "Authorization";
+    /** HTTP 헤더 이름. 클라이언트는 {@code Authorization: Bearer <JWT>} 형태로 전송한다. */
+    private static final String AUTHORIZATION_HEADER = "Authorization";
 
-  /** Bearer 스킴 접두사. 이 뒤의 문자열만 실제 JWT 토큰이다. */
-  private static final String BEARER_PREFIX = "Bearer ";
+    /** Bearer 스킴 접두사. 이 뒤의 문자열만 실제 JWT 토큰이다. */
+    private static final String BEARER_PREFIX = "Bearer ";
 
-  /** 토큰 생성·검증·클레임 파싱을 담당하는 컴포넌트. */
-  private final JwtTokenProvider jwtTokenProvider;
+    /** 토큰 생성·검증·클레임 파싱을 담당하는 컴포넌트. */
+    private final JwtTokenProvider jwtTokenProvider;
 
-  public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
-    this.jwtTokenProvider = jwtTokenProvider;
-  }
-
-  /**
-   * 요청당 한 번 실행되는 필터 본문.
-   *
-   * <p>{@link OncePerRequestFilter}를 상속해 동일 요청에서 중복 실행되지 않도록 보장한다.
-   */
-  @Override
-  protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
-    // 1) 헤더에서 JWT 문자열 추출 (없으면 null)
-    String token = resolveToken(request);
-
-    // 2) 토큰이 있고 Access Token으로 유효할 때만 인증 상태를 설정한다.
-    if (token != null && jwtTokenProvider.validateAccessToken(token)) {
-      // 3) JWT payload 에서 사용자 식별 정보 꺼내기
-      Long memberId = jwtTokenProvider.getMemberId(token);
-      Role role = jwtTokenProvider.getRole(token);
-
-      // 4) Spring Security principal 객체 생성
-      AuthPrincipal principal = new AuthPrincipal(memberId, role);
-
-      // 5) Authentication 객체 조립
-      //    - principal: 누구인지 (AuthPrincipal)
-      //    - credentials: null (JWT 방식이라 비밀번호 없음)
-      //    - authorities: ROLE_MEMBER 등 권한 목록
-      //객체 만들기
-      UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-
-      // 6) 현재 스레드(=현재 HTTP 요청)의 SecurityContext에 인증 정보 저장
-      SecurityContextHolder.getContext().setAuthentication(authentication);
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+        this.jwtTokenProvider = jwtTokenProvider;
     }
-    // 토큰이 없거나 무효하면 위 if 블록을 건너뛴다 → SecurityContext 비인증 상태 유지
 
-    // 7) 반드시 다음 필터로 넘긴다. 여기서 응답을 끝내지 않는다.
-    //이걸 호출하지 않으면 요청이 여기서 멈춥니다. 컨트롤러까지 가지 않고 응답도 안 나갑니다.
-    filterChain.doFilter(request, response);
-  }
+    /**
+     * 요청당 한 번 실행되는 필터 본문.
+     *
+     * <p>{@link OncePerRequestFilter}를 상속해 동일 요청에서 중복 실행되지 않도록 보장한다.
+     */
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        // 1) 헤더에서 JWT 문자열 추출 (없으면 null)
+        String token = resolveToken(request);
 
-  /**
-   * {@code Authorization} 헤더에서 Bearer 토큰만 분리해 반환한다.
-   *
-   * <p>예시:
-   *
-   * <ul>
-   *   <li>입력: {@code "Bearer eyJhbGciOiJIUzI1NiJ9..."}
-   *   <li>출력: {@code "eyJhbGciOiJIUzI1NiJ9..."}
-   * </ul>
-   *
-   * <p>헤더가 없거나, 비어 있거나, {@code Bearer } 로 시작하지 않으면 {@code null}을 반환한다.
-   *
-   * @param request 현재 HTTP 요청
-   * @return JWT 문자열, 없으면 {@code null}
-   */
-  //HTTP 요청 헤더에서 Bearer 접두사를 제거하고 JWT 문자열만 꺼내는 메서드입니다.
-  private String resolveToken(HttpServletRequest request) {
-    String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-    if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-      return bearerToken.substring(BEARER_PREFIX.length());
+        // 2) 토큰이 있고 Access Token으로 유효할 때만 인증 상태를 설정한다.
+        if (token != null && jwtTokenProvider.validateAccessToken(token)) {
+            // 3) JWT payload 에서 사용자 식별 정보 꺼내기
+            Long memberId = jwtTokenProvider.getMemberId(token);
+            Role role = jwtTokenProvider.getRole(token);
+
+            // 4) Spring Security principal 객체 생성
+            AuthPrincipal principal = new AuthPrincipal(memberId, role);
+
+            // 5) Authentication 객체 조립
+            //    - principal: 누구인지 (AuthPrincipal)
+            //    - credentials: null (JWT 방식이라 비밀번호 없음)
+            //    - authorities: ROLE_MEMBER 등 권한 목록
+            // 객체 만들기
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            principal, null, principal.getAuthorities());
+
+            // 6) 현재 스레드(=현재 HTTP 요청)의 SecurityContext에 인증 정보 저장
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+        // 토큰이 없거나 무효하면 위 if 블록을 건너뛴다 → SecurityContext 비인증 상태 유지
+
+        // 7) 반드시 다음 필터로 넘긴다. 여기서 응답을 끝내지 않는다.
+        // 이걸 호출하지 않으면 요청이 여기서 멈춥니다. 컨트롤러까지 가지 않고 응답도 안 나갑니다.
+        filterChain.doFilter(request, response);
     }
-    return null;
-  }
+
+    /**
+     * {@code Authorization} 헤더에서 Bearer 토큰만 분리해 반환한다.
+     *
+     * <p>예시:
+     *
+     * <ul>
+     *   <li>입력: {@code "Bearer eyJhbGciOiJIUzI1NiJ9..."}
+     *   <li>출력: {@code "eyJhbGciOiJIUzI1NiJ9..."}
+     * </ul>
+     *
+     * <p>헤더가 없거나, 비어 있거나, {@code Bearer } 로 시작하지 않으면 {@code null}을 반환한다.
+     *
+     * @param request 현재 HTTP 요청
+     * @return JWT 문자열, 없으면 {@code null}
+     */
+    // HTTP 요청 헤더에서 Bearer 접두사를 제거하고 JWT 문자열만 꺼내는 메서드입니다.
+    private String resolveToken(HttpServletRequest request) {
+        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
+            return bearerToken.substring(BEARER_PREFIX.length());
+        }
+        return null;
+    }
 }
