@@ -56,8 +56,7 @@ public class AuthService {
     }
     String passwordHash = passwordEncoder.encode(request.password());
     User user =
-        User.createMember(
-            request.email(), passwordHash, request.nickname(), request.phoneNumber());
+        User.createMember(request.email(), passwordHash, request.nickname(), request.phoneNumber());
     User saved = userRepository.save(user);
     return userConverter.toSignupResponse(saved);
   }
@@ -70,7 +69,7 @@ public class AuthService {
    */
   @Transactional
   public ClientSignupResponse clientSignup(ClientSignupRequest request) {
-    //비밀번호 일치 여부 검사
+    // 비밀번호 일치 여부 검사
     if (!request.password().equals(request.passwordConfirm())) {
       throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
     }
@@ -80,17 +79,17 @@ public class AuthService {
     if (userRepository.existsByNickname(request.nickname())) {
       throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
     }
-    //클라이언트 회원가입(clientSignup)에서 사업자등록번호를 서버에서 최종 검증
+    // 클라이언트 회원가입(clientSignup)에서 사업자등록번호를 서버에서 최종 검증
     String normalizedBusinessNumber =
         businessNumberValidationService.validateForClientSignup(request.businessNumber());
 
-        // 회원가입 시 평문 비밀번호를 DB에 저장할 수 없는 해시값으로 변환
+    // 회원가입 시 평문 비밀번호를 DB에 저장할 수 없는 해시값으로 변환
     String passwordHash = passwordEncoder.encode(request.password());
     User user =
         User.createClient(request.email(), passwordHash, request.nickname(), request.phoneNumber());
     User savedUser = userRepository.save(user);
 
-    //ClientProfile 엔티티 생성(사업자 정보)
+    // ClientProfile 엔티티 생성(사업자 정보)
     ClientProfile profile =
         ClientProfile.create(savedUser.getId(), normalizedBusinessNumber, request.companyName());
 
@@ -104,15 +103,15 @@ public class AuthService {
   }
 
   /** 동시 가입 등으로 unique 제약이 위반된 경우 도메인 예외로 변환한다. */
-  //DataIntegrityViolationException :  Spring이 DB 제약 위반(UNIQUE, NOT NULL 등)을 감지했을 때 던지는 예외
+  // DataIntegrityViolationException :  Spring이 DB 제약 위반(UNIQUE, NOT NULL 등)을 감지했을 때 던지는 예외
   private BusinessException toBusinessException(DataIntegrityViolationException ex) {
-    //가장 안쪽(실제 원인) 예외를 꺼냅니다.그 메시지 문자열을 message에 담아, 어떤 컬럼이 중복됐는지 판별합니다.
+    // 가장 안쪽(실제 원인) 예외를 꺼냅니다.그 메시지 문자열을 message에 담아, 어떤 컬럼이 중복됐는지 판별합니다.
     String message = ex.getMostSpecificCause().getMessage();
-    //getMessage()가 null이면 → 아래 contains() 검사를 건너뛰고 119줄 INVALID_INPUT으로 처리
+    // getMessage()가 null이면 → 아래 contains() 검사를 건너뛰고 119줄 INVALID_INPUT으로 처리
     if (message != null) {
-      //대소문자 통일해서 어떤 UNIQUE 제약이 깨졌는지 문자열로 추론
+      // 대소문자 통일해서 어떤 UNIQUE 제약이 깨졌는지 문자열로 추론
       String lower = message.toLowerCase();
-      //110줄에서 소문자로 바꾼 lower에 "business_number"가 있으면, 사업자등록번호 중복으로 판단합니다.
+      // 110줄에서 소문자로 바꾼 lower에 "business_number"가 있으면, 사업자등록번호 중복으로 판단합니다.
       if (lower.contains("business_number")) {
         return new BusinessException(ErrorCode.DUPLICATE_BUSINESS_NUMBER);
       }

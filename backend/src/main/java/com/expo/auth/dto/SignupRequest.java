@@ -25,8 +25,7 @@ public record SignupRequest(
             regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,100}$",
             message = "비밀번호는 영문·숫자·특수문자를 포함해 8자 이상이어야 합니다.")
         String password,
-    @Schema(description = "비밀번호 확인", example = "Test1234!")
-        @NotBlank(message = "비밀번호 확인은 필수입니다.")
+    @Schema(description = "비밀번호 확인", example = "Test1234!") @NotBlank(message = "비밀번호 확인은 필수입니다.")
         String passwordConfirm,
     @Schema(description = "서비스 닉네임", example = "expo_member")
         @NotBlank(message = "닉네임은 필수입니다.")
@@ -42,5 +41,4 @@ public record SignupRequest(
     @Schema(description = "[필수] 개인정보 수집 및 이용 동의", example = "true")
         @AssertTrue(message = "개인정보 수집 및 이용에 동의해 주세요.")
         boolean privacyPolicyAgreed,
-    @Schema(description = "[선택] 마케팅 정보 수신 동의", example = "false")
-        boolean marketingAgreed) {}
+    @Schema(description = "[선택] 마케팅 정보 수신 동의", example = "false") boolean marketingAgreed) {}
