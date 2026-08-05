@@ -17,70 +17,70 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class NicknameAvailabilityServiceTest {
 
-  @Mock private UserRepository userRepository;
+    @Mock private UserRepository userRepository;
 
-  @InjectMocks private NicknameAvailabilityService service;
+    @InjectMocks private NicknameAvailabilityService service;
 
-  @Test
-  void availableNicknameReturnsAvailable() {
-    when(userRepository.existsByNickname("expo_member")).thenReturn(false);
+    @Test
+    void availableNicknameReturnsAvailable() {
+        when(userRepository.existsByNickname("expo_member")).thenReturn(false);
 
-    NicknameAvailabilityResponse response = service.checkAvailability("expo_member");
+        NicknameAvailabilityResponse response = service.checkAvailability("expo_member");
 
-    assertThat(response.nickname()).isEqualTo("expo_member");
-    assertThat(response.valid()).isTrue();
-    assertThat(response.duplicate()).isFalse();
-    assertThat(response.available()).isTrue();
-    assertThat(response.message()).isEqualTo("사용 가능한 닉네임입니다.");
-  }
+        assertThat(response.nickname()).isEqualTo("expo_member");
+        assertThat(response.valid()).isTrue();
+        assertThat(response.duplicate()).isFalse();
+        assertThat(response.available()).isTrue();
+        assertThat(response.message()).isEqualTo("사용 가능한 닉네임입니다.");
+    }
 
-  @Test
-  void trimmedNicknameIsChecked() {
-    when(userRepository.existsByNickname("expo_member")).thenReturn(false);
+    @Test
+    void trimmedNicknameIsChecked() {
+        when(userRepository.existsByNickname("expo_member")).thenReturn(false);
 
-    NicknameAvailabilityResponse response = service.checkAvailability("  expo_member  ");
+        NicknameAvailabilityResponse response = service.checkAvailability("  expo_member  ");
 
-    assertThat(response.nickname()).isEqualTo("expo_member");
-    assertThat(response.available()).isTrue();
-  }
+        assertThat(response.nickname()).isEqualTo("expo_member");
+        assertThat(response.available()).isTrue();
+    }
 
-  @Test
-  void duplicateNicknameReturnsNotAvailable() {
-    when(userRepository.existsByNickname("dup_nick")).thenReturn(true);
+    @Test
+    void duplicateNicknameReturnsNotAvailable() {
+        when(userRepository.existsByNickname("dup_nick")).thenReturn(true);
 
-    NicknameAvailabilityResponse response = service.checkAvailability("dup_nick");
+        NicknameAvailabilityResponse response = service.checkAvailability("dup_nick");
 
-    assertThat(response.valid()).isTrue();
-    assertThat(response.duplicate()).isTrue();
-    assertThat(response.available()).isFalse();
-    assertThat(response.message()).isEqualTo("이미 사용 중인 닉네임입니다.");
-  }
+        assertThat(response.valid()).isTrue();
+        assertThat(response.duplicate()).isTrue();
+        assertThat(response.available()).isFalse();
+        assertThat(response.message()).isEqualTo("이미 사용 중인 닉네임입니다.");
+    }
 
-  @Test
-  void nullNicknameThrowsInvalidNickname() {
-    assertThatThrownBy(() -> service.checkAvailability(null))
-        .isInstanceOf(InvalidNicknameException.class)
-        .hasMessage("닉네임은 필수입니다.");
-  }
+    @Test
+    void nullNicknameThrowsInvalidNickname() {
+        assertThatThrownBy(() -> service.checkAvailability(null))
+                .isInstanceOf(InvalidNicknameException.class)
+                .hasMessage("닉네임은 필수입니다.");
+    }
 
-  @Test
-  void blankNicknameThrowsInvalidNickname() {
-    assertThatThrownBy(() -> service.checkAvailability("   "))
-        .isInstanceOf(InvalidNicknameException.class)
-        .hasMessage("닉네임은 필수입니다.");
-  }
+    @Test
+    void blankNicknameThrowsInvalidNickname() {
+        assertThatThrownBy(() -> service.checkAvailability("   "))
+                .isInstanceOf(InvalidNicknameException.class)
+                .hasMessage("닉네임은 필수입니다.");
+    }
 
-  @Test
-  void oneCharNicknameThrowsInvalidNickname() {
-    assertThatThrownBy(() -> service.checkAvailability("a"))
-        .isInstanceOf(InvalidNicknameException.class)
-        .hasMessage("닉네임은 2자 이상 50자 이하여야 합니다.");
-  }
+    @Test
+    void oneCharNicknameThrowsInvalidNickname() {
+        assertThatThrownBy(() -> service.checkAvailability("a"))
+                .isInstanceOf(InvalidNicknameException.class)
+                .hasMessage("닉네임은 2자 이상 50자 이하여야 합니다.");
+    }
 
-  @Test
-  void tooLongNicknameThrowsInvalidNickname() {
-    assertThatThrownBy(() -> service.checkAvailability("a".repeat(51)))
-        .isInstanceOf(InvalidNicknameException.class)
-        .hasMessage("닉네임은 2자 이상 50자 이하여야 합니다.");
-  }
+    @Test
+    void tooLongNicknameThrowsInvalidNickname() {
+        assertThatThrownBy(() -> service.checkAvailability("a".repeat(51)))
+                .isInstanceOf(InvalidNicknameException.class)
+                .hasMessage("닉네임은 2자 이상 50자 이하여야 합니다.");
+    }
 }

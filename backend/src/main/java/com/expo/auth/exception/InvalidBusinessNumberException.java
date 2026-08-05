@@ -10,7 +10,7 @@ package com.expo.auth.exception;
  */
 public class InvalidBusinessNumberException extends RuntimeException {
 
-  public InvalidBusinessNumberException(String message) {
-    super(message);
-  }
+    public InvalidBusinessNumberException(String message) {
+        super(message);
+    }
 }

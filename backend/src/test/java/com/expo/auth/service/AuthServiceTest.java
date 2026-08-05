@@ -27,95 +27,97 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-  @Mock private UserRepository userRepository;
-  @Mock private ClientProfileRepository clientProfileRepository;
-  @Mock private UserConverter userConverter;
-  @Mock private ClientProfileConverter clientProfileConverter;
-  @Mock private PasswordEncoder passwordEncoder;
-  @Mock private BusinessNumberValidationService businessNumberValidationService;
+    @Mock private UserRepository userRepository;
+    @Mock private ClientProfileRepository clientProfileRepository;
+    @Mock private UserConverter userConverter;
+    @Mock private ClientProfileConverter clientProfileConverter;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private BusinessNumberValidationService businessNumberValidationService;
 
-  @InjectMocks private AuthService authService;
+    @InjectMocks private AuthService authService;
 
-  private SignupRequest validRequest() {
-    return new SignupRequest(
-        "member@espotic.com",
-        "Test1234!",
-        "Test1234!",
-        "expo_member",
-        "01012345678",
-        true,
-        true,
-        false);
-  }
+    private SignupRequest validRequest() {
+        return new SignupRequest(
+                "member@espotic.com",
+                "Test1234!",
+                "Test1234!",
+                "expo_member",
+                "01012345678",
+                true,
+                true,
+                false);
+    }
 
-  @Test
-  void signupCreatesMember() {
-    SignupRequest request = validRequest();
+    @Test
+    void signupCreatesMember() {
+        SignupRequest request = validRequest();
 
-    when(userRepository.existsByEmail(request.email())).thenReturn(false);
-    when(userRepository.existsByNickname(request.nickname())).thenReturn(false);
-    when(passwordEncoder.encode(request.password())).thenReturn("encoded-password");
-    when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    when(userConverter.toSignupResponse(any(User.class)))
-        .thenReturn(new SignupResponse(1L, request.email(), request.nickname(), Role.MEMBER));
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.existsByNickname(request.nickname())).thenReturn(false);
+        when(passwordEncoder.encode(request.password())).thenReturn("encoded-password");
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(userConverter.toSignupResponse(any(User.class)))
+                .thenReturn(
+                        new SignupResponse(1L, request.email(), request.nickname(), Role.MEMBER));
 
-    SignupResponse response = authService.signup(request);
+        SignupResponse response = authService.signup(request);
 
-    assertThat(response.userId()).isEqualTo(1L);
-    assertThat(response.email()).isEqualTo(request.email());
-    assertThat(response.nickname()).isEqualTo(request.nickname());
-    assertThat(response.role()).isEqualTo(Role.MEMBER);
-    verify(userRepository).save(any(User.class));
-  }
+        assertThat(response.userId()).isEqualTo(1L);
+        assertThat(response.email()).isEqualTo(request.email());
+        assertThat(response.nickname()).isEqualTo(request.nickname());
+        assertThat(response.role()).isEqualTo(Role.MEMBER);
+        verify(userRepository).save(any(User.class));
+    }
 
-  @Test
-  void signupRejectsPasswordMismatch() {
-    SignupRequest request =
-        new SignupRequest(
-            "member@espotic.com",
-            "Test1234!",
-            "Different1!",
-            "expo_member",
-            "01012345678",
-            true,
-            true,
-            false);
+    @Test
+    void signupRejectsPasswordMismatch() {
+        SignupRequest request =
+                new SignupRequest(
+                        "member@espotic.com",
+                        "Test1234!",
+                        "Different1!",
+                        "expo_member",
+                        "01012345678",
+                        true,
+                        true,
+                        false);
 
-    assertThatThrownBy(() -> authService.signup(request))
-        .isInstanceOf(BusinessException.class)
-        .extracting(ex -> ((BusinessException) ex).getErrorCode())
-        .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
 
-    verify(userRepository, never()).existsByEmail(any());
-    verify(userRepository, never()).save(any(User.class));
-  }
+        verify(userRepository, never()).existsByEmail(any());
+        verify(userRepository, never()).save(any(User.class));
+    }
 
-  @Test
-  void signupRejectsDuplicateEmail() {
-    SignupRequest request = validRequest();
+    @Test
+    void signupRejectsDuplicateEmail() {
+        SignupRequest request = validRequest();
 
-    when(userRepository.existsByEmail(request.email())).thenReturn(true);
+        when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
-    assertThatThrownBy(() -> authService.signup(request))
-        .isInstanceOf(BusinessException.class)
-        .extracting(ex -> ((BusinessException) ex).getErrorCode())
-        .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
 
-    verify(userRepository, never()).save(any(User.class));
-  }
+        verify(userRepository, never()).save(any(User.class));
+    }
 
-  @Test
-  void signupRejectsDuplicateNickname() {
-    SignupRequest request = validRequest();
+    @Test
+    void signupRejectsDuplicateNickname() {
+        SignupRequest request = validRequest();
 
-    when(userRepository.existsByEmail(request.email())).thenReturn(false);
-    when(userRepository.existsByNickname(request.nickname())).thenReturn(true);
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.existsByNickname(request.nickname())).thenReturn(true);
 
-    assertThatThrownBy(() -> authService.signup(request))
-        .isInstanceOf(BusinessException.class)
-        .extracting(ex -> ((BusinessException) ex).getErrorCode())
-        .isEqualTo(ErrorCode.DUPLICATE_NICKNAME);
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_NICKNAME);
 
-    verify(userRepository, never()).save(any(User.class));
-  }
+        verify(userRepository, never()).save(any(User.class));
+    }
 }

@@ -36,40 +36,40 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-  private final AuthService authService;
-  private final EmailAvailabilityService emailAvailabilityService;
-  private final NicknameAvailabilityService nicknameAvailabilityService;
-  private final BusinessNumberValidationService businessNumberValidationService;
+    private final AuthService authService;
+    private final EmailAvailabilityService emailAvailabilityService;
+    private final NicknameAvailabilityService nicknameAvailabilityService;
+    private final BusinessNumberValidationService businessNumberValidationService;
 
-  public AuthController(
-      AuthService authService,
-      EmailAvailabilityService emailAvailabilityService,
-      NicknameAvailabilityService nicknameAvailabilityService,
-      BusinessNumberValidationService businessNumberValidationService) {
-    this.authService = authService;
-    this.emailAvailabilityService = emailAvailabilityService;
-    this.nicknameAvailabilityService = nicknameAvailabilityService;
-    this.businessNumberValidationService = businessNumberValidationService;
-  }
+    public AuthController(
+            AuthService authService,
+            EmailAvailabilityService emailAvailabilityService,
+            NicknameAvailabilityService nicknameAvailabilityService,
+            BusinessNumberValidationService businessNumberValidationService) {
+        this.authService = authService;
+        this.emailAvailabilityService = emailAvailabilityService;
+        this.nicknameAvailabilityService = nicknameAvailabilityService;
+        this.businessNumberValidationService = businessNumberValidationService;
+    }
 
-  @Operation(summary = "일반 회원 로컬 회원가입", description = "이메일·비밀번호·닉네임으로 MEMBER 계정을 생성합니다.")
-  @PostMapping("/signup")
-  public ResponseEntity<AuthApiResponse<SignupResponse>> signup(
-      // JSON body 를 SignupRequest 로 변환
-      @Valid @RequestBody SignupRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(AuthApiResponse.ok(authService.signup(request)));
-  }
+    @Operation(summary = "일반 회원 로컬 회원가입", description = "이메일·비밀번호·닉네임으로 MEMBER 계정을 생성합니다.")
+    @PostMapping("/signup")
+    public ResponseEntity<AuthApiResponse<SignupResponse>> signup(
+            // JSON body 를 SignupRequest 로 변환
+            @Valid @RequestBody SignupRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(AuthApiResponse.ok(authService.signup(request)));
+    }
 
-  /**
-   * 사업자등록번호 사용 가능 여부 확인 (A-API-005).
-   *
-   * <p>MVP 테스트 환경 전용. 외부 국세청·공공데이터 API 를 호출하지 않고, 서버에 등록된 테스트 번호 목록과 DB 중복 여부만 확인한다.
-   */
-  @Operation(
-      summary = "사업자등록번호 사용 가능 여부 확인",
-      description =
-          """
+    /**
+     * 사업자등록번호 사용 가능 여부 확인 (A-API-005).
+     *
+     * <p>MVP 테스트 환경 전용. 외부 국세청·공공데이터 API 를 호출하지 않고, 서버에 등록된 테스트 번호 목록과 DB 중복 여부만 확인한다.
+     */
+    @Operation(
+            summary = "사업자등록번호 사용 가능 여부 확인",
+            description =
+                    """
           클라이언트 회원가입 전에 사업자등록번호를 사용할 수 있는지 확인합니다.
 
           - 외부 국세청 / 공공데이터 사업자등록번호 API 를 호출하지 않습니다.
@@ -79,19 +79,19 @@ public class AuthController {
 
           사용 가능한 테스트 번호: `1234567890`, `1111111111`, `2222222222`
           """)
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "200",
-        description = "판정 결과 반환 (available=true/false)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = AuthApiResponse.class),
-                examples = {
-                  @ExampleObject(
-                      name = "사용 가능",
-                      value =
-                          """
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "판정 결과 반환 (available=true/false)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema = @Schema(implementation = AuthApiResponse.class),
+                                examples = {
+                                    @ExampleObject(
+                                            name = "사용 가능",
+                                            value =
+                                                    """
                           {
                             "success": true,
                             "data": {
@@ -104,10 +104,10 @@ public class AuthController {
                             "message": null
                           }
                           """),
-                  @ExampleObject(
-                      name = "테스트 번호가 아님",
-                      value =
-                          """
+                                    @ExampleObject(
+                                            name = "테스트 번호가 아님",
+                                            value =
+                                                    """
                           {
                             "success": true,
                             "data": {
@@ -120,10 +120,10 @@ public class AuthController {
                             "message": null
                           }
                           """),
-                  @ExampleObject(
-                      name = "이미 가입된 번호",
-                      value =
-                          """
+                                    @ExampleObject(
+                                            name = "이미 가입된 번호",
+                                            value =
+                                                    """
                           {
                             "success": true,
                             "data": {
@@ -136,49 +136,49 @@ public class AuthController {
                             "message": null
                           }
                           """)
-                })),
-    @ApiResponse(
-        responseCode = "400",
-        description = "형식 오류(빈 값 / 자릿수 오류 / 잘못된 하이픈 위치 / 문자 포함 등)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples =
-                    @ExampleObject(
-                        value =
-                            """
+                                })),
+        @ApiResponse(
+                responseCode = "400",
+                description = "형식 오류(빈 값 / 자릿수 오류 / 잘못된 하이픈 위치 / 문자 포함 등)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
                             {
                               "success": false,
                               "data": null,
                               "message": "사업자등록번호 형식이 올바르지 않습니다."
                             }
                             """)))
-  })
-  @GetMapping("/business-number-availability")
-  public ResponseEntity<AuthApiResponse<BusinessNumberAvailabilityResponse>>
-      checkBusinessNumberAvailability(
-          // Swagger 문서용 설명입니다
-          @Parameter(
-                  description = "확인할 사업자등록번호. 하이픈 포함/미포함 모두 허용.",
-                  example = "123-45-67890",
-                  required = true)
-              @RequestParam("businessNumber")
-              String businessNumber) {
-    BusinessNumberAvailabilityResponse result =
-        businessNumberValidationService.checkAvailability(businessNumber);
-    // HTTP 200과 함께 공통 응답 형식으로 반환합니다.
-    return ResponseEntity.ok(AuthApiResponse.ok(result));
-  }
+    })
+    @GetMapping("/business-number-availability")
+    public ResponseEntity<AuthApiResponse<BusinessNumberAvailabilityResponse>>
+            checkBusinessNumberAvailability(
+                    // Swagger 문서용 설명입니다
+                    @Parameter(
+                                    description = "확인할 사업자등록번호. 하이픈 포함/미포함 모두 허용.",
+                                    example = "123-45-67890",
+                                    required = true)
+                            @RequestParam("businessNumber")
+                            String businessNumber) {
+        BusinessNumberAvailabilityResponse result =
+                businessNumberValidationService.checkAvailability(businessNumber);
+        // HTTP 200과 함께 공통 응답 형식으로 반환합니다.
+        return ResponseEntity.ok(AuthApiResponse.ok(result));
+    }
 
-  /**
-   * 클라이언트 로컬 회원가입 (A-API-002).
-   *
-   * <p>사업자정보를 포함하여 CLIENT 권한 계정을 생성한다. 사업자등록번호는 회원가입 시 서버에서 최종 재검증한다.
-   */
-  @Operation(
-      summary = "클라이언트 로컬 회원가입",
-      description =
-          """
+    /**
+     * 클라이언트 로컬 회원가입 (A-API-002).
+     *
+     * <p>사업자정보를 포함하여 CLIENT 권한 계정을 생성한다. 사업자등록번호는 회원가입 시 서버에서 최종 재검증한다.
+     */
+    @Operation(
+            summary = "클라이언트 로컬 회원가입",
+            description =
+                    """
           사업자정보를 포함한 클라이언트 회원가입 API입니다.
 
           - 가입 권한: CLIENT
@@ -191,18 +191,18 @@ public class AuthController {
 
           테스트 사업자등록번호: `1234567890`, `1111111111`, `2222222222`
           """)
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "201",
-        description = "회원가입 성공",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples =
-                    @ExampleObject(
-                        name = "정상 가입",
-                        value =
-                            """
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "201",
+                description = "회원가입 성공",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples =
+                                        @ExampleObject(
+                                                name = "정상 가입",
+                                                value =
+                                                        """
                             {
                               "success": true,
                               "data": {
@@ -215,85 +215,85 @@ public class AuthController {
                               "message": null
                             }
                             """))),
-    @ApiResponse(
-        responseCode = "400",
-        description = "입력값 오류 (비밀번호 불일치, 형식 오류, 약관 미동의 등)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples =
-                    @ExampleObject(
-                        value =
-                            """
+        @ApiResponse(
+                responseCode = "400",
+                description = "입력값 오류 (비밀번호 불일치, 형식 오류, 약관 미동의 등)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
                             {
                               "success": false,
                               "data": null,
                               "message": "비밀번호가 일치하지 않습니다."
                             }
                             """))),
-    @ApiResponse(
-        responseCode = "409",
-        description = "이메일 또는 사업자등록번호 중복",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples = {
-                  @ExampleObject(
-                      name = "이메일 중복",
-                      value =
-                          """
+        @ApiResponse(
+                responseCode = "409",
+                description = "이메일 또는 사업자등록번호 중복",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples = {
+                                    @ExampleObject(
+                                            name = "이메일 중복",
+                                            value =
+                                                    """
                           {
                             "success": false,
                             "data": null,
                             "message": "이미 사용 중인 이메일입니다."
                           }
                           """),
-                  @ExampleObject(
-                      name = "사업자등록번호 중복",
-                      value =
-                          """
+                                    @ExampleObject(
+                                            name = "사업자등록번호 중복",
+                                            value =
+                                                    """
                           {
                             "success": false,
                             "data": null,
                             "message": "이미 가입된 사업자등록번호입니다."
                           }
                           """)
-                }))
-  })
-  @PostMapping("/client-signup")
-  public ResponseEntity<AuthApiResponse<ClientSignupResponse>> clientSignup(
-      @Valid @RequestBody ClientSignupRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(AuthApiResponse.ok(authService.clientSignup(request)));
-  }
+                                }))
+    })
+    @PostMapping("/client-signup")
+    public ResponseEntity<AuthApiResponse<ClientSignupResponse>> clientSignup(
+            @Valid @RequestBody ClientSignupRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(AuthApiResponse.ok(authService.clientSignup(request)));
+    }
 
-  /**
-   * 이메일 사용 가능 여부 확인 (A-API-003).
-   *
-   * <p>회원가입 전에 이메일 중복 여부를 조회한다. 형식 오류는 400, 판정 결과는 200 OK 로 반환한다.
-   */
-  @Operation(
-      summary = "이메일 사용 가능 여부 확인",
-      description =
-          """
+    /**
+     * 이메일 사용 가능 여부 확인 (A-API-003).
+     *
+     * <p>회원가입 전에 이메일 중복 여부를 조회한다. 형식 오류는 400, 판정 결과는 200 OK 로 반환한다.
+     */
+    @Operation(
+            summary = "이메일 사용 가능 여부 확인",
+            description =
+                    """
         회원가입 전에 이메일을 사용할 수 있는지 확인합니다.
 
         - 이메일 형식이 올바르지 않으면 400 Bad Request 를 반환합니다.
         - DB 에 동일 이메일이 있으면 `duplicate=true`, `available=false` 로 응답합니다.
         """)
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "200",
-        description = "판정 결과 반환 (available=true/false)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = AuthApiResponse.class),
-                examples = {
-                  @ExampleObject(
-                      name = "사용 가능",
-                      value =
-                          """
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "판정 결과 반환 (available=true/false)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema = @Schema(implementation = AuthApiResponse.class),
+                                examples = {
+                                    @ExampleObject(
+                                            name = "사용 가능",
+                                            value =
+                                                    """
                         {
                           "success": true,
                           "data": {
@@ -306,10 +306,10 @@ public class AuthController {
                           "message": null
                         }
                         """),
-                  @ExampleObject(
-                      name = "이미 사용 중",
-                      value =
-                          """
+                                    @ExampleObject(
+                                            name = "이미 사용 중",
+                                            value =
+                                                    """
                         {
                           "success": true,
                           "data": {
@@ -322,60 +322,60 @@ public class AuthController {
                           "message": null
                         }
                         """)
-                })),
-    @ApiResponse(
-        responseCode = "400",
-        description = "형식 오류(빈 값 / 잘못된 형식 / 255자 초과)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples =
-                    @ExampleObject(
-                        value =
-                            """
+                                })),
+        @ApiResponse(
+                responseCode = "400",
+                description = "형식 오류(빈 값 / 잘못된 형식 / 255자 초과)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
                           {
                             "success": false,
                             "data": null,
                             "message": "올바른 이메일 형식이 아닙니다."
                           }
                           """)))
-  })
-  @GetMapping("/email-availability")
-  public ResponseEntity<AuthApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
-      @Parameter(description = "확인할 이메일", example = "member@espotic.com", required = true)
-          @RequestParam("email")
-          String email) {
-    EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
-    return ResponseEntity.ok(AuthApiResponse.ok(result));
-  }
+    })
+    @GetMapping("/email-availability")
+    public ResponseEntity<AuthApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
+            @Parameter(description = "확인할 이메일", example = "member@espotic.com", required = true)
+                    @RequestParam("email")
+                    String email) {
+        EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
+        return ResponseEntity.ok(AuthApiResponse.ok(result));
+    }
 
-  /**
-   * 닉네임 사용 가능 여부 확인 (A-API-004).
-   *
-   * <p>회원가입 전에 닉네임 중복 여부를 조회한다. 형식 오류는 400, 판정 결과는 200 OK 로 반환한다.
-   */
-  @Operation(
-      summary = "닉네임 사용 가능 여부 확인",
-      description =
-          """
+    /**
+     * 닉네임 사용 가능 여부 확인 (A-API-004).
+     *
+     * <p>회원가입 전에 닉네임 중복 여부를 조회한다. 형식 오류는 400, 판정 결과는 200 OK 로 반환한다.
+     */
+    @Operation(
+            summary = "닉네임 사용 가능 여부 확인",
+            description =
+                    """
           회원가입 전에 닉네임을 사용할 수 있는지 확인합니다.
 
           - 닉네임은 2자 이상 50자 이하여야 합니다. (DB: `users.nickname VARCHAR(50) UNIQUE NOT NULL`)
           - DB 에 동일 닉네임이 있으면 `duplicate=true`, `available=false` 로 응답합니다.
           """)
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "200",
-        description = "판정 결과 반환 (available=true/false)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = AuthApiResponse.class),
-                examples = {
-                  @ExampleObject(
-                      name = "사용 가능",
-                      value =
-                          """
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "판정 결과 반환 (available=true/false)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                schema = @Schema(implementation = AuthApiResponse.class),
+                                examples = {
+                                    @ExampleObject(
+                                            name = "사용 가능",
+                                            value =
+                                                    """
                           {
                             "success": true,
                             "data": {
@@ -388,10 +388,10 @@ public class AuthController {
                             "message": null
                           }
                           """),
-                  @ExampleObject(
-                      name = "이미 사용 중",
-                      value =
-                          """
+                                    @ExampleObject(
+                                            name = "이미 사용 중",
+                                            value =
+                                                    """
                           {
                             "success": true,
                             "data": {
@@ -404,30 +404,31 @@ public class AuthController {
                             "message": null
                           }
                           """)
-                })),
-    @ApiResponse(
-        responseCode = "400",
-        description = "형식 오류(빈 값 / 2자 미만 / 50자 초과)",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples =
-                    @ExampleObject(
-                        value =
-                            """
+                                })),
+        @ApiResponse(
+                responseCode = "400",
+                description = "형식 오류(빈 값 / 2자 미만 / 50자 초과)",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                examples =
+                                        @ExampleObject(
+                                                value =
+                                                        """
                             {
                               "success": false,
                               "data": null,
                               "message": "닉네임은 2자 이상 50자 이하여야 합니다."
                             }
                             """)))
-  })
-  @GetMapping("/nickname-availability")
-  public ResponseEntity<AuthApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
-      @Parameter(description = "확인할 닉네임", example = "expo_member", required = true)
-          @RequestParam("nickname")
-          String nickname) {
-    NicknameAvailabilityResponse result = nicknameAvailabilityService.checkAvailability(nickname);
-    return ResponseEntity.ok(AuthApiResponse.ok(result));
-  }
+    })
+    @GetMapping("/nickname-availability")
+    public ResponseEntity<AuthApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
+            @Parameter(description = "확인할 닉네임", example = "expo_member", required = true)
+                    @RequestParam("nickname")
+                    String nickname) {
+        NicknameAvailabilityResponse result =
+                nicknameAvailabilityService.checkAvailability(nickname);
+        return ResponseEntity.ok(AuthApiResponse.ok(result));
+    }
 }

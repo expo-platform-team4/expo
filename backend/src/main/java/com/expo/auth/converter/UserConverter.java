@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserConverter {
 
-  public SignupResponse toSignupResponse(User user) {
-    return new SignupResponse(user.getId(), user.getEmail(), user.getNickname(), user.getRole());
-  }
+    public SignupResponse toSignupResponse(User user) {
+        return new SignupResponse(
+                user.getId(), user.getEmail(), user.getNickname(), user.getRole());
+    }
 }

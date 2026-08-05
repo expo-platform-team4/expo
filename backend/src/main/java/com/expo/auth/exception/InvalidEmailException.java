@@ -7,8 +7,8 @@ package com.expo.auth.exception;
  */
 public class InvalidEmailException extends RuntimeException {
 
-  //이메일 형식이 잘못됐을 때 던지는 커스텀 예외의 생성자
-  public InvalidEmailException(String message) {
-    super(message);
-  }
+    // 이메일 형식이 잘못됐을 때 던지는 커스텀 예외의 생성자
+    public InvalidEmailException(String message) {
+        super(message);
+    }
 }

@@ -17,71 +17,71 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class EmailAvailabilityServiceTest {
 
-  @Mock private UserRepository userRepository;
+    @Mock private UserRepository userRepository;
 
-  @InjectMocks private EmailAvailabilityService service;
+    @InjectMocks private EmailAvailabilityService service;
 
-  @Test
-  void availableEmailReturnsAvailable() {
-    when(userRepository.existsByEmail("member@espotic.com")).thenReturn(false);
+    @Test
+    void availableEmailReturnsAvailable() {
+        when(userRepository.existsByEmail("member@espotic.com")).thenReturn(false);
 
-    EmailAvailabilityResponse response = service.checkAvailability("member@espotic.com");
+        EmailAvailabilityResponse response = service.checkAvailability("member@espotic.com");
 
-    assertThat(response.email()).isEqualTo("member@espotic.com");
-    assertThat(response.valid()).isTrue();
-    assertThat(response.duplicate()).isFalse();
-    assertThat(response.available()).isTrue();
-    assertThat(response.message()).isEqualTo("사용 가능한 이메일입니다.");
-  }
+        assertThat(response.email()).isEqualTo("member@espotic.com");
+        assertThat(response.valid()).isTrue();
+        assertThat(response.duplicate()).isFalse();
+        assertThat(response.available()).isTrue();
+        assertThat(response.message()).isEqualTo("사용 가능한 이메일입니다.");
+    }
 
-  @Test
-  void trimmedEmailIsChecked() {
-    when(userRepository.existsByEmail("member@espotic.com")).thenReturn(false);
+    @Test
+    void trimmedEmailIsChecked() {
+        when(userRepository.existsByEmail("member@espotic.com")).thenReturn(false);
 
-    EmailAvailabilityResponse response = service.checkAvailability("  member@espotic.com  ");
+        EmailAvailabilityResponse response = service.checkAvailability("  member@espotic.com  ");
 
-    assertThat(response.email()).isEqualTo("member@espotic.com");
-    assertThat(response.available()).isTrue();
-  }
+        assertThat(response.email()).isEqualTo("member@espotic.com");
+        assertThat(response.available()).isTrue();
+    }
 
-  @Test
-  void duplicateEmailReturnsNotAvailable() {
-    when(userRepository.existsByEmail("dup@espotic.com")).thenReturn(true);
+    @Test
+    void duplicateEmailReturnsNotAvailable() {
+        when(userRepository.existsByEmail("dup@espotic.com")).thenReturn(true);
 
-    EmailAvailabilityResponse response = service.checkAvailability("dup@espotic.com");
+        EmailAvailabilityResponse response = service.checkAvailability("dup@espotic.com");
 
-    assertThat(response.valid()).isTrue();
-    assertThat(response.duplicate()).isTrue();
-    assertThat(response.available()).isFalse();
-    assertThat(response.message()).isEqualTo("이미 사용 중인 이메일입니다.");
-  }
+        assertThat(response.valid()).isTrue();
+        assertThat(response.duplicate()).isTrue();
+        assertThat(response.available()).isFalse();
+        assertThat(response.message()).isEqualTo("이미 사용 중인 이메일입니다.");
+    }
 
-  @Test
-  void nullEmailThrowsInvalidEmail() {
-    assertThatThrownBy(() -> service.checkAvailability(null))
-        .isInstanceOf(InvalidEmailException.class)
-        .hasMessage("이메일을 입력해 주세요.");
-  }
+    @Test
+    void nullEmailThrowsInvalidEmail() {
+        assertThatThrownBy(() -> service.checkAvailability(null))
+                .isInstanceOf(InvalidEmailException.class)
+                .hasMessage("이메일을 입력해 주세요.");
+    }
 
-  @Test
-  void blankEmailThrowsInvalidEmail() {
-    assertThatThrownBy(() -> service.checkAvailability("   "))
-        .isInstanceOf(InvalidEmailException.class)
-        .hasMessage("이메일을 입력해 주세요.");
-  }
+    @Test
+    void blankEmailThrowsInvalidEmail() {
+        assertThatThrownBy(() -> service.checkAvailability("   "))
+                .isInstanceOf(InvalidEmailException.class)
+                .hasMessage("이메일을 입력해 주세요.");
+    }
 
-  @Test
-  void invalidFormatThrowsInvalidEmail() {
-    assertThatThrownBy(() -> service.checkAvailability("invalid-email"))
-        .isInstanceOf(InvalidEmailException.class)
-        .hasMessage("올바른 이메일 형식이 아닙니다.");
-  }
+    @Test
+    void invalidFormatThrowsInvalidEmail() {
+        assertThatThrownBy(() -> service.checkAvailability("invalid-email"))
+                .isInstanceOf(InvalidEmailException.class)
+                .hasMessage("올바른 이메일 형식이 아닙니다.");
+    }
 
-  @Test
-  void tooLongEmailThrowsInvalidEmail() {
-    String longLocal = "a".repeat(250);
-    assertThatThrownBy(() -> service.checkAvailability(longLocal + "@espotic.com"))
-        .isInstanceOf(InvalidEmailException.class)
-        .hasMessage("이메일은 255자 이하여야 합니다.");
-  }
+    @Test
+    void tooLongEmailThrowsInvalidEmail() {
+        String longLocal = "a".repeat(250);
+        assertThatThrownBy(() -> service.checkAvailability(longLocal + "@espotic.com"))
+                .isInstanceOf(InvalidEmailException.class)
+                .hasMessage("이메일은 255자 이하여야 합니다.");
+    }
 }
