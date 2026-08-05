@@ -56,7 +56,6 @@ public class AuthController {
         .body(AuthApiResponse.ok(authService.signup(request)));
   }
 
-
   /**
    * 사업자등록번호 사용 가능 여부 확인 (A-API-005).
    *
@@ -262,34 +261,34 @@ public class AuthController {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(AuthApiResponse.ok(authService.clientSignup(request)));
   }
-}
+
   /**
    * 이메일 사용 가능 여부 확인 (A-API-003).
    *
    * <p>회원가입 전에 이메일 중복 여부를 조회한다. 형식 오류는 400, 판정 결과는 200 OK 로 반환한다.
    */
   @Operation(
-    summary = "이메일 사용 가능 여부 확인",
-    description =
-        """
+      summary = "이메일 사용 가능 여부 확인",
+      description =
+          """
         회원가입 전에 이메일을 사용할 수 있는지 확인합니다.
 
         - 이메일 형식이 올바르지 않으면 400 Bad Request 를 반환합니다.
         - DB 에 동일 이메일이 있으면 `duplicate=true`, `available=false` 로 응답합니다.
         """)
-@ApiResponses({
-  @ApiResponse(
-      responseCode = "200",
-      description = "판정 결과 반환 (available=true/false)",
-      content =
-          @Content(
-              mediaType = MediaType.APPLICATION_JSON_VALUE,
-              schema = @Schema(implementation = AuthApiResponse.class),
-              examples = {
-                @ExampleObject(
-                    name = "사용 가능",
-                    value =
-                        """
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "판정 결과 반환 (available=true/false)",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = AuthApiResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "사용 가능",
+                      value =
+                          """
                         {
                           "success": true,
                           "data": {
@@ -302,10 +301,10 @@ public class AuthController {
                           "message": null
                         }
                         """),
-                @ExampleObject(
-                    name = "이미 사용 중",
-                    value =
-                        """
+                  @ExampleObject(
+                      name = "이미 사용 중",
+                      value =
+                          """
                         {
                           "success": true,
                           "data": {
@@ -318,29 +317,30 @@ public class AuthController {
                           "message": null
                         }
                         """)
-              })),
-  @ApiResponse(
-      responseCode = "400",
-      description = "형식 오류(빈 값 / 잘못된 형식 / 255자 초과)",
-      content =
-          @Content(
-              mediaType = MediaType.APPLICATION_JSON_VALUE,
-              examples =
-                  @ExampleObject(
-                      value =
-                          """
+                })),
+    @ApiResponse(
+        responseCode = "400",
+        description = "형식 오류(빈 값 / 잘못된 형식 / 255자 초과)",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
                           {
                             "success": false,
                             "data": null,
                             "message": "올바른 이메일 형식이 아닙니다."
                           }
                           """)))
-})
-@GetMapping("/email-availability")
-public ResponseEntity<AuthApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
-    @Parameter(description = "확인할 이메일", example = "member@espotic.com", required = true)
-        @RequestParam("email")
-        String email) {
-  EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
-  return ResponseEntity.ok(AuthApiResponse.ok(result));
+  })
+  @GetMapping("/email-availability")
+  public ResponseEntity<AuthApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
+      @Parameter(description = "확인할 이메일", example = "member@espotic.com", required = true)
+          @RequestParam("email")
+          String email) {
+    EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
+    return ResponseEntity.ok(AuthApiResponse.ok(result));
+  }
 }

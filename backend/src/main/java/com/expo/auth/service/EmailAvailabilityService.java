@@ -21,7 +21,7 @@ public class EmailAvailabilityService {
   private static final Pattern EMAIL_FORMAT =
       Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
-      //이메일 중복 검증 서비스를 만들 때 DB 조회용 UserRepository를 Spring에게 받는 생성자
+  // 이메일 중복 검증 서비스를 만들 때 DB 조회용 UserRepository를 Spring에게 받는 생성자
   private final UserRepository userRepository;
 
   public EmailAvailabilityService(UserRepository userRepository) {
@@ -44,7 +44,7 @@ public class EmailAvailabilityService {
     if (!EMAIL_FORMAT.matcher(trimmed).matches()) {
       throw new InvalidEmailException("올바른 이메일 형식이 아닙니다.");
     }
-    //정리된 이메일을 반환
+    // 정리된 이메일을 반환
     return trimmed;
   }
 
