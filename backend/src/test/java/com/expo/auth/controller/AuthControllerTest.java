@@ -11,14 +11,17 @@ import com.expo.auth.Role;
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.ClientSignupResponse;
 import com.expo.auth.dto.EmailAvailabilityResponse;
+import com.expo.auth.dto.NicknameAvailabilityResponse;
 import com.expo.auth.dto.SignupResponse;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.exception.InvalidEmailException;
+import com.expo.auth.exception.InvalidNicknameException;
 import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
 import com.expo.auth.service.EmailAvailabilityService;
+import com.expo.auth.service.NicknameAvailabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,6 +38,7 @@ class AuthControllerTest {
 
   @MockitoBean private AuthService authService;
   @MockitoBean private EmailAvailabilityService emailAvailabilityService;
+  @MockitoBean private NicknameAvailabilityService nicknameAvailabilityService;
   @MockitoBean private BusinessNumberValidationService businessNumberValidationService;
 
   // ----- 회원가입 (A-API-001) -----
@@ -190,6 +194,60 @@ class AuthControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.message").value("이메일을 입력해 주세요."));
+  }
+
+  // ----- 닉네임 사용 가능 여부 (A-API-004) -----
+
+  @Test
+  void nicknameAvailabilityWithoutTokenIsAllowed() throws Exception {
+    when(nicknameAvailabilityService.checkAvailability("expo_member"))
+        .thenReturn(NicknameAvailabilityResponse.available("expo_member"));
+
+    mockMvc
+        .perform(get("/api/auth/nickname-availability").param("nickname", "expo_member"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.nickname").value("expo_member"))
+        .andExpect(jsonPath("$.data.valid").value(true))
+        .andExpect(jsonPath("$.data.duplicate").value(false))
+        .andExpect(jsonPath("$.data.available").value(true));
+  }
+
+  @Test
+  void nicknameAvailabilityForDuplicateReturnsUnavailable() throws Exception {
+    when(nicknameAvailabilityService.checkAvailability("dup_nick"))
+        .thenReturn(NicknameAvailabilityResponse.duplicate("dup_nick"));
+
+    mockMvc
+        .perform(get("/api/auth/nickname-availability").param("nickname", "dup_nick"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.duplicate").value(true))
+        .andExpect(jsonPath("$.data.available").value(false))
+        .andExpect(jsonPath("$.data.message").value("이미 사용 중인 닉네임입니다."));
+  }
+
+  @Test
+  void nicknameAvailabilityWithTooShortReturnsBadRequest() throws Exception {
+    when(nicknameAvailabilityService.checkAvailability("a"))
+        .thenThrow(new InvalidNicknameException("닉네임은 2자 이상 50자 이하여야 합니다."));
+
+    mockMvc
+        .perform(get("/api/auth/nickname-availability").param("nickname", "a"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.message").value("닉네임은 2자 이상 50자 이하여야 합니다."));
+  }
+
+  @Test
+  void nicknameAvailabilityWithBlankReturnsBadRequest() throws Exception {
+    when(nicknameAvailabilityService.checkAvailability(""))
+        .thenThrow(new InvalidNicknameException("닉네임은 필수입니다."));
+
+    mockMvc
+        .perform(get("/api/auth/nickname-availability").param("nickname", ""))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.message").value("닉네임은 필수입니다."));
   }
 
   // ----- 사업자등록번호 사용 가능 여부 (A-API-005) -----
