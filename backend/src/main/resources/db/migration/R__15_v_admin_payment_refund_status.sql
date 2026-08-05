@@ -26,12 +26,12 @@ LEFT JOIN ticket_products tp ON tp.id = fi.ticket_product_id
 LEFT JOIN LATERAL (
     SELECT x.id, x.status, x.requested_amount, x.approved_amount, x.approved_at
       FROM ticket_payments x
-     WHERE x.ticket_order_id = o.id ORDER BY x.created_at DESC LIMIT 1
+     WHERE x.ticket_order_id = o.id ORDER BY x.created_at DESC, x.id DESC LIMIT 1
 ) p ON TRUE
 LEFT JOIN LATERAL (
     SELECT x.id, x.status, x.refund_amount, x.completed_at
       FROM ticket_refunds x
-     WHERE x.ticket_order_id = o.id ORDER BY x.created_at DESC LIMIT 1
+     WHERE x.ticket_order_id = o.id ORDER BY x.created_at DESC, x.id DESC LIMIT 1
 ) r ON TRUE
 UNION ALL
 SELECT 'BOOTH'::VARCHAR(10),
@@ -52,5 +52,5 @@ FROM booth_orders bo
 LEFT JOIN LATERAL (
     SELECT x.id, x.status, x.requested_amount, x.approved_amount, x.approved_at
       FROM booth_payments x
-     WHERE x.booth_order_id = bo.id ORDER BY x.created_at DESC LIMIT 1
+     WHERE x.booth_order_id = bo.id ORDER BY x.created_at DESC, x.id DESC LIMIT 1
 ) bp ON TRUE;

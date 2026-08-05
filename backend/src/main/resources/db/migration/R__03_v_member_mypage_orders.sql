@@ -38,11 +38,11 @@ LEFT JOIN expos           e  ON e.id  = tp.expo_id
 LEFT JOIN LATERAL (
     SELECT tp2.status FROM ticket_payments tp2
      WHERE tp2.ticket_order_id = o.id
-     ORDER BY tp2.created_at DESC LIMIT 1
+     ORDER BY tp2.created_at DESC, tp2.id DESC LIMIT 1
 ) p ON TRUE
 LEFT JOIN LATERAL (
     SELECT tr.status FROM ticket_refunds tr
      WHERE tr.ticket_order_id = o.id
-     ORDER BY tr.created_at DESC LIMIT 1
+     ORDER BY tr.created_at DESC, tr.id DESC LIMIT 1
 ) r ON TRUE
 WHERE o.member_user_id IS NOT NULL;

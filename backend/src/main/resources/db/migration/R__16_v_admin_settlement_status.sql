@@ -25,5 +25,5 @@ LEFT JOIN LATERAL (
     SELECT r.remitted_amount, r.remitted_at, r.status
       FROM remittances r
      WHERE r.settlement_id = s.id
-     ORDER BY r.created_at DESC LIMIT 1
+     ORDER BY r.created_at DESC, r.id DESC LIMIT 1
 ) rm ON TRUE;

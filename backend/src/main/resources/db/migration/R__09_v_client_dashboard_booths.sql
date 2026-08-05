@@ -23,5 +23,5 @@ LEFT JOIN booths            b  ON b.id = bpr.booth_id
 LEFT JOIN LATERAL (
     SELECT p.status FROM booth_payments p
      WHERE p.booth_order_id = bo.id
-     ORDER BY p.created_at DESC LIMIT 1
+     ORDER BY p.created_at DESC, p.id DESC LIMIT 1
 ) bp ON TRUE;

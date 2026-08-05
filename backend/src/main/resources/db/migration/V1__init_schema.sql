@@ -174,7 +174,9 @@ CREATE TABLE venue_halls (
         CHECK (operational_status IN ('ACTIVE', 'INACTIVE')),
     created_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_venue_halls_code UNIQUE (venue_id, hall_code)
+    CONSTRAINT uq_venue_halls_code UNIQUE (venue_id, hall_code),
+    -- 하위 테이블이 "이 홀이 이 장소 소속인지"까지 복합 FK 로 검증할 수 있게 한다.
+    CONSTRAINT uq_venue_halls_id_venue UNIQUE (id, venue_id)
 );
 
 -- 홀 안에서 부스가 배치되는 구역
@@ -191,7 +193,9 @@ CREATE TABLE venue_zones (
         CHECK (operational_status IN ('ACTIVE', 'INACTIVE')),
     created_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_venue_zones_code UNIQUE (hall_id, zone_code)
+    CONSTRAINT uq_venue_zones_code UNIQUE (hall_id, zone_code),
+    -- 위와 같은 이유. "이 구역이 이 홀 소속인지" 검증용.
+    CONSTRAINT uq_venue_zones_id_hall UNIQUE (id, hall_id)
 );
 
 -- 장소 예약 단일 원본 (6-13). 모집공고 경로와 일반 박람회 등록 경로를 모두 담는다.
@@ -216,9 +220,17 @@ CREATE TABLE venue_reservations (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_venue_reservations_period CHECK (use_end_at > use_start_at),
-    -- 예약 원천 제약: 두 요청 FK 중 정확히 하나만 NOT NULL
+    -- 예약 원천 제약: 판별자와 실제로 채워진 요청 FK 가 일치해야 한다.
+    -- XOR 만으로는 RECRUITMENT_NOTICE 인데 opening_request_id 만 채우는 조합을 막지 못한다.
     CONSTRAINT ck_venue_reservations_source CHECK (
-        (notice_request_id IS NOT NULL)::int + (opening_request_id IS NOT NULL)::int = 1
+        (reservation_source_type = 'RECRUITMENT_NOTICE'
+             AND notice_request_id  IS NOT NULL AND opening_request_id IS NULL)
+     OR (reservation_source_type = 'EXPO_DIRECT'
+             AND opening_request_id IS NOT NULL AND notice_request_id  IS NULL)
+    ),
+    -- 구역을 지정했으면 상위 홀도 반드시 지정한다.
+    CONSTRAINT ck_venue_reservations_zone_needs_hall CHECK (
+        venue_zone_id IS NULL OR venue_hall_id IS NOT NULL
     )
 );
 
@@ -262,7 +274,13 @@ CREATE TABLE expo_opening_requests (
     created_at            TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_expo_opening_requests_event CHECK (event_end_at > event_start_at),
-    CONSTRAINT ck_expo_opening_requests_sales CHECK (sales_end_at > sales_start_at)
+    CONSTRAINT ck_expo_opening_requests_sales CHECK (sales_end_at > sales_start_at),
+    CONSTRAINT ck_opening_requests_zone_needs_hall CHECK (
+        desired_venue_zone_id IS NULL OR desired_venue_hall_id IS NOT NULL
+    ),
+    CONSTRAINT ck_opening_requests_hall_needs_venue CHECK (
+        desired_venue_hall_id IS NULL OR desired_venue_id IS NOT NULL
+    )
 );
 
 -- 승인·공개되어 티켓 판매와 체크인의 기준이 되는 박람회 원본
@@ -465,7 +483,10 @@ CREATE TABLE ticket_inventories (
     available_quantity INTEGER     GENERATED ALWAYS AS
                                    (total_quantity - reserved_quantity - sold_quantity) STORED,
     version            BIGINT      NOT NULL DEFAULT 0,
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 생성 컬럼이 음수가 되는 것을 막는다. 즉 오버셀을 DB 가 차단한다.
+    CONSTRAINT ck_ticket_inventories_not_oversold
+        CHECK (reserved_quantity + sold_quantity <= total_quantity)
 );
 
 -- 결제 대기 동안 티켓 수량을 임시 확보한다.
@@ -503,7 +524,19 @@ CREATE TABLE ticket_orders (
     paid_at                TIMESTAMPTZ   NULL,
     canceled_at            TIMESTAMPTZ   NULL,
     created_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 주문자 유형과 회원 FK 가 일치해야 한다.
+    CONSTRAINT ck_ticket_orders_orderer CHECK (
+        (orderer_type = 'MEMBER' AND member_user_id IS NOT NULL)
+     OR (orderer_type = 'GUEST'  AND member_user_id IS NULL)
+    ),
+    -- 최종 결제금액 = 판매원금 + 예매 수수료
+    CONSTRAINT ck_ticket_orders_total
+        CHECK (total_amount = ticket_subtotal_amount + booking_fee_amount),
+    -- 요율은 범위만 제한한다. 이 컬럼은 "주문 당시 요율 스냅샷"이라 값을 0.03 으로
+    -- 고정하면 요율 정책이 바뀌는 순간 과거 주문이 전부 제약 위반이 된다.
+    CONSTRAINT ck_ticket_orders_fee_rate
+        CHECK (booking_fee_rate >= 0 AND booking_fee_rate < 1)
 );
 
 -- 주문 항목. item_subtotal_amount = unit_price × quantity
@@ -810,7 +843,10 @@ CREATE TABLE recruitment_notice_requests (
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_notice_requests_application CHECK (application_end_at > application_start_at),
-    CONSTRAINT ck_notice_requests_event       CHECK (event_end_at > event_start_at)
+    CONSTRAINT ck_notice_requests_event       CHECK (event_end_at > event_start_at),
+    CONSTRAINT ck_notice_requests_zone_needs_hall CHECK (
+        venue_zone_id IS NULL OR venue_hall_id IS NOT NULL
+    )
 );
 
 -- 요청 제출·검토·장소 허용/취소·공고 생성 연결 이력
@@ -912,7 +948,11 @@ CREATE TABLE participation_applications (
     admin_memo                TEXT         NULL,
     created_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_participation_applications_client UNIQUE (recruitment_notice_id, client_user_id)
+    CONSTRAINT uq_participation_applications_client UNIQUE (recruitment_notice_id, client_user_id),
+    -- 아래 둘은 booth_orders / booth_allocations 가 신청의 기업·선택부스를 그대로
+    -- 물려받았는지 복합 FK 로 검증하기 위한 참조 대상이다.
+    CONSTRAINT uq_applications_id_client  UNIQUE (id, client_user_id),
+    CONSTRAINT uq_applications_id_product UNIQUE (id, selected_booth_product_id)
 );
 
 -- 승인·반려가 아니라 운영 확인과 보완 요청 이력이다.
@@ -990,7 +1030,9 @@ CREATE TABLE booth_products (
     created_at            TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_booth_products_booth UNIQUE (recruitment_notice_id, booth_id),
-    CONSTRAINT ck_booth_products_total CHECK (total_price = supply_price + vat_amount)
+    CONSTRAINT ck_booth_products_total CHECK (total_price = supply_price + vat_amount),
+    -- 신청이 "이 부스 상품이 그 공고 소속인지"까지 복합 FK 로 검증할 수 있게 한다.
+    CONSTRAINT uq_booth_products_id_notice UNIQUE (id, recruitment_notice_id)
 );
 
 -- 참여 신청에서 고른 단일 부스 상품의 주문.
@@ -1011,7 +1053,11 @@ CREATE TABLE booth_orders (
     created_at       TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 단일 부스이므로 최종 결제액은 단가와 같다.
-    CONSTRAINT ck_booth_orders_total CHECK (total_amount = unit_price)
+    CONSTRAINT ck_booth_orders_total CHECK (total_amount = unit_price),
+    -- booth_allocations 가 주문의 기업·부스상품을 그대로 물려받았는지 검증하기 위한 참조 대상.
+    CONSTRAINT uq_booth_orders_id_client  UNIQUE (id, client_user_id),
+    CONSTRAINT uq_booth_orders_id_product UNIQUE (id, booth_product_id),
+    CONSTRAINT uq_booth_orders_id_app     UNIQUE (id, application_id)
 );
 
 -- 결제 진행 중 동일 부스가 다른 기업에 팔리지 않도록 임시 확보한다.
@@ -1202,7 +1248,10 @@ CREATE TABLE settlement_items (
     included_in_remittance BOOLEAN       NOT NULL,
     occurred_at            TIMESTAMPTZ   NOT NULL,
     created_at             TIMESTAMPTZ   NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_settlement_items_source UNIQUE (settlement_id, item_type, source_type, source_id)
+    -- NULLS NOT DISTINCT 가 없으면 PostgreSQL 이 NULL 을 서로 다른 값으로 취급해
+    -- source_type / source_id 가 NULL 인 행이 무제한 중복된다. (PostgreSQL 15+)
+    CONSTRAINT uq_settlement_items_source
+        UNIQUE NULLS NOT DISTINCT (settlement_id, item_type, source_type, source_id)
 );
 
 -- 관리자 수동 조정. APPROVED 가 되면 settlement_items 의 ADJUSTMENT 항목을 만든다.
@@ -1282,6 +1331,18 @@ ALTER TABLE venue_reservations ADD CONSTRAINT fk_venue_reservations_hall        
 ALTER TABLE venue_reservations ADD CONSTRAINT fk_venue_reservations_zone        FOREIGN KEY (venue_zone_id)         REFERENCES venue_zones (id);
 ALTER TABLE venue_reservations ADD CONSTRAINT fk_venue_reservations_admin       FOREIGN KEY (confirmed_by_admin_id) REFERENCES users (id);
 
+-- 장소 계층 강제.
+-- 단일 FK 는 "그 id 가 존재한다"만 보장할 뿐, 홀이 그 장소 소속인지·구역이 그 홀
+-- 소속인지는 검증하지 못한다. venue_reservations 에서는 이게 특히 위험하다 —
+-- EXCLUDE 제약이 (venue, hall, zone) 튜플로 파티션하므로 불일치 튜플을 넣으면
+-- 기간 중복 검사 자체를 우회할 수 있다.
+-- NULL 이 섞인 행은 MATCH SIMPLE 기본 동작상 검증을 건너뛴다. 홀·구역이 선택
+-- 항목이라 의도한 동작이고, "구역만 있고 홀이 없는" 조합은 위의 CHECK 로 막았다.
+ALTER TABLE venue_reservations ADD CONSTRAINT fk_venue_reservations_hall_in_venue
+    FOREIGN KEY (venue_hall_id, virtual_venue_id) REFERENCES venue_halls (id, venue_id);
+ALTER TABLE venue_reservations ADD CONSTRAINT fk_venue_reservations_zone_in_hall
+    FOREIGN KEY (venue_zone_id, venue_hall_id)    REFERENCES venue_zones (id, hall_id);
+
 -- 박람회
 ALTER TABLE categories                 ADD CONSTRAINT fk_categories_parent             FOREIGN KEY (parent_id)             REFERENCES categories (id);
 ALTER TABLE expo_opening_requests      ADD CONSTRAINT fk_opening_requests_host         FOREIGN KEY (host_client_id)        REFERENCES client_profiles (user_id);
@@ -1290,6 +1351,11 @@ ALTER TABLE expo_opening_requests      ADD CONSTRAINT fk_opening_requests_venue 
 ALTER TABLE expo_opening_requests      ADD CONSTRAINT fk_opening_requests_hall         FOREIGN KEY (desired_venue_hall_id) REFERENCES venue_halls (id);
 ALTER TABLE expo_opening_requests      ADD CONSTRAINT fk_opening_requests_zone         FOREIGN KEY (desired_venue_zone_id) REFERENCES venue_zones (id);
 ALTER TABLE expo_opening_requests      ADD CONSTRAINT fk_opening_requests_reviewer     FOREIGN KEY (reviewed_by_admin_id)  REFERENCES users (id);
+-- 희망 장소도 같은 계층 검증을 받는다.
+ALTER TABLE expo_opening_requests ADD CONSTRAINT fk_opening_requests_hall_in_venue
+    FOREIGN KEY (desired_venue_hall_id, desired_venue_id)      REFERENCES venue_halls (id, venue_id);
+ALTER TABLE expo_opening_requests ADD CONSTRAINT fk_opening_requests_zone_in_hall
+    FOREIGN KEY (desired_venue_zone_id, desired_venue_hall_id) REFERENCES venue_zones (id, hall_id);
 ALTER TABLE expos                      ADD CONSTRAINT fk_expos_host                    FOREIGN KEY (host_client_id)        REFERENCES client_profiles (user_id);
 ALTER TABLE expos                      ADD CONSTRAINT fk_expos_opening_request         FOREIGN KEY (opening_request_id)    REFERENCES expo_opening_requests (id);
 ALTER TABLE expos                      ADD CONSTRAINT fk_expos_approver                FOREIGN KEY (approved_by_admin_id)  REFERENCES users (id);
@@ -1367,6 +1433,11 @@ ALTER TABLE recruitment_notice_requests          ADD CONSTRAINT fk_notice_reques
 ALTER TABLE recruitment_notice_requests          ADD CONSTRAINT fk_notice_requests_hall     FOREIGN KEY (venue_hall_id)         REFERENCES venue_halls (id);
 ALTER TABLE recruitment_notice_requests          ADD CONSTRAINT fk_notice_requests_zone     FOREIGN KEY (venue_zone_id)         REFERENCES venue_zones (id);
 ALTER TABLE recruitment_notice_requests          ADD CONSTRAINT fk_notice_requests_admin    FOREIGN KEY (decided_by_admin_id)   REFERENCES users (id);
+-- 요청 장소도 같은 계층 검증을 받는다.
+ALTER TABLE recruitment_notice_requests ADD CONSTRAINT fk_notice_requests_hall_in_venue
+    FOREIGN KEY (venue_hall_id, virtual_venue_id) REFERENCES venue_halls (id, venue_id);
+ALTER TABLE recruitment_notice_requests ADD CONSTRAINT fk_notice_requests_zone_in_hall
+    FOREIGN KEY (venue_zone_id, venue_hall_id)    REFERENCES venue_zones (id, hall_id);
 ALTER TABLE recruitment_notice_request_histories ADD CONSTRAINT fk_notice_req_hist_request  FOREIGN KEY (request_id)            REFERENCES recruitment_notice_requests (id);
 ALTER TABLE recruitment_notice_request_histories ADD CONSTRAINT fk_notice_req_hist_admin    FOREIGN KEY (processed_by_admin_id) REFERENCES users (id);
 ALTER TABLE recruitment_notices                  ADD CONSTRAINT fk_notices_request          FOREIGN KEY (request_id)            REFERENCES recruitment_notice_requests (id);
@@ -1390,6 +1461,10 @@ ALTER TABLE participation_applications      ADD CONSTRAINT fk_applications_booth
 ALTER TABLE participation_applications      ADD CONSTRAINT fk_applications_admin         FOREIGN KEY (admin_checked_by)          REFERENCES users (id);
 ALTER TABLE application_operation_histories ADD CONSTRAINT fk_app_op_hist_application    FOREIGN KEY (application_id)            REFERENCES participation_applications (id);
 ALTER TABLE application_operation_histories ADD CONSTRAINT fk_app_op_hist_admin          FOREIGN KEY (processed_by_admin_id)     REFERENCES users (id);
+-- 선택한 부스 상품은 반드시 그 신청이 속한 공고의 상품이어야 한다.
+ALTER TABLE participation_applications ADD CONSTRAINT fk_applications_product_in_notice
+    FOREIGN KEY (selected_booth_product_id, recruitment_notice_id)
+    REFERENCES booth_products (id, recruitment_notice_id);
 
 -- 부스
 ALTER TABLE booths                     ADD CONSTRAINT fk_booths_zone                 FOREIGN KEY (venue_zone_id)         REFERENCES venue_zones (id);
@@ -1418,6 +1493,22 @@ ALTER TABLE booth_contents             ADD CONSTRAINT fk_booth_contents_main_ima
 ALTER TABLE booth_contents             ADD CONSTRAINT fk_booth_contents_admin        FOREIGN KEY (checked_by_admin_id)   REFERENCES users (id);
 ALTER TABLE booth_content_files        ADD CONSTRAINT fk_booth_content_files_content FOREIGN KEY (booth_content_id)      REFERENCES booth_contents (id);
 ALTER TABLE booth_content_files        ADD CONSTRAINT fk_booth_content_files_file    FOREIGN KEY (file_id)               REFERENCES file_metadata (id);
+
+-- 부스 구매 체인 정합성.
+-- 단일 FK 만으로는 "각 id 가 존재한다"까지만 보장되어, 무관한 신청·기업·상품을
+-- 조합한 주문이나 배정이 만들어질 수 있다. 결제 성공 트랜잭션이 구조적으로는
+-- 멀쩡하지만 엉뚱한 배정을 커밋하는 사고를 막기 위해 신청의 기업·선택부스를
+-- 주문으로, 주문의 기업·부스상품을 배정으로 복합 FK 로 전파한다.
+ALTER TABLE booth_orders      ADD CONSTRAINT fk_booth_orders_client_matches_app
+    FOREIGN KEY (application_id, client_user_id)   REFERENCES participation_applications (id, client_user_id);
+ALTER TABLE booth_orders      ADD CONSTRAINT fk_booth_orders_product_matches_app
+    FOREIGN KEY (application_id, booth_product_id) REFERENCES participation_applications (id, selected_booth_product_id);
+ALTER TABLE booth_allocations ADD CONSTRAINT fk_booth_allocations_client_matches_order
+    FOREIGN KEY (booth_order_id, client_user_id)   REFERENCES booth_orders (id, client_user_id);
+ALTER TABLE booth_allocations ADD CONSTRAINT fk_booth_allocations_product_matches_order
+    FOREIGN KEY (booth_order_id, booth_product_id) REFERENCES booth_orders (id, booth_product_id);
+ALTER TABLE booth_allocations ADD CONSTRAINT fk_booth_allocations_app_matches_order
+    FOREIGN KEY (booth_order_id, application_id)   REFERENCES booth_orders (id, application_id);
 
 -- 정산
 ALTER TABLE expo_daily_sales_summaries ADD CONSTRAINT fk_daily_sales_expo             FOREIGN KEY (expo_id)                REFERENCES expos (id);
@@ -1454,6 +1545,40 @@ ALTER TABLE venue_reservations
 CREATE UNIQUE INDEX uq_booth_reservations_active
     ON booth_reservations (booth_product_id)
     WHERE status = 'ACTIVE';
+
+-- 한 정산에 진행 중인 송금은 1건만 허용한다.
+-- FAILED 후 재시도를 위해 행 자체는 여러 개를 허용하되, 두 워커가 동시에
+-- 외부 송금을 띄우는 상황은 막아야 한다. 실제 돈이 나가는 자리다.
+CREATE UNIQUE INDEX uq_remittances_active
+    ON remittances (settlement_id)
+    WHERE status IN ('PENDING', 'PROCESSING');
+
+-- 박람회에는 CONFIRMED 예약만 연결한다.
+-- 문서 6-3 절이 "확정 예약만 박람회에 연결"이라고 못 박았지만 FK 만으로는
+-- 예약의 status 를 볼 수 없어 선언적으로 표현할 수 없다.
+--
+-- 연결된 예약이 나중에 CONFIRMED 를 벗어나는 것은 **막지 않는다.** 6-3 절의
+-- 박람회 취소 흐름이 "연결된 VENUE_RESERVATIONS 를 RELEASED 로 변경"하도록
+-- 명시하고 있어서, 전이를 막으면 명세가 요구하는 취소가 불가능해진다.
+CREATE OR REPLACE FUNCTION assert_venue_reservation_confirmed()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM venue_reservations
+         WHERE id = NEW.venue_reservation_id
+           AND status = 'CONFIRMED'
+    ) THEN
+        RAISE EXCEPTION
+            '박람회에는 CONFIRMED 상태의 장소 예약만 연결할 수 있습니다 (venue_reservation_id=%)',
+            NEW.venue_reservation_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_expo_venue_assignments_confirmed
+    BEFORE INSERT OR UPDATE OF venue_reservation_id ON expo_venue_assignments
+    FOR EACH ROW EXECUTE FUNCTION assert_venue_reservation_confirmed();
 
 
 -- =============================================================================

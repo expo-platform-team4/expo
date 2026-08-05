@@ -62,6 +62,7 @@ v16 PDF 는 표 렌더링이 군데군데 깨져 있다. 셀을 이탈해 인쇄
 - [부록 C. v16 변경 이력](#부록-c-v16-변경-이력)
 - [부록 D. 보정 및 검토 이력](#부록-d-보정-및-검토-이력)
 - [부록 E. 추정 컬럼 전수 목록](#부록-e-추정-컬럼-전수-목록)
+- [부록 F. 코드 리뷰로 추가한 제약](#부록-f-코드-리뷰로-추가한-제약)
 
 ---
 
@@ -116,10 +117,11 @@ v16 PDF 는 표 렌더링이 군데군데 깨져 있다. 셀을 이탈해 인쇄
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 수정 일시 |
 
-이 테이블을 참조하는 곳 — `USERS.profile_image_file_id`, `EXPO_IMAGES.file_id`, `EXPO_FILES.file_id`,
-`BANNER_APPLICATIONS.image_file_id`, `BANNERS.image_file_id`, `BOOTH_CONTENTS.logo_file_id` /
-`main_image_file_id`, `BOOTH_CONTENT_FILES.file_id`, `VIRTUAL_VENUES.map_file_id`,
-`VENUE_ZONES.layout_file_id`, `SETTLEMENT_REPORTS.file_id`.
+이 테이블을 참조하는 곳 — **11개 테이블, FK 12개**. `USERS.profile_image_file_id`,
+`VIRTUAL_VENUES.map_file_id`, `VENUE_HALLS.layout_file_id`, `VENUE_ZONES.layout_file_id`,
+`EXPO_IMAGES.file_id`, `EXPO_FILES.file_id`, `BANNER_APPLICATIONS.image_file_id`,
+`BANNERS.image_file_id`, `BOOTH_CONTENTS.logo_file_id` / `main_image_file_id`,
+`BOOTH_CONTENT_FILES.file_id`, `SETTLEMENT_REPORTS.file_id`.
 
 ---
 
@@ -608,9 +610,10 @@ AUTH-10 비밀번호 재설정 링크의 일회용 토큰과 만료·사용 상�
 | `total_quantity` | INTEGER | NOT NULL, CHECK >= 0 | 총 판매 수량 |
 | `reserved_quantity` | INTEGER | NOT NULL DEFAULT 0, CHECK >= 0 | 임시 확보 수량 |
 | `sold_quantity` | INTEGER | NOT NULL DEFAULT 0, CHECK >= 0 | 결제 완료 수량 |
-| `available_quantity` | INTEGER | GENERATED / 계산 | `total − reserved − sold` — 구현 방식 미정 (D-4) |
+| `available_quantity` | INTEGER | GENERATED ALWAYS AS … STORED | `total − reserved − sold`. PostgreSQL 생성 컬럼으로 확정 |
 | `version` | BIGINT | NOT NULL DEFAULT 0 | 낙관적 락 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | 갱신 일시 |
+| `오버셀 방지` | — | CHECK | `reserved_quantity + sold_quantity <= total_quantity` (부록 F) |
 
 ### INVENTORY_RESERVATIONS
 
@@ -2128,9 +2131,10 @@ View 는 16개 중 8개만 출력 필드가 정의되어 있었고, 나머지 8�
    `TICKET_ACCESS_TOKENS.access_count` / `created_at`. 다른 테이블의 `created_at` 은 모두
    `NOT NULL DEFAULT CURRENT_TIMESTAMP` 다.
 
-3. **`TICKET_INVENTORIES.available_quantity`** — 제약조건이 `GENERATED/계산` 이다. PostgreSQL
-   생성 컬럼(`GENERATED ALWAYS AS`)인지 애플리케이션 계산인지 정해야 한다. 생성 컬럼으로 가면
-   H2 테스트 프로필에서 동작이 갈릴 수 있다.
+3. ~~**`TICKET_INVENTORIES.available_quantity` 구현 미정**~~ — **결정됨** ✔
+   PostgreSQL 생성 컬럼(`GENERATED ALWAYS AS … STORED`)으로 확정했다. 스키마 전체를
+   PostgreSQL 네이티브로 가기로 하면서 H2 호환을 고려할 이유가 없어졌다.
+   음수 방지 CHECK 는 부록 F 참조.
 
 4. **View 개수 불일치** — 원본 2페이지는 "SQL View 12개"라고 하는데, 본문에 이름이 등장하는 View 는
    16개다. `V_MEMBER_MYPAGE_PROFILE` / `_ORDERS` / `_TICKETS`, `V_PUBLIC_EXPO_CARDS`,
@@ -2268,3 +2272,83 @@ View 는 16개 중 8개만 출력 필드가 정의되어 있었고, 나머지 8�
 | `BOOTH_ALLOCATIONS` | `booth_order_item_id` → `BOOTH_ORDER_ITEMS.id` | `booth_order_id` → `BOOTH_ORDERS.id` | v16 부록 C 가 `BOOTH_ORDER_ITEMS` 를 제거 (D-4 8) |
 | `SETTLEMENT_ITEMS.item_type` | 보완본 5값 | `BOOTH_SALE` 추가한 6값 | `SETTLEMENTS.gross_booth_sales_amount` 의 근거 항목 필요 (D-4 9) |
 | `EXPO_IMAGES.image_type` 외 4곳 | `NOT NULL` | `NOT NULL, CHECK` | enum 값이 명시되어 있었음 (D-2) |
+
+---
+
+## 부록 F. 코드 리뷰로 추가한 제약
+
+PR #5 의 CodeRabbit 리뷰에서 나온 지적 중 타당한 것을 반영한 결과다. 명세에는 없지만 명세가
+서술로 요구하던 불변식을 DB 로 옮긴 것이라, **명세와 충돌하지 않고 보강한다.**
+
+### F-1. 값싼 제약
+
+| 대상 | 추가한 제약 | 막는 상황 |
+|-|-|-|
+| `VENUE_RESERVATIONS` | `ck_venue_reservations_source` 를 판별자 매칭으로 강화 | `reservation_source_type` 이 `RECRUITMENT_NOTICE` 인데 `opening_request_id` 만 채우는 조합 |
+| `VENUE_RESERVATIONS` | `ck_venue_reservations_zone_needs_hall` | 구역만 지정하고 상위 홀은 비우는 조합 |
+| `TICKET_INVENTORIES` | `ck_ticket_inventories_not_oversold` | `reserved + sold > total` 로 `available_quantity` 가 음수가 되는 오버셀 |
+| `TICKET_ORDERS` | `ck_ticket_orders_orderer` | `MEMBER` 주문인데 `member_user_id` 가 NULL, 또는 `GUEST` 인데 값이 있는 조합 |
+| `TICKET_ORDERS` | `ck_ticket_orders_total` | `total_amount ≠ ticket_subtotal_amount + booking_fee_amount` |
+| `TICKET_ORDERS` | `ck_ticket_orders_fee_rate` | 요율이 범위를 벗어남 (0 이상 1 미만) |
+| `SETTLEMENT_ITEMS` | UNIQUE 를 `NULLS NOT DISTINCT` 로 변경 | `source_type`·`source_id` 가 NULL 인 동일 항목의 무제한 중복 집계 |
+| `REMITTANCES` | `uq_remittances_active` 부분 UNIQUE 인덱스 | 한 정산에 `PENDING`/`PROCESSING` 송금이 동시에 여럿 생겨 이중 송금 |
+
+`booking_fee_rate` 는 **값을 `0.03000` 으로 고정하지 않았다.** 이 컬럼은 "주문 당시 요율 스냅샷"이라
+고정하면 요율 정책이 바뀌는 순간 과거 주문이 전부 제약 위반이 된다. 범위 CHECK 만 건다.
+
+### F-2. 장소 계층 강제
+
+단일 FK 는 "그 id 가 존재한다"만 보장한다. 다른 장소의 홀이나 다른 홀의 구역을 참조하는 게 가능했다.
+`VENUE_RESERVATIONS` 에서는 이게 특히 위험하다 — `EXCLUDE` 제약이 `(장소, 홀, 구역)` 튜플로
+파티션하므로 **불일치 튜플을 넣으면 기간 중복 검사 자체를 우회**할 수 있었다.
+
+`VENUE_HALLS` 에 `UNIQUE (id, venue_id)`, `VENUE_ZONES` 에 `UNIQUE (id, hall_id)` 를 추가하고,
+아래 세 테이블이 복합 FK 로 계층을 검증한다.
+
+- `VENUE_RESERVATIONS` — `(venue_hall_id, virtual_venue_id)`, `(venue_zone_id, venue_hall_id)`
+- `EXPO_OPENING_REQUESTS` — `(desired_venue_hall_id, desired_venue_id)`, `(desired_venue_zone_id, desired_venue_hall_id)`
+- `RECRUITMENT_NOTICE_REQUESTS` — `(venue_hall_id, virtual_venue_id)`, `(venue_zone_id, venue_hall_id)`
+
+홀·구역이 선택 항목이라 NULL 이 섞인 행은 `MATCH SIMPLE` 기본 동작상 검증을 건너뛴다. 의도한
+동작이고, "구역만 있고 홀이 없는" 조합은 CHECK 로 따로 막았다.
+
+### F-3. 확정 예약 불변식 (트리거)
+
+6-3 절이 "확정 예약만 박람회에 연결"이라고 못 박았지만 FK 로는 예약의 `status` 를 볼 수 없다.
+`expo_venue_assignments` 의 INSERT / `venue_reservation_id` UPDATE 에 트리거를 걸어
+`CONFIRMED` 가 아닌 예약의 연결을 거부한다.
+
+> **연결된 예약이 나중에 `CONFIRMED` 를 벗어나는 것은 막지 않았다.** 리뷰는 그 전이도 막으라고
+> 했지만, 6-3 절의 박람회 취소 흐름이 "연결된 `VENUE_RESERVATIONS` 를 `RELEASED` 로 변경"하도록
+> 명시하고 있어 전이를 막으면 명세가 요구하는 취소가 불가능해진다. 리뷰 지적을 절반만 받았다.
+
+### F-4. 부스 구매 체인 정합성
+
+단일 FK 만으로는 무관한 신청·기업·부스상품을 조합한 주문이나 배정이 만들어질 수 있었다. 결제 성공
+트랜잭션이 구조적으로는 멀쩡하지만 엉뚱한 배정을 커밋하는 사고가 가능했다.
+
+신청의 기업·선택부스를 주문으로, 주문의 기업·부스상품·신청을 배정으로 복합 FK 로 전파한다.
+
+| 제약 | 검증 내용 |
+|-|-|
+| `fk_applications_product_in_notice` | 선택한 부스 상품이 그 신청이 속한 공고의 상품인가 |
+| `fk_booth_orders_client_matches_app` | 주문의 기업이 신청의 기업과 같은가 |
+| `fk_booth_orders_product_matches_app` | 주문의 부스 상품이 신청이 선택한 상품과 같은가 |
+| `fk_booth_allocations_client_matches_order` | 배정의 기업이 주문의 기업과 같은가 |
+| `fk_booth_allocations_product_matches_order` | 배정의 부스 상품이 주문의 상품과 같은가 |
+| `fk_booth_allocations_app_matches_order` | 배정의 신청이 주문의 신청과 같은가 |
+
+### F-5. 뷰 수정
+
+- **`V_PUBLIC_EXPO_CARDS`** — 재고와 주문 항목을 `TICKET_PRODUCTS` 에 함께 조인해 카테시안 곱이
+  발생했다. 상품당 재고는 1행이지만 주문 항목이 N행이면 `SUM` 이 N배가 되어 `available_quantity` 와
+  `popularity_score` 가 부풀려졌다. 두 집계를 CTE 로 박람회 단위까지 미리 접은 뒤 1:1 로 붙이도록 고쳤다.
+- **`LIMIT 1` 서브쿼리 11곳** — `ORDER BY created_at DESC` 만으로는 같은 타임스탬프에서 결과가
+  비결정적이라 `id DESC` tiebreaker 를 추가했다. R__03·09·10·14·15·16 에 적용.
+
+### F-6. 받지 않은 지적
+
+| 지적 | 이유 |
+|-|-|
+| 뷰에 `ORDER BY` 추가 (`V_ADMIN_VENUE_CONFLICTS`) | 뷰의 `ORDER BY` 는 옵티마이저가 무시할 수 있고 페이지네이션과 충돌한다. 정렬은 소비 측 책임이다. 리뷰 본문도 "최종 조회에 적용하라"고 적고 있어 사실상 애플리케이션 이슈다 |
+| `booking_fee_rate` 를 `0.03000` 으로 CHECK 고정 | 위 F-1 참조. 스냅샷 컬럼의 존재 이유와 모순된다 |

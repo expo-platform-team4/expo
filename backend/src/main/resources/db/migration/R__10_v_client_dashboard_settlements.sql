@@ -30,11 +30,11 @@ LEFT JOIN LATERAL (
     SELECT r.remitted_amount, r.remitted_at, r.status
       FROM remittances r
      WHERE r.settlement_id = s.id
-     ORDER BY r.created_at DESC LIMIT 1
+     ORDER BY r.created_at DESC, r.id DESC LIMIT 1
 ) rm ON TRUE
 LEFT JOIN LATERAL (
     SELECT sr.file_id, sr.format, sr.report_version
       FROM settlement_reports sr
      WHERE sr.settlement_id = s.id
-     ORDER BY sr.report_version DESC, sr.generated_at DESC LIMIT 1
+     ORDER BY sr.report_version DESC, sr.generated_at DESC, sr.id DESC LIMIT 1
 ) rp ON TRUE;
