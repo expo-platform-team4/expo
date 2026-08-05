@@ -20,28 +20,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth/phone-verifications")
 public class PhoneVerificationController {
 
-  private final PhoneVerificationService phoneVerificationService;
+    private final PhoneVerificationService phoneVerificationService;
 
-  public PhoneVerificationController(PhoneVerificationService phoneVerificationService) {
-    this.phoneVerificationService = phoneVerificationService;
-  }
+    public PhoneVerificationController(PhoneVerificationService phoneVerificationService) {
+        this.phoneVerificationService = phoneVerificationService;
+    }
 
-  @Operation(
-      summary = "휴대폰 본인인증 요청",
-      description =
-          """
+    @Operation(
+            summary = "휴대폰 본인인증 요청",
+            description =
+                    """
           휴대폰 번호로 본인인증을 요청합니다.
 
           - 동일 번호로 재요청 시 기존 REQUESTED 건은 EXPIRED 로 만료 처리합니다.
           - 인증번호 유효 시간은 기본 3분입니다 (환경변수로 변경 가능).
           - MVP 단계: 외부 SMS API 미연동. 테스트용 고정 인증번호 `123456`으로 검증합니다.
           """)
-  @PostMapping
-  public ResponseEntity<AuthApiResponse<PhoneVerificationCreateResponse>> requestVerification(
-      @Valid @RequestBody PhoneVerificationCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(
-            AuthApiResponse.ok(
-                phoneVerificationService.requestVerification(request.phoneNumber())));
-  }
+    @PostMapping
+    public ResponseEntity<AuthApiResponse<PhoneVerificationCreateResponse>> requestVerification(
+            @Valid @RequestBody PhoneVerificationCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        AuthApiResponse.ok(
+                                phoneVerificationService.requestVerification(
+                                        request.phoneNumber())));
+    }
 }

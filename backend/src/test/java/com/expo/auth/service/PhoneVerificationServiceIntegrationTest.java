@@ -13,28 +13,29 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 class PhoneVerificationServiceIntegrationTest {
 
-  @Autowired private PhoneVerificationService phoneVerificationService;
-  @Autowired private PhoneVerificationRepository phoneVerificationRepository;
+    @Autowired private PhoneVerificationService phoneVerificationService;
+    @Autowired private PhoneVerificationRepository phoneVerificationRepository;
 
-  @Test
-  @Transactional
-  void requestVerificationPersistsRecordAndExpiresPreviousRequest() {
-    var firstResponse = phoneVerificationService.requestVerification("01011112222");
+    @Test
+    @Transactional
+    void requestVerificationPersistsRecordAndExpiresPreviousRequest() {
+        var firstResponse = phoneVerificationService.requestVerification("01011112222");
 
-    phoneVerificationService.requestVerification("01011112222");
+        phoneVerificationService.requestVerification("01011112222");
 
-    PhoneVerification expired =
-        phoneVerificationRepository.findById(firstResponse.verificationId()).orElseThrow();
-    assertThat(expired.getStatus()).isEqualTo(PhoneVerificationStatus.EXPIRED);
+        PhoneVerification expired =
+                phoneVerificationRepository.findById(firstResponse.verificationId()).orElseThrow();
+        assertThat(expired.getStatus()).isEqualTo(PhoneVerificationStatus.EXPIRED);
 
-    var active =
-        phoneVerificationRepository.findAll().stream()
-            .filter(
-                v ->
-                    v.getPhoneNumber().equals("01011112222")
-                        && v.getStatus() == PhoneVerificationStatus.REQUESTED)
-            .toList();
-    assertThat(active).hasSize(1);
-    assertThat(active.get(0).getId()).isNotEqualTo(firstResponse.verificationId());
-  }
+        var active =
+                phoneVerificationRepository.findAll().stream()
+                        .filter(
+                                v ->
+                                        v.getPhoneNumber().equals("01011112222")
+                                                && v.getStatus()
+                                                        == PhoneVerificationStatus.REQUESTED)
+                        .toList();
+        assertThat(active).hasSize(1);
+        assertThat(active.get(0).getId()).isNotEqualTo(firstResponse.verificationId());
+    }
 }

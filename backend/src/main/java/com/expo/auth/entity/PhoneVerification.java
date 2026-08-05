@@ -15,78 +15,81 @@ import java.time.Instant;
 @Table(name = "phone_verifications")
 public class PhoneVerification {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(name = "user_id")
-  private Long userId;
+    @Column(name = "user_id")
+    private Long userId;
 
-  @Column(name = "phone_number", nullable = false, length = 20)
-  private String phoneNumber;
+    @Column(name = "phone_number", nullable = false, length = 20)
+    private String phoneNumber;
 
-  @Column(name = "verification_token_hash", nullable = false, length = 255)
-  private String verificationTokenHash;
+    @Column(name = "verification_token_hash", nullable = false, length = 255)
+    private String verificationTokenHash;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
-  private PhoneVerificationStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private PhoneVerificationStatus status;
 
-  @Column(name = "requested_at", nullable = false)
-  private Instant requestedAt;
+    @Column(name = "requested_at", nullable = false)
+    private Instant requestedAt;
 
-  @Column(name = "verified_at")
-  private Instant verifiedAt;
+    @Column(name = "verified_at")
+    private Instant verifiedAt;
 
-  @Column(name = "expires_at", nullable = false)
-  private Instant expiresAt;
+    @Column(name = "expires_at", nullable = false)
+    private Instant expiresAt;
 
-  protected PhoneVerification() {}
+    protected PhoneVerification() {}
 
-  public static PhoneVerification createRequested(
-      String phoneNumber, String verificationTokenHash, Instant requestedAt, Instant expiresAt) {
-    PhoneVerification verification = new PhoneVerification();
-    verification.phoneNumber = phoneNumber;
-    verification.verificationTokenHash = verificationTokenHash;
-    verification.status = PhoneVerificationStatus.REQUESTED;
-    verification.requestedAt = requestedAt;
-    verification.expiresAt = expiresAt;
-    return verification;
-  }
+    public static PhoneVerification createRequested(
+            String phoneNumber,
+            String verificationTokenHash,
+            Instant requestedAt,
+            Instant expiresAt) {
+        PhoneVerification verification = new PhoneVerification();
+        verification.phoneNumber = phoneNumber;
+        verification.verificationTokenHash = verificationTokenHash;
+        verification.status = PhoneVerificationStatus.REQUESTED;
+        verification.requestedAt = requestedAt;
+        verification.expiresAt = expiresAt;
+        return verification;
+    }
 
-  public void markExpired() {
-    this.status = PhoneVerificationStatus.EXPIRED;
-  }
+    public void markExpired() {
+        this.status = PhoneVerificationStatus.EXPIRED;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public Long getUserId() {
-    return userId;
-  }
+    public Long getUserId() {
+        return userId;
+    }
 
-  public String getPhoneNumber() {
-    return phoneNumber;
-  }
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
 
-  public String getVerificationTokenHash() {
-    return verificationTokenHash;
-  }
+    public String getVerificationTokenHash() {
+        return verificationTokenHash;
+    }
 
-  public PhoneVerificationStatus getStatus() {
-    return status;
-  }
+    public PhoneVerificationStatus getStatus() {
+        return status;
+    }
 
-  public Instant getRequestedAt() {
-    return requestedAt;
-  }
+    public Instant getRequestedAt() {
+        return requestedAt;
+    }
 
-  public Instant getVerifiedAt() {
-    return verifiedAt;
-  }
+    public Instant getVerifiedAt() {
+        return verifiedAt;
+    }
 
-  public Instant getExpiresAt() {
-    return expiresAt;
-  }
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
 }

@@ -17,31 +17,31 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = PhoneVerificationController.class)
 public class PhoneVerificationExceptionHandler {
 
-  /**
-   * 휴대폰 번호 필수값·형식 오류 처리.
-   *
-   * <p>{@link com.expo.auth.service.PhoneVerificationService#normalize(String)} 에서 null·빈 값·010 형식 불일치 시
-   * 던진다. 응답 예: {@code { "success": false, "data": null, "message": "휴대폰 번호 형식이 올바르지 않습니다." }}
-   */
-  @ExceptionHandler(InvalidPhoneNumberException.class)
-  public ResponseEntity<AuthApiResponse<Void>> handleInvalidPhoneNumber(
-      InvalidPhoneNumberException ex) {
-    return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
-  }
+    /**
+     * 휴대폰 번호 필수값·형식 오류 처리.
+     *
+     * <p>{@link com.expo.auth.service.PhoneVerificationService#normalize(String)} 에서 null·빈 값·010 형식 불일치 시
+     * 던진다. 응답 예: {@code { "success": false, "data": null, "message": "휴대폰 번호 형식이 올바르지 않습니다." }}
+     */
+    @ExceptionHandler(InvalidPhoneNumberException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleInvalidPhoneNumber(
+            InvalidPhoneNumberException ex) {
+        return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
+    }
 
-  /**
-   * 요청 DTO 검증 실패 처리 ({@link com.expo.auth.dto.PhoneVerificationCreateRequest} 등).
-   *
-   * <p>{@code @NotBlank}, {@code @Pattern} 등이 실패하면 Spring이 {@link MethodArgumentNotValidException}을 던진다.
-   * 필드별 메시지를 쉼표로 이어 하나의 문자열로 반환한다.
-   */
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<AuthApiResponse<Void>> handleValidationException(
-      MethodArgumentNotValidException ex) {
-    String message =
-        ex.getBindingResult().getFieldErrors().stream()
-            .map(error -> error.getDefaultMessage())
-            .collect(Collectors.joining(", "));
-    return ResponseEntity.badRequest().body(AuthApiResponse.fail(message));
-  }
+    /**
+     * 요청 DTO 검증 실패 처리 ({@link com.expo.auth.dto.PhoneVerificationCreateRequest} 등).
+     *
+     * <p>{@code @NotBlank}, {@code @Pattern} 등이 실패하면 Spring이 {@link MethodArgumentNotValidException}을 던진다.
+     * 필드별 메시지를 쉼표로 이어 하나의 문자열로 반환한다.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleValidationException(
+            MethodArgumentNotValidException ex) {
+        String message =
+                ex.getBindingResult().getFieldErrors().stream()
+                        .map(error -> error.getDefaultMessage())
+                        .collect(Collectors.joining(", "));
+        return ResponseEntity.badRequest().body(AuthApiResponse.fail(message));
+    }
 }
