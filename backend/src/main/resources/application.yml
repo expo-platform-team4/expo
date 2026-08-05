@@ -19,9 +19,9 @@ spring:
 
   flyway:
     locations: classpath:db/migration
-    # 마이그레이션 파일이 아직 없는 초기 단계에서 기동을 막지 않기 위한 설정.
-    # 첫 V1__init.sql 이 들어오면 true 로 올린다.
-    fail-on-missing-locations: false
+    # 마이그레이션 경로가 오타 등으로 사라지면 기동을 막는다.
+    # V1__init_schema.sql 이 들어오면서 true 로 올렸다.
+    fail-on-missing-locations: true
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
