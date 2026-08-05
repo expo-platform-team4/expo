@@ -86,6 +86,19 @@
       <property name="illegalPattern" value="true"/>
       <property name="message" value="printStackTrace() 대신 log.error(msg, e) 를 사용한다."/>
     </module>
+    <!-- 로거는 @Slf4j 로만 만든다. 직접 생성하면 필드명·선언 위치가 파일마다 달라진다. -->
+    <module name="Regexp">
+      <property name="format" value="LoggerFactory\.getLogger"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="message" value="LoggerFactory 직접 호출 대신 @Slf4j 를 사용한다."/>
+    </module>
+    <!-- 로그 메시지에 문자열 연결을 쓰지 않는다. 레벨이 꺼져 있어도 연결 연산은 그대로 돈다. -->
+    <!-- 한계: Regexp 는 줄 단위라 여러 줄에 걸친 log 호출은 잡지 못한다. docs/logging.md 참고. -->
+    <module name="Regexp">
+      <property name="format" value="log\.(trace|debug|info|warn|error)\([^)]*&quot;\s*\+"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="message" value="문자열 연결 대신 {} 플레이스홀더를 사용한다."/>
+    </module>
 
     <!-- ===== 복잡도 (초기값은 느슨하게) ===== -->
     <module name="CyclomaticComplexity">

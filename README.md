@@ -6,6 +6,7 @@
 
 > 코드 스타일·커밋·PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md) 를 먼저 읽는다.
 > 저장소를 처음 클론했다면 "최초 1회 — 전원 필수" 절의 세 가지를 반드시 수행한다.
+> 로그를 남기기 전에는 [docs/logging.md](docs/logging.md) 를 읽는다.
 
 ---
 
@@ -178,6 +179,7 @@ notification  settlement  client  admin  recruitment  participation  venue  boot
 | `annotation` | 커스텀 어노테이션 (`@LoginMember` 등) |
 | `config` | `SecurityConfig`, `RestClient`(토스 호출), S3, Swagger, CORS |
 | `exception` | 여러 도메인이 공유할 예외·에러코드·핸들러 자리. **현재는 비어 있다** — 아래 참고 |
+| `logging` | 요청 단위 로그 추적용 MDC 필터. 규칙은 [`docs/logging.md`](docs/logging.md) |
 | `response` | `ApiResponse`, `PageResponse` 등 공통 응답 포맷 |
 | `util` | 특정 도메인에 속하지 않는 순수 유틸리티 |
 
