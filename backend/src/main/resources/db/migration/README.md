@@ -6,8 +6,8 @@
 
 1. **이미 머지된 마이그레이션 파일은 수정하지 않는다.** 다른 사람 DB에는 이미 적용된 상태라 체크섬이 깨진다. 항상 새 버전 파일을 추가한다.
 2. **버전 번호는 PR 단위로 겹치지 않게 잡는다.** 두 사람이 동시에 `V3__` 를 만들면 충돌한다. 머지 전에 번호를 확인한다.
-3. ~~**가급적 표준 SQL 로 쓴다.**~~ → **아래 "H2 호환성" 절 참조. 이 규칙은 V1 시점에 깨졌다.**
-4. ~~PostgreSQL 전용 기능이 필요하면 `db/migration-pg` 로 분기한다.~~ → 분기하지 않고 PostgreSQL 네이티브로 갔다. 아래 참조.
+3. **PostgreSQL 네이티브 SQL 을 쓴다.** 표준 SQL 유지는 V1 시점에 포기했다. JSONB·`EXCLUDE`·부분 인덱스가 필요해졌고, 낮추면 명세가 요구하는 무결성을 코드로 떠넘기게 된다. 아래 "H2 호환성" 절 참조.
+4. **`db/migration` 하나만 쓴다.** PostgreSQL 전용으로 `db/migration-pg` 를 나누지 않는다.
 
 ## H2 호환성 — 현재 상태
 
@@ -23,7 +23,10 @@
 | 부분 UNIQUE 인덱스 | `booth_reservations` | 한 부스 상품에 활성 임시 확보 1건. 명세가 SQL 을 그대로 제시 |
 
 **따라서 스키마에 의존하는 테스트를 쓰기 전에 test 프로필을 Testcontainers PostgreSQL 로 전환해야 한다.**
-지금은 엔티티가 0개라 깨질 테스트가 없어 미뤄둔 상태다.
+
+이미 `ExpoApplicationTests.contextLoads` 가 이것 때문에 실패한다 — H2 가 `V1__init_schema.sql` 첫머리의
+`CREATE EXTENSION IF NOT EXISTS btree_gist` 에서 문법 오류를 낸다. 그래서 CI 에서는 백엔드 테스트 job 을 돌리지 않는다
+([ci.yml](../../../../../../.github/workflows/ci.yml) 하단 주석 참조). Testcontainers 로 전환하면 되살린다.
 
 ## 뷰
 
@@ -35,8 +38,3 @@ Flyway 가 자동으로 재적용한다. 즉 **뷰 파일은 직접 고쳐도 �
 
 모든 프로필에서 `spring.jpa.hibernate.ddl-auto: validate` 다. JPA 가 테이블을 만들지 않는다.
 엔티티를 추가·수정했으면 **반드시** 대응하는 마이그레이션 파일을 같이 커밋한다. 안 하면 기동 시점에 검증 실패한다.
-
-## 첫 마이그레이션 추가 후
-
-`application.yml` 의 `spring.flyway.fail-on-missing-locations` 를 `true` 로 올린다.
-(지금은 마이그레이션이 하나도 없어 기동을 막지 않으려고 `false` 로 두었다.)
