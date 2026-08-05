@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.expo.auth.Role;
 import com.expo.auth.dto.LoginResponse;
+import com.expo.auth.dto.TokenReissueResponse;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.service.LoginService;
@@ -100,6 +101,39 @@ class LoginControllerTest {
             post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"member@espotic.com\",\"password\":\"Test1234!\"}"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void reissueAccessTokenReturnsOk() throws Exception {
+    when(loginService.reissueAccessToken(any()))
+        .thenReturn(new TokenReissueResponse("new-access-token", 30));
+
+    mockMvc
+        .perform(
+            post("/api/auth/reissue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "refreshToken": "valid-refresh-token"
+                    }
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.accessToken").value("new-access-token"));
+  }
+
+  @Test
+  void reissueAccessTokenWithoutLoginTokenIsAllowed() throws Exception {
+    when(loginService.reissueAccessToken(any()))
+        .thenReturn(new TokenReissueResponse("new-access-token", 30));
+
+    mockMvc
+        .perform(
+            post("/api/auth/reissue")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"refreshToken\":\"valid-refresh-token\"}"))
         .andExpect(status().isOk());
   }
 }
