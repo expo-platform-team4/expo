@@ -1,11 +1,13 @@
 package com.expo.jwt;
 
 import com.expo.auth.Role;
+import com.expo.common.logging.MdcLoggingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -39,6 +41,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(
                             principal, null, principal.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            // 이 요청의 로그에 회원을 붙인다. 정리는 MdcLoggingFilter 의 finally 가 한다.
+            // 토큰 자체는 절대 넣지 않는다 (docs/logging.md 참고).
+            MDC.put(MdcLoggingFilter.MEMBER_ID, String.valueOf(memberId));
         }
 
         filterChain.doFilter(request, response);

@@ -43,3 +43,8 @@ logging:
     com.expo: DEBUG
     org.hibernate.SQL: DEBUG
     org.flywaydb: INFO
+
+  # 로컬은 사람이 읽는 형식을 쓴다. 운영의 JSON 은 application-prod.yml 참고.
+  # [traceId] 자리가 비어 있으면 MdcLoggingFilter 를 타지 않은 로그다(기동 로그 등).
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{traceId:-}] %logger{36} - %msg%n"
