@@ -174,6 +174,14 @@ log.info(
 
 완전한 강제가 아니라 대부분을 거르는 그물이다. 리뷰에서 한 번 더 본다.
 
+`build.gradle` 의 `maxWarnings = 0` 이라 **경고 하나만 나와도 빌드가 실패한다.** 이 값이 크면
+규칙을 아무리 추가해도 아무것도 막지 못한다.
+
+MDC 정리는
+[MdcLoggingFilterTest](../backend/src/test/java/com/expo/common/logging/MdcLoggingFilterTest.java)
+가 검증한다. 예외가 나는 경우까지 포함해 요청이 끝나면 MDC 가 비는지 확인한다.
+눈으로 볼 수 없는 동작이라 테스트로 못박아 두었다.
+
 ## 9. 로그와 감사(audit)는 다르다
 
 **이걸 혼동하면 나중에 되돌릴 수 없다.**
