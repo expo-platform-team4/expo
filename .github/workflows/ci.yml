@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main, staging]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# paths 필터는 넣지 않는다.
+# required check 로 지정된 job 이 path 필터로 스킵되면 PR 이 "대기 중" 으로 영원히 막힌다.
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+
+      # 스타일을 먼저 돌린다. 컴파일보다 훨씬 빨라 피드백이 빠르다.
+      - name: Style (spotless + checkstyle)
+        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest
+
+      # 테스트는 아래 backend-test job 이 따로 돌린다.
+      - name: Build
+        run: ./gradlew build -x test
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: front/.nvmrc # Node 26 에서 Next rewrites 가 깨진다
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Format check
+        run: bun run format:check
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Build
+        run: bun run build
+# 백엔드 테스트(./gradlew test)는 아직 CI 에 올리지 않는다.
+# ExpoApplicationTests.contextLoads 가 실패한다 — V1__init_schema.sql 의
+# CREATE EXTENSION btree_gist 를 test 프로필의 H2 가 실행하지 못한다.
+# 항상 빨간불인 job 은 "CI 는 원래 빨갛다" 는 인식을 만들어 게이트 전체를 무력화하므로,
+# 테스트 환경(Testcontainers 전환 또는 db/migration-pg 분리)을 고친 뒤 아래 job 을 추가한다.
+#
+#  backend-test:
+#    name: backend-test
+#    runs-on: ubuntu-latest
+#    defaults:
+#      run:
+#        working-directory: backend
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: '21'
+#      - uses: gradle/actions/setup-gradle@v4
+#      - name: Test
+#        run: ./gradlew test

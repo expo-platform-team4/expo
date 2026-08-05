@@ -4,6 +4,9 @@
 
 박람회 개최·운영, 티켓 중개 판매, 정산을 다룬다.
 
+> 코드 스타일·커밋·PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md) 를 먼저 읽는다.
+> 저장소를 처음 클론했다면 "최초 1회 — 전원 필수" 절의 세 가지를 반드시 수행한다.
+
 ---
 
 ## 기술 스택
@@ -50,7 +53,7 @@
 | Object Storage | Spring Cloud AWS S3 | 4.1.0 (AWS SDK 2.47.4) |
 | 결제 | Toss Payments API | v1 |
 | 환경변수 관리 | `me.paulschwarz:springboot4-dotenv` | 5.1.0 |
-| 코드 포맷 | Spotless (google-java-format) | 8.9.0 |
+| 코드 포맷 | Spotless (google-java-format `aosp`, 4칸/100컬럼) | 8.9.0 (GJF 1.28.0) |
 | 정적 분석 | Checkstyle | 13.9.0 |
 | 개발 편의 | Lombok / Spring DevTools | 1.18.46 / Boot 관리 |
 
@@ -110,6 +113,10 @@ Caddy 가 `/` → Next, `/api` → Spring 으로 분기한다.
 ```
 expo/
 ├── docker-compose.yml                      로컬 인프라 (PostgreSQL + S3Mock)
+├── CONTRIBUTING.md                         코드 스타일 · 커밋 · PR 규칙
+├── .editorconfig                           에디터 공통 규칙 (Spotless/Prettier 와 일치시킬 것)
+├── .git-blame-ignore-revs                  일괄 포맷 커밋을 blame 에서 제외
+├── .github/workflows/ci.yml                PR 스타일·빌드 검사
 ├── backend/                                Spring Boot
 │   ├── config/checkstyle/                  Checkstyle 룰셋
 │   ├── env.sample                          환경변수 템플릿 (.env 는 커밋 금지)
@@ -260,8 +267,10 @@ cd backend && ./gradlew build
 ```
 
 ```bash
-cd front && bun run format && bun run lint && bun run typecheck
+cd front && bun run format && bun run check
 ```
+
+`bun run check` 는 `format:check` + `lint` + `typecheck` 를 한 번에 돌린다. CI 와 같은 조합이다.
 
 ---
 
