@@ -16,36 +16,36 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 class LoginServiceIntegrationTest {
 
-  @Autowired private LoginService loginService;
-  @Autowired private UserRepository userRepository;
-  @Autowired private RefreshTokenRepository refreshTokenRepository;
-  @Autowired private PasswordEncoder passwordEncoder;
-  @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private LoginService loginService;
+    @Autowired private UserRepository userRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtTokenProvider jwtTokenProvider;
 
-  @Test
-  @Transactional
-  void loginIssuesValidTokensAndUpdatesLastLogin() {
-    User user =
-        User.createMember(
-            "login-test@espotic.com",
-            passwordEncoder.encode("Test1234!"),
-            "login_test_user",
-            "01012345678");
-    userRepository.save(user);
+    @Test
+    @Transactional
+    void loginIssuesValidTokensAndUpdatesLastLogin() {
+        User user =
+                User.createMember(
+                        "login-test@espotic.com",
+                        passwordEncoder.encode("Test1234!"),
+                        "login_test_user",
+                        "01012345678");
+        userRepository.save(user);
 
-    LoginRequest request = new LoginRequest("login-test@espotic.com", "Test1234!");
-    var response = loginService.login(request);
+        LoginRequest request = new LoginRequest("login-test@espotic.com", "Test1234!");
+        var response = loginService.login(request);
 
-    assertThat(response.accessToken()).isNotBlank();
-    assertThat(jwtTokenProvider.validateAccessToken(response.accessToken())).isTrue();
-    assertThat(response.refreshToken()).isNotBlank();
+        assertThat(response.accessToken()).isNotBlank();
+        assertThat(jwtTokenProvider.validateAccessToken(response.accessToken())).isTrue();
+        assertThat(response.refreshToken()).isNotBlank();
 
-    User updated = userRepository.findByEmail("login-test@espotic.com").orElseThrow();
-    assertThat(updated.getLastLoginAt()).isNotNull();
+        User updated = userRepository.findByEmail("login-test@espotic.com").orElseThrow();
+        assertThat(updated.getLastLoginAt()).isNotNull();
 
-    var tokens = refreshTokenRepository.findAll();
-    assertThat(tokens).hasSize(1);
-    assertThat(passwordEncoder.matches(response.refreshToken(), tokens.get(0).getTokenHash()))
-        .isTrue();
-  }
+        var tokens = refreshTokenRepository.findAll();
+        assertThat(tokens).hasSize(1);
+        assertThat(passwordEncoder.matches(response.refreshToken(), tokens.get(0).getTokenHash()))
+                .isTrue();
+    }
 }
