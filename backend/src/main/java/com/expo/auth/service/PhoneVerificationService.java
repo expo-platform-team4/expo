@@ -9,17 +9,15 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 휴대폰 본인인증 서비스. PostgreSQL + JPA 로 저장한다. */
+@Slf4j
 @Service
 public class PhoneVerificationService {
-
-    private static final Logger log = LoggerFactory.getLogger(PhoneVerificationService.class);
 
     // 010 같은 한국 휴대폰 번호만 받겠다”는 검증 규칙
     private static final Pattern PHONE_NUMBER = Pattern.compile("^01[016789]\\d{7,8}$");
