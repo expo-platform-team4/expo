@@ -21,42 +21,42 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class LoginController {
 
-  private final LoginService loginService;
+    private final LoginService loginService;
 
-  public LoginController(LoginService loginService) {
-    this.loginService = loginService;
-  }
+    public LoginController(LoginService loginService) {
+        this.loginService = loginService;
+    }
 
-  @Operation(
-      summary = "이메일·비밀번호 로그인",
-      description =
-          """
+    @Operation(
+            summary = "이메일·비밀번호 로그인",
+            description =
+                    """
           이메일과 비밀번호로 로컬 로그인합니다.
 
           - 성공 시 JWT Access Token과 Refresh Token을 발급합니다.
           - Refresh Token 해시는 refresh_tokens 테이블에 저장합니다.
           - 탈퇴(WITHDRAWN) 계정·소셜 전용 계정(password_hash NULL)은 로그인할 수 없습니다.
           """)
-  @PostMapping("/login")
-  public ResponseEntity<AuthApiResponse<LoginResponse>> login(
-      @Valid @RequestBody LoginRequest request) {
-    return ResponseEntity.ok(AuthApiResponse.ok(loginService.login(request)));
-  }
+    @PostMapping("/login")
+    public ResponseEntity<AuthApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(AuthApiResponse.ok(loginService.login(request)));
+    }
 
-  @Operation(
-      summary = "Access Token 재발급",
-      description =
-          """
+    @Operation(
+            summary = "Access Token 재발급",
+            description =
+                    """
           Refresh Token으로 새 Access Token을 발급합니다.
 
           - 로그인 시 받은 Refresh Token 원문이 필요합니다.
           - DB에 저장된 해시·만료·폐기 상태를 검증합니다.
           - 성공 시 refresh_tokens.last_used_at을 갱신합니다.
           """)
-  @PostMapping("/reissue")
-  public ResponseEntity<AuthApiResponse<TokenReissueResponse>> reissueAccessToken(
-      @Valid @RequestBody TokenReissueRequest request) {
-    return ResponseEntity.ok(
-        AuthApiResponse.ok(loginService.reissueAccessToken(request.refreshToken())));
-  }
+    @PostMapping("/reissue")
+    public ResponseEntity<AuthApiResponse<TokenReissueResponse>> reissueAccessToken(
+            @Valid @RequestBody TokenReissueRequest request) {
+        return ResponseEntity.ok(
+                AuthApiResponse.ok(loginService.reissueAccessToken(request.refreshToken())));
+    }
 }

@@ -12,19 +12,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = LoginController.class)
 public class LoginExceptionHandler {
 
-  @ExceptionHandler(BusinessException.class)
-  public ResponseEntity<AuthApiResponse<Void>> handleBusinessException(BusinessException ex) {
-    ErrorCode errorCode = ex.getErrorCode();
-    return ResponseEntity.status(errorCode.getStatus()).body(AuthApiResponse.fail(ex.getMessage()));
-  }
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleBusinessException(BusinessException ex) {
+        ErrorCode errorCode = ex.getErrorCode();
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(AuthApiResponse.fail(ex.getMessage()));
+    }
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<AuthApiResponse<Void>> handleValidationException(
-      MethodArgumentNotValidException ex) {
-    String message =
-        ex.getBindingResult().getFieldErrors().stream()
-            .map(error -> error.getDefaultMessage())
-            .collect(Collectors.joining(", "));
-    return ResponseEntity.badRequest().body(AuthApiResponse.fail(message));
-  }
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleValidationException(
+            MethodArgumentNotValidException ex) {
+        String message =
+                ex.getBindingResult().getFieldErrors().stream()
+                        .map(error -> error.getDefaultMessage())
+                        .collect(Collectors.joining(", "));
+        return ResponseEntity.badRequest().body(AuthApiResponse.fail(message));
+    }
 }

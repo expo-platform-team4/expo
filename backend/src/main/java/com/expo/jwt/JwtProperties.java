@@ -17,33 +17,33 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class JwtProperties {
 
-  @NotBlank private String secret;
+    @NotBlank private String secret;
 
-  @Positive private int accessTokenExpireMinutes;
+    @Positive private int accessTokenExpireMinutes;
 
-  @Positive private int refreshTokenExpireDays = 14;
+    @Positive private int refreshTokenExpireDays = 14;
 
-  public String getSecret() {
-    return secret;
-  }
+    public String getSecret() {
+        return secret;
+    }
 
-  public void setSecret(String secret) {
-    this.secret = secret;
-  }
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
 
-  public int getAccessTokenExpireMinutes() {
-    return accessTokenExpireMinutes;
-  }
+    public int getAccessTokenExpireMinutes() {
+        return accessTokenExpireMinutes;
+    }
 
-  public void setAccessTokenExpireMinutes(int accessTokenExpireMinutes) {
-    this.accessTokenExpireMinutes = accessTokenExpireMinutes;
-  }
+    public void setAccessTokenExpireMinutes(int accessTokenExpireMinutes) {
+        this.accessTokenExpireMinutes = accessTokenExpireMinutes;
+    }
 
-  public int getRefreshTokenExpireDays() {
-    return refreshTokenExpireDays;
-  }
+    public int getRefreshTokenExpireDays() {
+        return refreshTokenExpireDays;
+    }
 
-  public void setRefreshTokenExpireDays(int refreshTokenExpireDays) {
-    this.refreshTokenExpireDays = refreshTokenExpireDays;
-  }
+    public void setRefreshTokenExpireDays(int refreshTokenExpireDays) {
+        this.refreshTokenExpireDays = refreshTokenExpireDays;
+    }
 }
