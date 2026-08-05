@@ -6,8 +6,30 @@
 
 1. **이미 머지된 마이그레이션 파일은 수정하지 않는다.** 다른 사람 DB에는 이미 적용된 상태라 체크섬이 깨진다. 항상 새 버전 파일을 추가한다.
 2. **버전 번호는 PR 단위로 겹치지 않게 잡는다.** 두 사람이 동시에 `V3__` 를 만들면 충돌한다. 머지 전에 번호를 확인한다.
-3. **가급적 표준 SQL 로 쓴다.** 이 SQL 은 local(PostgreSQL)과 test(H2, `MODE=PostgreSQL`) 양쪽에서 실행된다. H2 는 JSONB, 배열 타입, `ON CONFLICT` 세부 문법을 완전히 지원하지 않는다.
-4. PostgreSQL 전용 기능이 꼭 필요해지면 `db/migration`(공통) + `db/migration-pg`(PostgreSQL 전용)로 나누고 프로필별로 `spring.flyway.locations` 를 분기한다. 그 분기가 감당이 안 되면 테스트를 Testcontainers PostgreSQL 로 전환한다.
+3. ~~**가급적 표준 SQL 로 쓴다.**~~ → **아래 "H2 호환성" 절 참조. 이 규칙은 V1 시점에 깨졌다.**
+4. ~~PostgreSQL 전용 기능이 필요하면 `db/migration-pg` 로 분기한다.~~ → 분기하지 않고 PostgreSQL 네이티브로 갔다. 아래 참조.
+
+## H2 호환성 — 현재 상태
+
+**`V1__init_schema.sql` 과 뷰 16개는 PostgreSQL 전용이다. test 프로필(H2)에서는 실행되지 않는다.**
+
+스키마가 아래 셋을 요구하는데 H2 는 어느 것도 지원하지 않는다. 분기해서 낮추면 명세가 요구하는
+무결성 보장을 코드로 떠넘기게 되어, 낮추는 대신 네이티브로 가기로 했다.
+
+| 기능 | 쓰는 곳 | 왜 필요한가 |
+|-|-|-|
+| `JSONB` | 12개 컬럼 (`before_data`, `payload`, `included_items` 등) | 변경 이력·PG 응답·부스 구성 스냅샷 |
+| `EXCLUDE USING gist` | `venue_reservations` | 장소·홀·구역·기간 중복을 DB 가 최종 차단. 명세가 "동시 요청은 이 제약이 최종적으로 차단한다"고 명시 |
+| 부분 UNIQUE 인덱스 | `booth_reservations` | 한 부스 상품에 활성 임시 확보 1건. 명세가 SQL 을 그대로 제시 |
+
+**따라서 스키마에 의존하는 테스트를 쓰기 전에 test 프로필을 Testcontainers PostgreSQL 로 전환해야 한다.**
+지금은 엔티티가 0개라 깨질 테스트가 없어 미뤄둔 상태다.
+
+## 뷰
+
+뷰는 `R__NN_v_이름.sql` 반복 마이그레이션으로 관리한다. 버전 번호가 없고 파일 체크섬이 바뀌면
+Flyway 가 자동으로 재적용한다. 즉 **뷰 파일은 직접 고쳐도 된다** — 1번 규칙의 예외다.
+`NN` 은 알파벳 순 실행 순서를 고정하기 위한 접두 번호다.
 
 ## 엔티티와의 관계
 

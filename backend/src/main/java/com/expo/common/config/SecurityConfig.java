@@ -1,7 +1,7 @@
 package com.expo.common.config;
 
-import com.expo.auth.JwtAuthenticationFilter;
-import com.expo.auth.JwtProperties;
+import com.expo.jwt.JwtAuthenticationFilter;
+import com.expo.jwt.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,10 +16,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Spring Security 전역 설정.
  *
- * <p>이 프로젝트는 세션 로그인(formLogin) 대신 <b>JWT Stateless 인증</b>을 사용한다. HTTP 요청이 들어올
- * 때마다 {@link JwtAuthenticationFilter}가 토큰을 검사해 {@link
- * org.springframework.security.core.context.SecurityContext}를 채우고, 아래 URL 규칙에 따라 접근을
- * 허용·거부한다.
+ * <p>이 프로젝트는 세션 로그인(formLogin) 대신 <b>JWT Stateless 인증</b>을 사용한다. HTTP 요청이 들어올 때마다 {@link
+ * JwtAuthenticationFilter}가 토큰을 검사해 {@link
+ * org.springframework.security.core.context.SecurityContext}를 채우고, 아래 URL 규칙에 따라 접근을 허용·거부한다.
  *
  * <h2>요청 처리 순서 (요약)</h2>
  *
@@ -37,18 +36,18 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
-  /** 매 요청마다 JWT를 읽어 SecurityContext를 설정하는 필터. */
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    /** 매 요청마다 JWT를 읽어 SecurityContext를 설정하는 필터. */
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-  }
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
   /**
    * Spring Security 필터 체인·인가 규칙을 정의한다.
    *
-   * <p>Spring Boot 3.x 에서는 {@code WebSecurityConfigurerAdapter} 대신 {@link
-   * SecurityFilterChain} 빈을 등록하는 방식을 쓴다.
+   * <p>Spring Boot 3.x 에서는 {@code WebSecurityConfigurerAdapter} 대신 {@link SecurityFilterChain} 빈을
+   * 등록하는 방식을 쓴다.
    */
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -93,14 +92,13 @@ public class SecurityConfig {
         // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치해 토큰을 먼저 처리
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    return http.build();
-  }
+        return http.build();
+    }
 
   /**
    * 비밀번호 단방향 해시용 인코더.
    *
-   * <p>로그인 시 DB에 저장된 해시와 사용자 입력 비밀번호를 비교할 때 사용한다. JWT 발급 전 회원 인증
-   * 로직(추후 구현)에서 주입받아 쓴다.
+   * <p>로그인 시 DB에 저장된 해시와 사용자 입력 비밀번호를 비교할 때 사용한다. JWT 발급 전 회원 인증 로직(추후 구현)에서 주입받아 쓴다.
    */
   @Bean
   PasswordEncoder passwordEncoder() {

@@ -1,0 +1,12 @@
+{
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.configuration.updateBuildConfiguration": "interactive",
+
+  // Java 포맷은 Gradle(Spotless + google-java-format)이 전담한다.
+  // Red Hat Java 확장의 자체 포맷터는 결과가 달라 계속 충돌하므로 저장 시 포맷을 끈다.
+  "[java]": {
+    "editor.formatOnSave": false
+  },
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

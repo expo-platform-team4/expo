@@ -1,0 +1,8 @@
+# 이 파일에 적힌 커밋은 git blame 에서 건너뛴다.
+# 로컬에 적용하려면 저장소당 한 번 실행한다:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub 웹 blame 은 이 파일을 자동으로 적용한다)
+
+# chore: 전체 코드베이스에 포매터 일괄 적용
+# google-java-format aosp(4칸) 전환 + Prettier. 로직 변경 없음.
+d4defa017cce10912991dad09cb12809b30f78fe
