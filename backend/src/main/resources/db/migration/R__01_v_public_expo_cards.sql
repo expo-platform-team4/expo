@@ -23,7 +23,7 @@ SELECT e.id                                    AS expo_id,
            + COUNT(DISTINCT toi.ticket_order_id) * 0.5          AS popularity_score
 FROM expos e
 LEFT JOIN ticket_products    tp  ON tp.expo_id = e.id
-LEFT JOIN inventory_by_product inv ON inv.ticket_product_id = tp.id
-LEFT JOIN orders_by_expo os ON os.expo_id = e.id
+LEFT JOIN ticket_inventories ti  ON ti.ticket_product_id = tp.id
+LEFT JOIN ticket_order_items toi ON toi.ticket_product_id = tp.id
 WHERE e.visibility_status = 'PUBLIC'
 GROUP BY e.id, e.title, e.event_start_at, e.event_end_at, e.region_code, e.event_status;
