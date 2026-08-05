@@ -1,0 +1,35 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Spotless 의 googleJavaFormat().aosp() 와 반드시 일치시킨다.
+# 어긋나면 IDE 가 저장할 때와 Gradle 이 포맷할 때 결과가 달라져 무한 diff 가 난다.
+[*.java]
+indent_size = 4
+max_line_length = 100
+
+[*.{ts,tsx,js,jsx,mjs,cjs,json,css}]
+indent_size = 2
+max_line_length = 100
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.sql]
+indent_size = 2
+
+# build.gradle 은 현재 탭을 쓴다. 재포맷 diff 를 피하려고 탭을 유지한다.
+[*.gradle]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.bat]
+end_of_line = crlf

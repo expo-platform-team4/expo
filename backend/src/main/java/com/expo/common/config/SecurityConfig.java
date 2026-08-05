@@ -36,12 +36,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
-  /** 매 요청마다 JWT를 읽어 SecurityContext를 설정하는 필터. */
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    /** 매 요청마다 JWT를 읽어 SecurityContext를 설정하는 필터. */
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-  }
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
   /**
    * Spring Security 필터 체인·인가 규칙을 정의한다.
@@ -92,8 +92,8 @@ public class SecurityConfig {
         // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치해 토큰을 먼저 처리
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    return http.build();
-  }
+        return http.build();
+    }
 
   /**
    * 비밀번호 단방향 해시용 인코더.
