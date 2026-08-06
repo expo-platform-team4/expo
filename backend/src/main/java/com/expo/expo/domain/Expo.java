@@ -1,6 +1,6 @@
 package com.expo.expo.domain;
 
-import com.example.expo.exception.ExpoStateException;
+import com.expo.expo.exception.ExpoStateException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -84,6 +84,12 @@ public class Expo {
     @Column(name = "status", length = 30, nullable = false)
     private ExpoStatus status = ExpoStatus.DRAFT;
 
+    /*
+     * ※ reject_reason / submitted_at / reviewed_at / published_at 은
+     *   심사 이력 도메인(expo_review_history, 타 담당자)에서 관리하므로 본 엔티티에서 제외.
+     *   본 테이블은 status 값만 유지한다(정의서 비고 5).
+     */
+
     /** 취소 요청 사유 */
     @Column(name = "cancel_reason", length = 1000)
     private String cancelReason;
@@ -154,12 +160,47 @@ public class Expo {
         validatePeriod();
     }
 
+    /**
+     * 심사 요청 (희-EXPO-02, 희-EXPO-17)
+     * 임시저장(DRAFT)·반려(REJECTED) 상태에서만 가능하며,
+     * 화면상 필수(*) 항목을 애플리케이션 레벨에서 검증한다(비고 3).
+     */
+    public void submit() {
+        if (!status.isSubmittable()) {
+            throw new ExpoStateException("심사 요청이 불가능한 상태입니다. (현재 상태: " + status + ")");
+        }
+        validateRequiredFieldsForSubmit();
+        this.status = ExpoStatus.SUBMITTED;
+        // 심사요청 일시(submitted_at)는 심사 이력 도메인에서 기록
+    }
+
     /** 관리자 심사 시작 */
     public void startReview() {
         if (status != ExpoStatus.SUBMITTED) {
             throw new ExpoStateException("심사요청 상태가 아닙니다. (현재 상태: " + status + ")");
         }
         this.status = ExpoStatus.UNDER_REVIEW;
+    }
+
+    /**
+     * 승인 → 자동 공개 (희-EXPO-09)
+     * 승인 시점에 확정 장소(venue_id)를 배정한다(비고 2).
+     */
+    public void approve(Long confirmedVenueId) {
+        if (status != ExpoStatus.SUBMITTED && status != ExpoStatus.UNDER_REVIEW) {
+            throw new ExpoStateException("승인이 불가능한 상태입니다. (현재 상태: " + status + ")");
+        }
+        this.venueId = confirmedVenueId;
+        this.status = ExpoStatus.PUBLISHED;   // 승인과 동시에 자동 공개 → 목록 자동 반영 (희-SRCH-12)
+        // 승인·공개 일시(reviewed_at/published_at)는 심사 이력 도메인에서 기록
+    }
+
+    /** 반려 — 반려 사유(reject_reason)는 심사 이력 도메인에서 기록 */
+    public void reject() {
+        if (status != ExpoStatus.SUBMITTED && status != ExpoStatus.UNDER_REVIEW) {
+            throw new ExpoStateException("반려가 불가능한 상태입니다. (현재 상태: " + status + ")");
+        }
+        this.status = ExpoStatus.REJECTED;
     }
 
     /** 취소 요청 */
