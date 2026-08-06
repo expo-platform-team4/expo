@@ -16,6 +16,7 @@
                booth_number
         FROM v_client_dashboard_booths
         WHERE client_user_id = #{clientUserId}
+        ORDER BY application_id DESC
     </select>
 
 </mapper>
