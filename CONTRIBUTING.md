@@ -187,6 +187,52 @@ Checkstyle `LineLength` 도 주석 줄은 검사에서 제외한다.
 | [`front/.prettierrc`](front/.prettierrc) | Prettier 설정 |
 | [`front/eslint.config.mjs`](front/eslint.config.mjs) | ESLint 설정 |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI 파이프라인 |
+| [`AGENTS.md`](AGENTS.md) | AI 코딩 도구용 작업 규칙 (아래 I 절 참고) |
 
 `.editorconfig` 의 `[*.java] indent_size` 와 `build.gradle` 의 `googleJavaFormat().aosp()` 는
 **반드시 같이 바꿔야 한다.** 어긋나면 IDE 와 Gradle 이 서로 다른 결과를 내면서 무한 diff 가 난다.
+
+---
+
+## I. AGENTS.md 관리
+
+팀원마다 Claude Code · Cursor · Copilot · Codex 를 다르게 쓴다. AI 는 세션 간 기억이 없어서
+매번 프로젝트 관습을 컨텍스트에 있는 것만으로 다시 추론하고, 없으면 그럴듯한 걸 지어낸다.
+`AGENTS.md` 가 그걸 막는다.
+
+### 파일 구성
+
+| 파일 | 역할 |
+| --- | --- |
+| [`AGENTS.md`](AGENTS.md) | **정본.** 공통 라우팅·금지·함정 |
+| [`backend/AGENTS.md`](backend/AGENTS.md) | 백엔드 상세 |
+| [`front/AGENTS.md`](front/AGENTS.md) | 프론트 상세 |
+| `CLAUDE.md` (루트·backend·front) | Claude Code 용 포인터. **규칙을 쓰지 않는다** |
+| [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | Copilot 용 포인터. **규칙을 쓰지 않는다** |
+
+Cursor 와 Codex 는 `AGENTS.md` 를 직접 읽으므로 포인터가 필요 없다.
+심볼릭 링크를 쓰지 않는 이유는 Windows 에서 `core.symlinks` 미설정 시 깨지기 때문이다.
+
+### 규칙을 추가할 때
+
+1. **AI 가 같은 실수를 두 번 했을 때만 추가한다.** 한 번은 우연이다. 예방적으로 쓰면
+   파일만 길어지고 정작 중요한 규칙이 묻힌다.
+2. **Checkstyle · ESLint · CI 로 옮길 수 있으면 거기로 옮기고 `AGENTS.md` 에서 삭제한다.**
+   부탁은 확률이고 게이트는 확정이다. 문서는 자라기만 하면 죽는다.
+3. **별도 커밋으로 올린다.** 다른 변경과 섞으면 규칙이 바뀐 걸 아무도 눈치채지 못한다.
+
+새 줄을 넣기 전에 세 가지를 확인한다.
+
+- **반증 가능한가** — "좋은 설계를 하라"(X) / "마이그레이션 파일을 수정하지 마라"(O)
+- **이 프로젝트에서만 참인가** — 일반 상식은 모델이 이미 안다
+- **실제로 틀린 적이 있는가**
+
+### 쓰지 않는 것
+
+디렉터리 트리, 스택 목록·버전 표, 도메인 개수 같은 목록은 넣지 않는다. 코드가 정본이고,
+문서에 복제하면 반드시 어긋난다. **어긋난 문서는 없느니만 못하다** — AI 가 그걸 사실로 믿고
+그 위에 코드를 쓴다.
+
+**버전 때문에 코드가 달라지는 제약은 예외로 남긴다.** "Boot 4 라 `-webmvc` 를 쓴다" 처럼
+틀리면 동작하지 않는 사실이 그렇다. 금지하는 건 `build.gradle` 을 베껴 적은 표이지
+버전 언급 자체가 아니다.
