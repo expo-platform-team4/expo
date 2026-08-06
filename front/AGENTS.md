@@ -16,9 +16,9 @@ ERR_INVALID_ARG_TYPE: The "path" argument must be of type string. Received null
 
 ## 검색 결과가 통하지 않는 지점
 
-| 하려는 것 | 흔한 예제 (틀림) | 여기서 (맞음) |
-| --- | --- | --- |
-| 라우팅 | `react-router` 도입 | **App Router 만 쓴다** |
+| 하려는 것     | 흔한 예제 (틀림)          | 여기서 (맞음)                         |
+| ------------- | ------------------------- | ------------------------------------- |
+| 라우팅        | `react-router` 도입       | **App Router 만 쓴다**                |
 | Tailwind 설정 | `tailwind.config.js` 생성 | **`src/app/globals.css` 의 `@theme`** |
 
 Tailwind v4 는 `tailwind.config.js` 를 쓰지 않는다. content 경로 지정도 필요 없다(자동 탐지).
@@ -26,12 +26,12 @@ v3 튜토리얼을 그대로 따라가면 안 된다.
 
 ## 무엇을 쓰는가
 
-| 용도 | 쓰는 것 |
-| --- | --- |
-| 서버 상태·캐싱 | TanStack Query |
-| 클라이언트 상태 | Zustand |
-| 폼 | React Hook Form + Zod (`@hookform/resolvers`) |
-| HTTP | **`src/lib/api.ts` 의 axios 인스턴스를 재사용한다** |
+| 용도            | 쓰는 것                                             |
+| --------------- | --------------------------------------------------- |
+| 서버 상태·캐싱  | TanStack Query                                      |
+| 클라이언트 상태 | Zustand                                             |
+| 폼              | React Hook Form + Zod (`@hookform/resolvers`)       |
+| HTTP            | **`src/lib/api.ts` 의 axios 인스턴스를 재사용한다** |
 
 **API 호출을 새로 만들지 않는다.** `src/lib/api.ts` 에 baseURL·인터셉터가 이미 설정돼 있다.
 `fetch` 를 직접 쓰거나 axios 인스턴스를 새로 만들면 인증 헤더와 에러 처리가 빠진다.
