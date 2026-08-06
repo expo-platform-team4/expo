@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BannerReviewHistoryRepository extends JpaRepository<BannerReviewHistory, Long> {
 
-    List<BannerReviewHistory> findByBannerApplicationIdOrderByReviewedAtAsc(
+    List<BannerReviewHistory> findByBannerApplicationIdOrderByReviewedAtAscIdAsc(
             Long bannerApplicationId);
 }

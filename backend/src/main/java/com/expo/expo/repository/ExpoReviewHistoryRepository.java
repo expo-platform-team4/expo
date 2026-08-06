@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ExpoReviewHistoryRepository extends JpaRepository<ExpoReviewHistory, Long> {
 
-    List<ExpoReviewHistory> findByExpoIdOrderByReviewedAtAsc(Long expoId);
+    List<ExpoReviewHistory> findByExpoIdOrderByReviewedAtAscIdAsc(Long expoId);
 }
