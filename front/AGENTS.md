@@ -7,7 +7,7 @@
 **Node 26 을 쓰지 않는다.** Next 16 의 `rewrites()` 가 전부 500 으로 깨진다.
 내부·외부 rewrite 구분 없이, dev·production 구분 없이 아래가 뜬다.
 
-```
+```txt
 ERR_INVALID_ARG_TYPE: The "path" argument must be of type string. Received null
 ```
 

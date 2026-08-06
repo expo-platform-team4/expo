@@ -14,9 +14,14 @@ Claude Code · Cursor · Copilot · Codex 어느 것이든 이 파일이 정본�
 2. **무엇을 하면 안 되는가** (되돌리기 어렵거나 조용히 깨지는 것)
 3. **이 프로젝트에서만 참인 사실** (모델이 반드시 틀리는 것)
 
-담지 않는 것: 디렉터리 구조, 기술 스택 버전, 들여쓰기·포맷 규칙, 일반적인 좋은 코드 조언.
-앞의 둘은 코드가 정본이고, 포맷은 Spotless·Prettier·CI 가 기계적으로 강제한다.
+담지 않는 것: 디렉터리 구조, **스택 목록·버전 표**, 들여쓰기·포맷 규칙, 일반적인 좋은 코드 조언.
+구조와 버전의 정본은 코드(`build.gradle`, `package.json`)다. 여기 복제하면 반드시 어긋난다.
+포맷은 Spotless·Prettier·CI 가 기계적으로 강제한다.
 **부탁으로 지킬 수 있는 것은 여기 쓰지 않는다. 게이트로 만든다.**
+
+**단, 버전 때문에 코드가 달라지는 제약은 3절에 쓴다.** "Boot 4 라 `-webmvc` 다",
+"Node 26 에서는 rewrites 가 깨진다" 처럼 틀리면 동작하지 않는 사실이 그렇다.
+금지하는 것은 `build.gradle` 을 베껴 적은 표이지, 버전을 언급하는 것 자체가 아니다.
 
 ---
 
@@ -78,6 +83,8 @@ Claude Code · Cursor · Copilot · Codex 어느 것이든 이 파일이 정본�
 ## 3. 이 프로젝트에서만 참인 사실
 
 검색해서 나오는 일반적인 예제가 여기서는 통하지 않는 지점들이다.
+**버전 자체가 아니라, 그 버전 때문에 코드가 달라지는 지점만 쓴다.**
+버전 목록이 필요하면 `build.gradle` 과 `package.json` 을 본다.
 
 - **Spring Boot 4 다.** Boot 3 관습이 그대로 통하지 않는다. 의존성 이름과 자동설정이 다르다.
   백엔드를 건드린다면 [`backend/AGENTS.md`](backend/AGENTS.md) 를 먼저 읽는다.
@@ -98,10 +105,18 @@ cd backend && ./gradlew build -x test
 ```
 
 ```bash
-cd front && bun run check && bun run build
+cd front && bun run format && bun run check && bun run build
 ```
 
-포맷은 신경 쓰지 않아도 된다. 로컬에서 `./gradlew` 를 돌리면 Spotless 가 자동으로 정리한다.
+**자동으로 정리되는 건 백엔드 Java 뿐이다.** 로컬에서 `./gradlew` 를 돌리면 `compileJava` 가
+Spotless 를 적용한다.
+
+**프론트는 자동이 아니다.** `front/` 안의 `.ts` · `.tsx` · `.css` 와 **`.md` 까지** Prettier 대상이라
+`bun run format` 을 직접 돌려야 한다. `bun run check` 는 검사만 하고 고치지 않는다.
+`front/AGENTS.md` 도 여기 포함된다 — 실제로 이 파일 때문에 CI 가 깨진 적이 있다.
+
+`front/` 밖의 마크다운(루트 `AGENTS.md`, `README.md`, `docs/*.md`)은 **어떤 포매터도 검사하지 않는다.**
+손으로 맞춘다.
 
 ---
 
