@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.admin.repository.AdminDashboardMapper">
+
+    <select id="findDashboardCounts" resultType="com.expo.admin.dto.AdminDashboardCountsResponse">
+        SELECT pending_expo_review_count,
+               pending_banner_review_count,
+               pending_notice_request_count,
+               venue_conflict_count,
+               unchecked_application_count,
+               pending_change_request_count,
+               pending_cancellation_request_count,
+               settlement_waiting_count
+        FROM v_admin_dashboard_counts
+    </select>
+
+    <select id="findPendingReviews" resultType="com.expo.admin.dto.AdminPendingReviewResponse">
+        SELECT review_target_type,
+               target_id,
+               title,
+               requester_client_id,
+               status,
+               submitted_at,
+               created_at
+        FROM v_admin_pending_reviews
+        ORDER BY submitted_at ASC
+    </select>
+
+</mapper>
