@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -41,10 +43,12 @@ public class RecruitmentNoticeHistory {
     private RecruitmentNoticeActionType actionType;
 
     /** 변경 전 값 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "before_data", columnDefinition = "jsonb")
     private String beforeData;
 
     /** 변경 후 값 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "after_data", columnDefinition = "jsonb")
     private String afterData;
 
