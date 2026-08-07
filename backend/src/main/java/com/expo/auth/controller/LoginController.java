@@ -1,11 +1,11 @@
 package com.expo.auth.controller;
 
-import com.expo.auth.dto.AuthApiResponse;
 import com.expo.auth.dto.LoginRequest;
 import com.expo.auth.dto.LoginResponse;
 import com.expo.auth.dto.TokenReissueRequest;
 import com.expo.auth.dto.TokenReissueResponse;
 import com.expo.auth.service.LoginService;
+import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,9 +40,9 @@ public class LoginController {
           - 탈퇴(WITHDRAWN) 계정·소셜 전용 계정(password_hash NULL)은 로그인할 수 없습니다.
           """)
     @PostMapping("/login")
-    public ResponseEntity<AuthApiResponse<LoginResponse>> login(
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(AuthApiResponse.ok(loginService.login(request)));
+        return ResponseEntity.ok(ApiResponse.ok(loginService.login(request)));
     }
 
     @Operation(
@@ -56,9 +56,9 @@ public class LoginController {
           - 성공 시 refresh_tokens.last_used_at을 갱신합니다.
           """)
     @PostMapping("/reissue")
-    public ResponseEntity<AuthApiResponse<TokenReissueResponse>> reissueAccessToken(
+    public ResponseEntity<ApiResponse<TokenReissueResponse>> reissueAccessToken(
             @Valid @RequestBody TokenReissueRequest request) {
         return ResponseEntity.ok(
-                AuthApiResponse.ok(loginService.reissueAccessToken(request.refreshToken())));
+                ApiResponse.ok(loginService.reissueAccessToken(request.refreshToken())));
     }
 }

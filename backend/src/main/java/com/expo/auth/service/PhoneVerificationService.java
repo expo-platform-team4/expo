@@ -4,10 +4,10 @@ import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.entity.PhoneVerification;
 import com.expo.auth.entity.PhoneVerificationStatus;
-import com.expo.auth.exception.BusinessException;
-import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidPhoneNumberException;
 import com.expo.auth.repository.PhoneVerificationRepository;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -82,7 +82,7 @@ public class PhoneVerificationService {
                 saved.getId(),
                 properties.getTestVerificationCode());
 
-        // Controller가 AuthApiResponse로 감싸서 JSON 응답 (HTTP 200).
+        // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         // 휴대폰 인증 요청이 성공했을 때, 클라이언트에게 돌려줄 응답 DTO를 만들어 반환
         return new PhoneVerificationCreateResponse(
                 saved.getId(), normalized, expiresAt, "인증번호가 발송되었습니다.");
@@ -137,7 +137,7 @@ public class PhoneVerificationService {
         verification.markVerified(signupTokenHash, now);
         phoneVerificationRepository.save(verification);
 
-        // Controller가 AuthApiResponse로 감싸서 JSON 응답 (HTTP 200).
+        // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         return new PhoneVerificationConfirmResponse(
                 verification.getId(),
                 verification.getPhoneNumber(),

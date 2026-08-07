@@ -1,10 +1,10 @@
 package com.expo.auth.service;
 
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
-import com.expo.auth.exception.BusinessException;
-import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
 import com.expo.auth.repository.ClientProfileRepository;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;

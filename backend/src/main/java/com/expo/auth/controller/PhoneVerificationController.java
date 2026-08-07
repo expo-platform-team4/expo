@@ -1,11 +1,11 @@
 package com.expo.auth.controller;
 
-import com.expo.auth.dto.AuthApiResponse;
 import com.expo.auth.dto.PhoneVerificationConfirmRequest;
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateRequest;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.service.PhoneVerificationService;
+import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,11 +40,11 @@ public class PhoneVerificationController {
           - MVP 단계: 외부 SMS API 미연동. 테스트용 고정 인증번호 `123456`으로 검증합니다.
           """)
     @PostMapping
-    public ResponseEntity<AuthApiResponse<PhoneVerificationCreateResponse>> requestVerification(
+    public ResponseEntity<ApiResponse<PhoneVerificationCreateResponse>> requestVerification(
             @Valid @RequestBody PhoneVerificationCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(
-                        AuthApiResponse.ok(
+                        ApiResponse.ok(
                                 phoneVerificationService.requestVerification(
                                         request.phoneNumber())));
     }
@@ -60,12 +60,12 @@ public class PhoneVerificationController {
           - 성공 시 회원가입 등 후속 API에서 사용할 signupVerificationToken을 발급합니다.
           """)
     @PostMapping("/confirm")
-    public ResponseEntity<AuthApiResponse<PhoneVerificationConfirmResponse>> confirmVerification(
+    public ResponseEntity<ApiResponse<PhoneVerificationConfirmResponse>> confirmVerification(
             @Valid @RequestBody PhoneVerificationConfirmRequest request) {
         // HTTP 200 OK 응답을 반환
         return ResponseEntity.ok(
                 // 이 프로젝트 인증 API 공통 응답 형식
-                AuthApiResponse.ok(
+                ApiResponse.ok(
                         phoneVerificationService.confirmVerification(
                                 // verificationId() — 요청 API가 준 ID verificationCode() — 사용자가 입력한 6자리
                                 // 번호 (MVP에서는 123456)
