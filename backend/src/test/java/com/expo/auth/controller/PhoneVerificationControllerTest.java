@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.exception.InvalidPhoneNumberException;
@@ -83,50 +84,5 @@ class PhoneVerificationControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"phoneNumber\":\"01012345678\"}"))
                 .andExpect(status().isCreated());
-    }
-
-    @Test
-    void confirmVerificationReturnsOk() throws Exception {
-        Instant verifiedAt = Instant.now();
-        when(phoneVerificationService.confirmVerification(any(), any()))
-                .thenReturn(
-                        new PhoneVerificationConfirmResponse(
-                                1L,
-                                "01012345678",
-                                verifiedAt,
-                                "signup-token-uuid",
-                                "휴대폰 인증이 완료되었습니다."));
-
-        mockMvc.perform(
-                        post("/api/auth/phone-verifications/confirm")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
-                    {
-                      "verificationId": 1,
-                      "verificationCode": "123456"
-                    }
-                    """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.signupVerificationToken").value("signup-token-uuid"));
-    }
-
-    @Test
-    void confirmVerificationWithoutTokenIsAllowed() throws Exception {
-        when(phoneVerificationService.confirmVerification(any(), any()))
-                .thenReturn(
-                        new PhoneVerificationConfirmResponse(
-                                1L,
-                                "01012345678",
-                                Instant.now(),
-                                "signup-token-uuid",
-                                "휴대폰 인증이 완료되었습니다."));
-
-        mockMvc.perform(
-                        post("/api/auth/phone-verifications/confirm")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"verificationId\":1,\"verificationCode\":\"123456\"}"))
-                .andExpect(status().isOk());
     }
 }

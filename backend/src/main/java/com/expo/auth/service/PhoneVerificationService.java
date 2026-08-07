@@ -1,28 +1,42 @@
 package com.expo.auth.service;
 
+
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.entity.PhoneVerification;
 import com.expo.auth.entity.PhoneVerificationStatus;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
+
+import com.expo.auth.dto.PhoneVerificationCreateResponse;
+import com.expo.auth.entity.PhoneVerification;
+import com.expo.auth.entity.PhoneVerificationStatus;
+
 import com.expo.auth.exception.InvalidPhoneNumberException;
 import com.expo.auth.repository.PhoneVerificationRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 휴대폰 본인인증 서비스. PostgreSQL + JPA 로 저장한다. */
+
 @Service
 public class PhoneVerificationService {
 
     private static final Logger log = LoggerFactory.getLogger(PhoneVerificationService.class);
+
+@Slf4j
+@Service
+public class PhoneVerificationService {
 
     // 010 같은 한국 휴대폰 번호만 받겠다”는 검증 규칙
     private static final Pattern PHONE_NUMBER = Pattern.compile("^01[016789]\\d{7,8}$");
@@ -45,6 +59,7 @@ public class PhoneVerificationService {
      * 휴대폰 본인인증을 요청한다.
      *
      * <p>휴대폰 인증 요청 API가 호출됐을 때 서버가 순서대로 하는 처리 단계
+     *휴대폰 인증 요청 API가 호출됐을 때 서버가 순서대로 하는 처리 단계
      *
      * <p>동일 번호의 기존 {@link PhoneVerificationStatus#REQUESTED} 건은 만료 처리한 뒤 새 레코드를 생성한다. MVP 단계에서는 외부
      * SMS API 를 호출하지 않으며, 테스트용 고정 인증번호({@code 123456})로 검증한다.

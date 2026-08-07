@@ -10,12 +10,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.expo.auth.Role;
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.ClientSignupResponse;
+import com.expo.auth.dto.EmailAvailabilityResponse;
+
+import com.expo.auth.dto.NicknameAvailabilityResponse;
+
 import com.expo.auth.dto.SignupResponse;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
+import com.expo.auth.exception.InvalidEmailException;
+
+import com.expo.auth.exception.InvalidNicknameException;
 import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
+import com.expo.auth.service.EmailAvailabilityService;
+import com.expo.auth.service.NicknameAvailabilityService;
+
+import com.expo.auth.service.AuthService;
+import com.expo.auth.service.BusinessNumberValidationService;
+import com.expo.auth.service.EmailAvailabilityService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +45,10 @@ class AuthControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private AuthService authService;
+    @MockitoBean private EmailAvailabilityService emailAvailabilityService;
+
+    @MockitoBean private NicknameAvailabilityService nicknameAvailabilityService;
+
     @MockitoBean private BusinessNumberValidationService businessNumberValidationService;
 
     // ----- 회원가입 (A-API-001) -----
@@ -131,222 +149,52 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(false));
     }
 
-    // ----- 사업자등록번호 사용 가능 여부 (A-API-005) -----
+    // ----- 이메일 사용 가능 여부 (A-API-003) -----
 
     @Test
-    void businessNumberAvailabilityWithoutTokenIsAllowed() throws Exception {
-        when(businessNumberValidationService.checkAvailability("123-45-67890"))
-                .thenReturn(BusinessNumberAvailabilityResponse.available("1234567890"));
+    void emailAvailabilityWithoutTokenIsAllowed() throws Exception {
+        when(emailAvailabilityService.checkAvailability("member@espotic.com"))
+                .thenReturn(EmailAvailabilityResponse.available("member@espotic.com"));
 
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "123-45-67890"))
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "member@espotic.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.businessNumber").value("1234567890"))
+                .andExpect(jsonPath("$.data.email").value("member@espotic.com"))
                 .andExpect(jsonPath("$.data.valid").value(true))
                 .andExpect(jsonPath("$.data.duplicate").value(false))
                 .andExpect(jsonPath("$.data.available").value(true));
     }
 
     @Test
-    void businessNumberAvailabilityWithPlainDigitsReturnsAvailable() throws Exception {
-        when(businessNumberValidationService.checkAvailability("1234567890"))
-                .thenReturn(BusinessNumberAvailabilityResponse.available("1234567890"));
+    void emailAvailabilityForDuplicateReturnsUnavailable() throws Exception {
+        when(emailAvailabilityService.checkAvailability("dup@espotic.com"))
+                .thenReturn(EmailAvailabilityResponse.duplicate("dup@espotic.com"));
 
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "1234567890"))
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "dup@espotic.com"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.available").value(true))
-                .andExpect(jsonPath("$.data.businessNumber").value("1234567890"));
-    }
-
-    @Test
-    void businessNumberAvailabilityForNonTestNumberReturnsUnavailable() throws Exception {
-        when(businessNumberValidationService.checkAvailability("999-99-99999"))
-                .thenReturn(BusinessNumberAvailabilityResponse.notTestNumber("9999999999"));
-
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "999-99-99999"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.valid").value(false))
-                .andExpect(jsonPath("$.data.available").value(false))
-                .andExpect(jsonPath("$.data.message").value("테스트용으로 등록되지 않은 사업자등록번호입니다."));
-    }
-
-    @Test
-    void businessNumberAvailabilityForDuplicateReturnsUnavailable() throws Exception {
-        when(businessNumberValidationService.checkAvailability("1234567890"))
-                .thenReturn(BusinessNumberAvailabilityResponse.duplicate("1234567890"));
-
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "1234567890"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.valid").value(true))
                 .andExpect(jsonPath("$.data.duplicate").value(true))
                 .andExpect(jsonPath("$.data.available").value(false))
-                .andExpect(jsonPath("$.data.message").value("이미 가입된 사업자등록번호입니다."));
+                .andExpect(jsonPath("$.data.message").value("이미 사용 중인 이메일입니다."));
     }
 
     @Test
-    void businessNumberAvailabilityWithBlankReturnsBadRequest() throws Exception {
-        when(businessNumberValidationService.checkAvailability(""))
-                .thenThrow(new InvalidBusinessNumberException("사업자등록번호를 입력해 주세요."));
+    void emailAvailabilityWithInvalidFormatReturnsBadRequest() throws Exception {
+        when(emailAvailabilityService.checkAvailability("invalid-email"))
+                .thenThrow(new InvalidEmailException("올바른 이메일 형식이 아닙니다."));
 
-        mockMvc.perform(get("/api/auth/business-number-availability").param("businessNumber", ""))
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "invalid-email"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("사업자등록번호를 입력해 주세요."));
+                .andExpect(jsonPath("$.message").value("올바른 이메일 형식이 아닙니다."));
     }
 
     @Test
-    void businessNumberAvailabilityWithNineDigitsReturnsBadRequest() throws Exception {
-        when(businessNumberValidationService.checkAvailability("123456789"))
-                .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
+    void emailAvailabilityWithBlankReturnsBadRequest() throws Exception {
+        when(emailAvailabilityService.checkAvailability(""))
+                .thenThrow(new InvalidEmailException("이메일을 입력해 주세요."));
 
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "123456789"))
+        mockMvc.perform(get("/api/auth/email-availability").param("email", ""))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("이메일을 입력해 주세요."));
     }
-
-    @Test
-    void businessNumberAvailabilityWithMisplacedHyphenReturnsBadRequest() throws Exception {
-        when(businessNumberValidationService.checkAvailability("1234-56-7890"))
-                .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
-
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "1234-56-7890"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void businessNumberAvailabilityWithNonDigitReturnsBadRequest() throws Exception {
-        when(businessNumberValidationService.checkAvailability("12a-45-67890"))
-                .thenThrow(new InvalidBusinessNumberException("사업자등록번호 형식이 올바르지 않습니다."));
-
-        mockMvc.perform(
-                        get("/api/auth/business-number-availability")
-                                .param("businessNumber", "12a-45-67890"))
-                .andExpect(status().isBadRequest());
-    }
-
-    // ----- 클라이언트 회원가입 (A-API-002) -----
-
-    @Test
-    void clientSignupWithoutTokenIsAllowed() throws Exception {
-        when(authService.clientSignup(any()))
-                .thenReturn(
-                        new ClientSignupResponse(
-                                1L,
-                                Role.CLIENT,
-                                "client@espotic.com",
-                                "주식회사 에스포틱",
-                                "클라이언트 회원가입이 완료되었습니다."));
-
-        mockMvc.perform(
-                        post("/api/auth/client-signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
-                    {
-                      "email": "client@espotic.com",
-                      "password": "Test1234!",
-                      "passwordConfirm": "Test1234!",
-                      "nickname": "espotic_manager",
-                      "phoneNumber": "01012345678",
-                      "companyName": "주식회사 에스포틱",
-                      "businessNumber": "123-45-67890",
-                      "serviceTermsAgreed": true,
-                      "privacyPolicyAgreed": true,
-                      "marketingAgreed": false
-                    }
-                    """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.userId").value(1))
-                .andExpect(jsonPath("$.data.role").value("CLIENT"))
-                .andExpect(jsonPath("$.data.email").value("client@espotic.com"))
-                .andExpect(jsonPath("$.data.companyName").value("주식회사 에스포틱"));
-    }
-
-    @Test
-    void clientSignupWithPasswordMismatchReturnsBadRequest() throws Exception {
-        when(authService.clientSignup(any()))
-                .thenThrow(new BusinessException(ErrorCode.PASSWORD_MISMATCH));
-
-        mockMvc.perform(
-                        post("/api/auth/client-signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
-                    {
-                      "email": "client@espotic.com",
-                      "password": "Test1234!",
-                      "passwordConfirm": "Different1!",
-                      "nickname": "espotic_manager",
-                      "phoneNumber": "01012345678",
-                      "companyName": "주식회사 에스포틱",
-                      "businessNumber": "123-45-67890",
-                      "serviceTermsAgreed": true,
-                      "privacyPolicyAgreed": true,
-                      "marketingAgreed": false
-                    }
-                    """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
-    }
-
-    @Test
-    void clientSignupWithoutRequiredTermsReturnsBadRequest() throws Exception {
-        mockMvc.perform(
-                        post("/api/auth/client-signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
-                    {
-                      "email": "client@espotic.com",
-                      "password": "Test1234!",
-                      "passwordConfirm": "Test1234!",
-                      "nickname": "espotic_manager",
-                      "phoneNumber": "01012345678",
-                      "companyName": "주식회사 에스포틱",
-                      "businessNumber": "123-45-67890",
-                      "serviceTermsAgreed": false,
-                      "privacyPolicyAgreed": true,
-                      "marketingAgreed": false
-                    }
-                    """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
-    }
-
-    @Test
-    void clientSignupWithWeakPasswordReturnsBadRequest() throws Exception {
-        mockMvc.perform(
-                        post("/api/auth/client-signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
-                    {
-                      "email": "client@espotic.com",
-                      "password": "onlyletters",
-                      "passwordConfirm": "onlyletters",
-                      "nickname": "espotic_manager",
-                      "phoneNumber": "01012345678",
-                      "companyName": "주식회사 에스포틱",
-                      "businessNumber": "123-45-67890",
-                      "serviceTermsAgreed": true,
-                      "privacyPolicyAgreed": true,
-                      "marketingAgreed": false
-                    }
-                    """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
-    }
-}

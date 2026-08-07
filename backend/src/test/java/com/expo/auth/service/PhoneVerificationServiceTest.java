@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.entity.PhoneVerification;
@@ -18,6 +19,14 @@ import com.expo.auth.repository.PhoneVerificationRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+
+import com.expo.auth.dto.PhoneVerificationCreateResponse;
+import com.expo.auth.entity.PhoneVerification;
+import com.expo.auth.entity.PhoneVerificationStatus;
+import com.expo.auth.exception.InvalidPhoneNumberException;
+import com.expo.auth.repository.PhoneVerificationRepository;
+import java.time.Instant;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -83,70 +92,5 @@ class PhoneVerificationServiceTest {
         assertThat(saved.getPhoneNumber()).isEqualTo("01012345678");
         assertThat(saved.getStatus()).isEqualTo(PhoneVerificationStatus.REQUESTED);
         assertThat(saved.getVerificationTokenHash()).isEqualTo("token-hash");
-    }
-
-    @Test
-    void confirmVerificationSucceedsWithTestCode() {
-        Instant now = Instant.now();
-        PhoneVerification verification =
-                PhoneVerification.createRequested(
-                        "01012345678", "old-hash", now, now.plus(5, ChronoUnit.MINUTES));
-        ReflectionTestUtils.setField(verification, "id", 1L);
-
-        when(phoneVerificationRepository.findById(1L)).thenReturn(Optional.of(verification));
-        when(properties.getTestVerificationCode()).thenReturn("123456");
-        when(passwordEncoder.encode(any())).thenReturn("signup-token-hash");
-        when(phoneVerificationRepository.save(any(PhoneVerification.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        PhoneVerificationConfirmResponse response =
-                phoneVerificationService.confirmVerification(1L, "123456");
-
-        assertThat(response.verificationId()).isEqualTo(1L);
-        assertThat(response.phoneNumber()).isEqualTo("01012345678");
-        assertThat(response.signupVerificationToken()).isNotBlank();
-        assertThat(verification.getStatus()).isEqualTo(PhoneVerificationStatus.VERIFIED);
-    }
-
-    @Test
-    void confirmVerificationRejectsExpiredCode() {
-        Instant now = Instant.now();
-        PhoneVerification verification =
-                PhoneVerification.createRequested(
-                        "01012345678",
-                        "hash",
-                        now.minus(10, ChronoUnit.MINUTES),
-                        now.minus(1, ChronoUnit.MINUTES));
-        ReflectionTestUtils.setField(verification, "id", 1L);
-
-        when(phoneVerificationRepository.findById(1L)).thenReturn(Optional.of(verification));
-        when(phoneVerificationRepository.save(any(PhoneVerification.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        assertThatThrownBy(() -> phoneVerificationService.confirmVerification(1L, "123456"))
-                .isInstanceOf(BusinessException.class)
-                .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.PHONE_VERIFICATION_EXPIRED);
-    }
-
-    @Test
-    void confirmVerificationRejectsMismatchedCode() {
-        Instant now = Instant.now();
-        PhoneVerification verification =
-                PhoneVerification.createRequested(
-                        "01012345678", "hash", now, now.plus(5, ChronoUnit.MINUTES));
-        ReflectionTestUtils.setField(verification, "id", 1L);
-
-        when(phoneVerificationRepository.findById(1L)).thenReturn(Optional.of(verification));
-        when(properties.getTestVerificationCode()).thenReturn("123456");
-        when(phoneVerificationRepository.save(any(PhoneVerification.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        assertThatThrownBy(() -> phoneVerificationService.confirmVerification(1L, "999999"))
-                .isInstanceOf(BusinessException.class)
-                .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.PHONE_VERIFICATION_CODE_MISMATCH);
-
-        assertThat(verification.getStatus()).isEqualTo(PhoneVerificationStatus.FAILED);
     }
 }

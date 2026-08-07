@@ -1,8 +1,10 @@
 package com.expo.auth.controller;
 
 import com.expo.auth.dto.AuthApiResponse;
+
 import com.expo.auth.dto.PhoneVerificationConfirmRequest;
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
+
 import com.expo.auth.dto.PhoneVerificationCreateRequest;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.service.PhoneVerificationService;
@@ -16,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+
 /** 휴대폰 본인인증 API (A-API-006, A-API-007). {@link AuthController} 와 분리한다. */
+/** 휴대폰 본인인증 API (A-API-006). {@link AuthController} 와 분리한다. */
 @Tag(name = "Phone Verification", description = "휴대폰 본인인증 API")
 @RestController
 @RequestMapping("/api/auth/phone-verifications")

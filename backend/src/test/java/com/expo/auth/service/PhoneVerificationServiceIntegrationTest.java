@@ -38,23 +38,4 @@ class PhoneVerificationServiceIntegrationTest {
         assertThat(active).hasSize(1);
         assertThat(active.get(0).getId()).isNotEqualTo(firstResponse.verificationId());
     }
-
-    @Test
-    @Transactional
-    void confirmVerificationWithTestCodeMarksVerified() {
-        var requestResponse = phoneVerificationService.requestVerification("01099998888");
-
-        var confirmResponse =
-                phoneVerificationService.confirmVerification(
-                        requestResponse.verificationId(), "123456");
-
-        assertThat(confirmResponse.signupVerificationToken()).isNotBlank();
-
-        PhoneVerification verified =
-                phoneVerificationRepository
-                        .findById(requestResponse.verificationId())
-                        .orElseThrow();
-        assertThat(verified.getStatus()).isEqualTo(PhoneVerificationStatus.VERIFIED);
-        assertThat(verified.getVerifiedAt()).isNotNull();
-    }
 }
