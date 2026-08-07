@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 부스 결제 요청·승인·실패·승인 전 취소 이력. 물리 삭제하지 않는다.
@@ -52,6 +54,7 @@ public class BoothPaymentHistory {
     private String pgTransactionKey;
 
     /** PG 응답 원문(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "response_payload", columnDefinition = "jsonb")
     private String responsePayload;
 

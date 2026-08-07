@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** 재사용 가능한 부스 형태와 기본 크기·제공 항목 템플릿. */
 @Getter
@@ -44,6 +46,7 @@ public class BoothTemplate extends BaseTimeEntity {
     private String dimensionUnit = "M";
 
     /** 기본 제공 항목 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "default_included_items", columnDefinition = "jsonb")
     private String defaultIncludedItems;
 

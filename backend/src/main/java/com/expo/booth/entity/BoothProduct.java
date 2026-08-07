@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 특정 모집공고에서 실제 판매되는 부스 상품.
@@ -51,6 +53,7 @@ public class BoothProduct extends BaseTimeEntity {
     private boolean vatIncluded = true;
 
     /** 제공 항목 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "included_items", columnDefinition = "jsonb")
     private String includedItems;
 
