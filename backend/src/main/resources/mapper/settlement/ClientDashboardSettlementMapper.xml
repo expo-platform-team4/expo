@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.settlement.repository.ClientDashboardSettlementMapper">
+
+    <select id="findDailySalesByClientUserIdAndExpoId"
+            resultType="com.expo.settlement.dto.ClientDashboardDailySalesResponse">
+        SELECT client_user_id,
+               expo_id,
+               expo_title,
+               sales_date,
+               paid_order_count,
+               canceled_order_count,
+               sold_ticket_quantity,
+               refund_ticket_quantity,
+               ticket_sales_amount,
+               booking_fee_amount,
+               refund_ticket_amount,
+               refund_booking_fee_amount,
+               buyer_payment_amount,
+               client_settlement_base_amount,
+               calculated_at
+        FROM v_client_dashboard_daily_sales
+        WHERE client_user_id = #{clientUserId}
+          AND expo_id = #{expoId}
+        ORDER BY sales_date ASC
+    </select>
+
+    <select id="findSettlementsByHostClientId"
+            resultType="com.expo.settlement.dto.ClientDashboardSettlementResponse">
+        SELECT host_client_id,
+               settlement_id,
+               expo_id,
+               expo_title,
+               event_end_at,
+               settlement_due_at,
+               status,
+               gross_ticket_sales_amount,
+               ticket_refund_amount,
+               net_ticket_sales_amount,
+               booking_fee_gross_amount,
+               booking_fee_refund_amount,
+               booking_fee_net_amount,
+               gross_booth_sales_amount,
+               adjustment_amount,
+               remittance_due_amount,
+               remitted_amount,
+               remitted_at,
+               remittance_status,
+               latest_report_file_id,
+               latest_report_format,
+               latest_report_version
+        FROM v_client_dashboard_settlements
+        WHERE host_client_id = #{hostClientId}
+        ORDER BY settlement_due_at DESC
+    </select>
+
+</mapper>

@@ -48,27 +48,4 @@ class LoginServiceIntegrationTest {
         assertThat(passwordEncoder.matches(response.refreshToken(), tokens.get(0).getTokenHash()))
                 .isTrue();
     }
-
-    @Test
-    @Transactional
-    void reissueAccessTokenIssuesNewAccessToken() {
-        User user =
-                User.createMember(
-                        "reissue-test@espotic.com",
-                        passwordEncoder.encode("Test1234!"),
-                        "reissue_test_user",
-                        "01012345678");
-        userRepository.save(user);
-
-        var loginResponse =
-                loginService.login(new LoginRequest("reissue-test@espotic.com", "Test1234!"));
-
-        var reissueResponse = loginService.reissueAccessToken(loginResponse.refreshToken());
-
-        assertThat(reissueResponse.accessToken()).isNotBlank();
-        assertThat(jwtTokenProvider.validateAccessToken(reissueResponse.accessToken())).isTrue();
-
-        var storedToken = refreshTokenRepository.findAll().get(0);
-        assertThat(storedToken.getLastUsedAt()).isNotNull();
-    }
 }

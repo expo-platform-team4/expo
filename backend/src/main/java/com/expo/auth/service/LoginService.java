@@ -3,6 +3,7 @@ package com.expo.auth.service;
 import com.expo.auth.dto.LoginRequest;
 import com.expo.auth.dto.LoginResponse;
 import com.expo.auth.dto.TokenReissueResponse;
+
 import com.expo.auth.entity.AccountStatus;
 import com.expo.auth.entity.RefreshToken;
 import com.expo.auth.entity.User;
@@ -45,6 +46,7 @@ public class LoginService {
     /**
      * 이메일·비밀번호가 맞으면 JWT Access Token과 Refresh Token을 발급하고, 사용자 정보와 함께 돌려주는 로그인 메서드입니다.
      *
+
      * 이메일·비밀번호로 로그인하고 JWT Access Token·Refresh Token을 발급한다.
      *
      * <p>Refresh Token 원문은 클라이언트에 반환하고, DB에는 BCrypt 해시만 저장한다 (V1 refresh_tokens).
@@ -83,11 +85,14 @@ public class LoginService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole());
 
         // Refresh Token(원문): 클라이언트에 반환. DB에는 BCrypt 해시만 저장.
+
         // 랜덤 문자열을 Refresh Token **원문(평문)**으로 만듭니다.
         String refreshTokenPlain = UUID.randomUUID().toString();
         // 랜덤 문자열을 BCrypt 해시로 만듭니다.
         String refreshTokenHash = passwordEncoder.encode(refreshTokenPlain);
         // Refresh Token 만료 시각을 계산합니다.
+        String refreshTokenPlain = UUID.randomUUID().toString();
+        String refreshTokenHash = passwordEncoder.encode(refreshTokenPlain);
         Instant refreshExpiresAt =
                 now.plus(jwtProperties.getRefreshTokenExpireDays(), ChronoUnit.DAYS);
 
@@ -107,7 +112,7 @@ public class LoginService {
                 user.getNickname(),
                 user.getRole());
     }
-
+  
     /**
      * Refresh Token으로 Access Token을 재발급한다 (A-API-011).
      *

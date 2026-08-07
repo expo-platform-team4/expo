@@ -7,6 +7,7 @@
 > 코드 스타일·커밋·PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md) 를 먼저 읽는다.
 > 저장소를 처음 클론했다면 "최초 1회 — 전원 필수" 절의 세 가지를 반드시 수행한다.
 > 로그를 남기기 전에는 [docs/logging.md](docs/logging.md) 를 읽는다.
+> AI 코딩 도구(Claude Code·Cursor·Copilot·Codex)로 작업한다면 [AGENTS.md](AGENTS.md) 가 정본이다.
 
 ---
 

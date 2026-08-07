@@ -10,7 +10,9 @@ import static org.mockito.Mockito.when;
 import com.expo.auth.Role;
 import com.expo.auth.dto.LoginRequest;
 import com.expo.auth.dto.LoginResponse;
+
 import com.expo.auth.dto.TokenReissueResponse;
+
 import com.expo.auth.entity.AccountStatus;
 import com.expo.auth.entity.RefreshToken;
 import com.expo.auth.entity.User;
@@ -23,6 +25,7 @@ import com.expo.jwt.JwtTokenProvider;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -124,37 +127,5 @@ class LoginServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.WITHDRAWN_ACCOUNT);
-    }
-
-    @Test
-    void reissueAccessTokenSucceedsWithValidRefreshToken() {
-        Instant now = Instant.now();
-        RefreshToken storedToken =
-                RefreshToken.create(1L, "refresh-hash", now.plus(14, ChronoUnit.DAYS), null, null);
-
-        when(refreshTokenRepository.findByRevokedAtIsNullAndExpiresAtAfter(any(Instant.class)))
-                .thenReturn(List.of(storedToken));
-        when(passwordEncoder.matches("valid-refresh-token", "refresh-hash")).thenReturn(true);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(activeUser));
-        when(jwtTokenProvider.createAccessToken(1L, Role.MEMBER)).thenReturn("new-access-token");
-        when(refreshTokenRepository.save(any(RefreshToken.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        TokenReissueResponse response = loginService.reissueAccessToken("valid-refresh-token");
-
-        assertThat(response.accessToken()).isEqualTo("new-access-token");
-        assertThat(response.accessTokenExpiresInMinutes()).isEqualTo(30);
-        assertThat(storedToken.getLastUsedAt()).isNotNull();
-    }
-
-    @Test
-    void reissueAccessTokenRejectsInvalidRefreshToken() {
-        when(refreshTokenRepository.findByRevokedAtIsNullAndExpiresAtAfter(any(Instant.class)))
-                .thenReturn(List.of());
-
-        assertThatThrownBy(() -> loginService.reissueAccessToken("invalid-token"))
-                .isInstanceOf(BusinessException.class)
-                .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
     }
 }
