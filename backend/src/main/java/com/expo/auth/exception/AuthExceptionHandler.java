@@ -45,6 +45,20 @@ public class AuthExceptionHandler {
         return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
     }
 
+    /** 이메일 필수값·형식 오류 처리 (A-API-003). */
+    @ExceptionHandler(InvalidEmailException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleInvalidEmail(InvalidEmailException ex) {
+        return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
+    }
+
+    /** 닉네임 필수값·길이 오류 처리 (A-API-004). */
+    @ExceptionHandler(InvalidNicknameException.class)
+    public ResponseEntity<AuthApiResponse<Void>> handleInvalidNickname(
+            InvalidNicknameException ex) {
+        return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
+    }
+
+
     /**
      * 동시 가입 등으로 DB unique 제약이 위반된 경우 처리.
      *
