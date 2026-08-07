@@ -1,6 +1,5 @@
 package com.expo.auth.controller;
 
-import com.expo.auth.dto.AuthApiResponse;
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.ClientSignupRequest;
 import com.expo.auth.dto.ClientSignupResponse;
@@ -12,12 +11,12 @@ import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
 import com.expo.auth.service.EmailAvailabilityService;
 import com.expo.auth.service.NicknameAvailabilityService;
+import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,6 +30,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증·회원가입 API.
+ *
+ * <p>Swagger 문서화 애노테이션을 {@code @io.swagger...ApiResponse} 로 길게 적은 이유가 있다. Swagger 에도 {@code
+ * ApiResponse} 라는 이름이 있어서 응답 봉투인 {@link com.expo.common.response.ApiResponse} 와 단순 이름이 겹친다. 둘 다
+ * import 하면 컴파일되지 않으므로 등장 횟수가 적은 쪽(Swagger)을 완전 이름으로 적었다. <b>짧게 줄이지 말 것.</b>
+ */
 @Tag(name = "Auth", description = "인증 API")
 @RestController
 @RequestMapping("/api/auth")
@@ -57,11 +63,11 @@ public class AuthController {
 
     @Operation(summary = "일반 회원 로컬 회원가입", description = "이메일·비밀번호·닉네임으로 MEMBER 계정을 생성합니다.")
     @PostMapping("/signup")
-    public ResponseEntity<AuthApiResponse<SignupResponse>> signup(
+    public ResponseEntity<ApiResponse<SignupResponse>> signup(
             // JSON body 를 SignupRequest 로 변환
             @Valid @RequestBody SignupRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(AuthApiResponse.ok(authService.signup(request)));
+                .body(ApiResponse.ok(authService.signup(request)));
     }
 
     /**
@@ -83,13 +89,13 @@ public class AuthController {
           사용 가능한 테스트 번호: `1234567890`, `1111111111`, `2222222222`
           """)
     @ApiResponses({
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "판정 결과 반환 (available=true/false)",
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = AuthApiResponse.class),
+                                schema = @Schema(implementation = ApiResponse.class),
                                 examples = {
                                     @ExampleObject(
                                             name = "사용 가능",
@@ -140,7 +146,7 @@ public class AuthController {
                           }
                           """)
                                 })),
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "형식 오류(빈 값 / 자릿수 오류 / 잘못된 하이픈 위치 / 문자 포함 등)",
                 content =
@@ -158,7 +164,7 @@ public class AuthController {
                             """)))
     })
     @GetMapping("/business-number-availability")
-    public ResponseEntity<AuthApiResponse<BusinessNumberAvailabilityResponse>>
+    public ResponseEntity<ApiResponse<BusinessNumberAvailabilityResponse>>
             checkBusinessNumberAvailability(
                     // Swagger 문서용 설명입니다
                     @Parameter(
@@ -170,7 +176,7 @@ public class AuthController {
         BusinessNumberAvailabilityResponse result =
                 businessNumberValidationService.checkAvailability(businessNumber);
         // HTTP 200과 함께 공통 응답 형식으로 반환합니다.
-        return ResponseEntity.ok(AuthApiResponse.ok(result));
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     /**
@@ -195,7 +201,7 @@ public class AuthController {
           테스트 사업자등록번호: `1234567890`, `1111111111`, `2222222222`
           """)
     @ApiResponses({
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "201",
                 description = "회원가입 성공",
                 content =
@@ -218,7 +224,7 @@ public class AuthController {
                               "message": null
                             }
                             """))),
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "입력값 오류 (비밀번호 불일치, 형식 오류, 약관 미동의 등)",
                 content =
@@ -234,7 +240,7 @@ public class AuthController {
                               "message": "비밀번호가 일치하지 않습니다."
                             }
                             """))),
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "409",
                 description = "이메일 또는 사업자등록번호 중복",
                 content =
@@ -264,10 +270,10 @@ public class AuthController {
                                 }))
     })
     @PostMapping("/client-signup")
-    public ResponseEntity<AuthApiResponse<ClientSignupResponse>> clientSignup(
+    public ResponseEntity<ApiResponse<ClientSignupResponse>> clientSignup(
             @Valid @RequestBody ClientSignupRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(AuthApiResponse.ok(authService.clientSignup(request)));
+                .body(ApiResponse.ok(authService.clientSignup(request)));
     }
 
     /**
@@ -285,13 +291,13 @@ public class AuthController {
         - DB 에 동일 이메일이 있으면 `duplicate=true`, `available=false` 로 응답합니다.
         """)
     @ApiResponses({
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "판정 결과 반환 (available=true/false)",
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = AuthApiResponse.class),
+                                schema = @Schema(implementation = ApiResponse.class),
                                 examples = {
                                     @ExampleObject(
                                             name = "사용 가능",
@@ -326,7 +332,7 @@ public class AuthController {
                         }
                         """)
                                 })),
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "형식 오류(빈 값 / 잘못된 형식 / 255자 초과)",
                 content =
@@ -344,12 +350,12 @@ public class AuthController {
                           """)))
     })
     @GetMapping("/email-availability")
-    public ResponseEntity<AuthApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
+    public ResponseEntity<ApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
             @Parameter(description = "확인할 이메일", example = "member@espotic.com", required = true)
                     @RequestParam("email")
                     String email) {
         EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
-        return ResponseEntity.ok(AuthApiResponse.ok(result));
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     /**
@@ -367,13 +373,13 @@ public class AuthController {
           - DB 에 동일 닉네임이 있으면 `duplicate=true`, `available=false` 로 응답합니다.
           """)
     @ApiResponses({
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "200",
                 description = "판정 결과 반환 (available=true/false)",
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = AuthApiResponse.class),
+                                schema = @Schema(implementation = ApiResponse.class),
                                 examples = {
                                     @ExampleObject(
                                             name = "사용 가능",
@@ -408,7 +414,7 @@ public class AuthController {
                           }
                           """)
                                 })),
-        @ApiResponse(
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
                 responseCode = "400",
                 description = "형식 오류(빈 값 / 2자 미만 / 50자 초과)",
                 content =
@@ -426,12 +432,12 @@ public class AuthController {
                             """)))
     })
     @GetMapping("/nickname-availability")
-    public ResponseEntity<AuthApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
+    public ResponseEntity<ApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
             @Parameter(description = "확인할 닉네임", example = "expo_member", required = true)
                     @RequestParam("nickname")
                     String nickname) {
         NicknameAvailabilityResponse result =
                 nicknameAvailabilityService.checkAvailability(nickname);
-        return ResponseEntity.ok(AuthApiResponse.ok(result));
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

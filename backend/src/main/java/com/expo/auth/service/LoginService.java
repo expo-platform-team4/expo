@@ -6,10 +6,10 @@ import com.expo.auth.dto.TokenReissueResponse;
 import com.expo.auth.entity.AccountStatus;
 import com.expo.auth.entity.RefreshToken;
 import com.expo.auth.entity.User;
-import com.expo.auth.exception.BusinessException;
-import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.repository.RefreshTokenRepository;
 import com.expo.auth.repository.UserRepository;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.JwtProperties;
 import com.expo.jwt.JwtTokenProvider;
 import java.time.Instant;
@@ -96,7 +96,7 @@ public class LoginService {
         refreshTokenRepository.save(
                 RefreshToken.create(user.getId(), refreshTokenHash, refreshExpiresAt, null, null));
 
-        // Controller가 AuthApiResponse로 감싸서 JSON 응답 (HTTP 200).
+        // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         // 로그인 결과를 한 덩어리로 묶어 LoginResponse로 반환
         return new LoginResponse(
                 accessToken,
@@ -157,7 +157,7 @@ public class LoginService {
         // 새 Access Token(JWT) 발급. Refresh Token은 그대로 (재발급 API에서는 새로 만들지 않음).
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole());
 
-        // Controller가 AuthApiResponse로 감싸서 JSON 응답 (HTTP 200).
+        // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         // Access Token 재발급이 성공했을 때 클라이언트에 돌려줄 응답 DTO
         return new TokenReissueResponse(accessToken, jwtProperties.getAccessTokenExpireMinutes());
     }

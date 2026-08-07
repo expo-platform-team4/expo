@@ -179,14 +179,23 @@ notification  settlement  client  admin  recruitment  participation  venue  boot
 |-|-|
 | `annotation` | 커스텀 어노테이션 (`@LoginMember` 등) |
 | `config` | `SecurityConfig`, `RestClient`(토스 호출), S3, Swagger, CORS |
-| `exception` | 여러 도메인이 공유할 예외·에러코드·핸들러 자리. **현재는 비어 있다** — 아래 참고 |
+| `exception` | `BusinessException`, `ErrorCode`, `GlobalExceptionHandler` |
 | `logging` | 요청 단위 로그 추적용 MDC 필터. 규칙은 [`docs/logging.md`](docs/logging.md) |
-| `response` | `ApiResponse`, `PageResponse` 등 공통 응답 포맷 |
+| `response` | `ApiResponse` 등 공통 응답 포맷 |
 | `util` | 특정 도메인에 속하지 않는 순수 유틸리티 |
 
-> `BusinessException`, `ErrorCode`, `AuthExceptionHandler` 는 지금 `auth/exception` 에 있다.
-> 아직 auth 하나만 쓰고 있어서다. **두 번째 도메인이 같은 예외를 쓰게 되면 그때
-> `common/exception` 으로 옮기고 핸들러를 `GlobalExceptionHandler` 로 승격한다.**
+**응답은 `common/response/ApiResponse` 하나로 감싼다.** 도메인마다 응답 형식을 만들면 클라이언트가
+엔드포인트별로 다른 파싱을 해야 한다.
+
+**예외는 두 곳으로 나뉜다.**
+
+- `BusinessException`(+`ErrorCode`)과 `@Valid` 검증 실패는 **모든 도메인이 같은 방식으로 처리**하므로
+  `common/exception/GlobalExceptionHandler` 가 잡는다. 도메인에서 다시 잡지 않는다.
+- 그 도메인에서만 나는 예외는 해당 도메인 `exception` 패키지에 자기 핸들러를 둔다
+  (예: `auth/exception/AuthExceptionHandler` 의 `InvalidEmailException`).
+
+> Swagger 에도 `ApiResponse` 라는 이름이 있다. 한 파일에서 둘 다 쓰면 이름이 겹쳐 컴파일되지 않는다.
+> `AuthController` 는 Swagger 쪽을 완전 이름으로 적어 피했다.
 
 ### jwt (집합체 아님)
 
