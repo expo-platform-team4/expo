@@ -10,12 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.expo.auth.Role;
 import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.ClientSignupResponse;
+import com.expo.auth.dto.EmailAvailabilityResponse;
 import com.expo.auth.dto.SignupResponse;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
 import com.expo.auth.exception.InvalidBusinessNumberException;
+import com.expo.auth.exception.InvalidEmailException;
 import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
+import com.expo.auth.service.EmailAvailabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +34,7 @@ class AuthControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private AuthService authService;
+    @MockitoBean private EmailAvailabilityService emailAvailabilityService;
     @MockitoBean private BusinessNumberValidationService businessNumberValidationService;
 
     // ----- 회원가입 (A-API-001) -----
@@ -129,6 +133,56 @@ class AuthControllerTest {
                     """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    // ----- 이메일 사용 가능 여부 (A-API-003) -----
+
+    @Test
+    void emailAvailabilityWithoutTokenIsAllowed() throws Exception {
+        when(emailAvailabilityService.checkAvailability("member@espotic.com"))
+                .thenReturn(EmailAvailabilityResponse.available("member@espotic.com"));
+
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "member@espotic.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.email").value("member@espotic.com"))
+                .andExpect(jsonPath("$.data.valid").value(true))
+                .andExpect(jsonPath("$.data.duplicate").value(false))
+                .andExpect(jsonPath("$.data.available").value(true));
+    }
+
+    @Test
+    void emailAvailabilityForDuplicateReturnsUnavailable() throws Exception {
+        when(emailAvailabilityService.checkAvailability("dup@espotic.com"))
+                .thenReturn(EmailAvailabilityResponse.duplicate("dup@espotic.com"));
+
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "dup@espotic.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.duplicate").value(true))
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.message").value("이미 사용 중인 이메일입니다."));
+    }
+
+    @Test
+    void emailAvailabilityWithInvalidFormatReturnsBadRequest() throws Exception {
+        when(emailAvailabilityService.checkAvailability("invalid-email"))
+                .thenThrow(new InvalidEmailException("올바른 이메일 형식이 아닙니다."));
+
+        mockMvc.perform(get("/api/auth/email-availability").param("email", "invalid-email"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("올바른 이메일 형식이 아닙니다."));
+    }
+
+    @Test
+    void emailAvailabilityWithBlankReturnsBadRequest() throws Exception {
+        when(emailAvailabilityService.checkAvailability(""))
+                .thenThrow(new InvalidEmailException("이메일을 입력해 주세요."));
+
+        mockMvc.perform(get("/api/auth/email-availability").param("email", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("이메일을 입력해 주세요."));
     }
 
     // ----- 사업자등록번호 사용 가능 여부 (A-API-005) -----
