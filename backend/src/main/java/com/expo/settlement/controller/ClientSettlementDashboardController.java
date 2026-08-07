@@ -1,7 +1,7 @@
 package com.expo.settlement.controller;
 
+import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.member.dto.MemberApiResponse;
 import com.expo.settlement.dto.ClientDashboardDailySalesResponse;
 import com.expo.settlement.service.ClientSettlementDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,11 +33,10 @@ public class ClientSettlementDashboardController {
 
     @Operation(summary = "박람회별 판매 현황 조회", description = "로그인한 클라이언트 본인 소유 박람회의 일자별 판매 현황을 조회합니다.")
     @GetMapping("/expos/{expoId}/sales-summary")
-    public ResponseEntity<MemberApiResponse<List<ClientDashboardDailySalesResponse>>>
-            getMyDailySales(
-                    @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long expoId) {
+    public ResponseEntity<ApiResponse<List<ClientDashboardDailySalesResponse>>> getMyDailySales(
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long expoId) {
         return ResponseEntity.ok(
-                MemberApiResponse.ok(
+                ApiResponse.ok(
                         clientSettlementDashboardService.getMyDailySales(
                                 principal.getMemberId(), expoId)));
     }

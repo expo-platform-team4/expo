@@ -1,7 +1,7 @@
 package com.expo.recruitment.controller;
 
+import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.member.dto.MemberApiResponse;
 import com.expo.recruitment.dto.ClientDashboardRecruitmentResponse;
 import com.expo.recruitment.service.ClientRecruitmentDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,10 +34,10 @@ public class ClientRecruitmentDashboardController {
             summary = "모집 완료 결과 목록 조회",
             description = "로그인한 클라이언트 본인이 등록한 모집공고와 신청·확정 배정 건수를 조회합니다.")
     @GetMapping("/recruitment-results")
-    public ResponseEntity<MemberApiResponse<List<ClientDashboardRecruitmentResponse>>>
+    public ResponseEntity<ApiResponse<List<ClientDashboardRecruitmentResponse>>>
             getMyRecruitmentNotices(@AuthenticationPrincipal AuthPrincipal principal) {
         return ResponseEntity.ok(
-                MemberApiResponse.ok(
+                ApiResponse.ok(
                         clientRecruitmentDashboardService.getMyRecruitmentNotices(
                                 principal.getMemberId())));
     }

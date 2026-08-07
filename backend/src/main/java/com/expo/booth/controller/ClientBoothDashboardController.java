@@ -2,8 +2,8 @@ package com.expo.booth.controller;
 
 import com.expo.booth.dto.ClientDashboardBoothResponse;
 import com.expo.booth.service.ClientBoothDashboardService;
+import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.member.dto.MemberApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -31,10 +31,10 @@ public class ClientBoothDashboardController {
 
     @Operation(summary = "확정 배정 부스 목록 조회", description = "로그인한 클라이언트 본인의 확정 배정 부스 목록을 조회합니다.")
     @GetMapping("/booths")
-    public ResponseEntity<MemberApiResponse<List<ClientDashboardBoothResponse>>>
-            getMyConfirmedBooths(@AuthenticationPrincipal AuthPrincipal principal) {
+    public ResponseEntity<ApiResponse<List<ClientDashboardBoothResponse>>> getMyConfirmedBooths(
+            @AuthenticationPrincipal AuthPrincipal principal) {
         return ResponseEntity.ok(
-                MemberApiResponse.ok(
+                ApiResponse.ok(
                         clientBoothDashboardService.getMyConfirmedBooths(principal.getMemberId())));
     }
 }

@@ -1,9 +1,9 @@
 package com.expo.expo.controller;
 
+import com.expo.common.response.ApiResponse;
 import com.expo.expo.dto.ClientDashboardExpoResponse;
 import com.expo.expo.service.ClientExpoDashboardService;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.member.dto.MemberApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -32,10 +32,9 @@ public class ClientExpoDashboardController {
 
     @Operation(summary = "내 등록 박람회 목록 조회", description = "로그인한 클라이언트 본인이 등록한 박람회 목록을 조회합니다.")
     @GetMapping("/expos")
-    public ResponseEntity<MemberApiResponse<List<ClientDashboardExpoResponse>>> getMyExpos(
+    public ResponseEntity<ApiResponse<List<ClientDashboardExpoResponse>>> getMyExpos(
             @AuthenticationPrincipal AuthPrincipal principal) {
         return ResponseEntity.ok(
-                MemberApiResponse.ok(
-                        clientExpoDashboardService.getMyExpos(principal.getMemberId())));
+                ApiResponse.ok(clientExpoDashboardService.getMyExpos(principal.getMemberId())));
     }
 }
