@@ -10,6 +10,9 @@ import static org.mockito.Mockito.when;
 import com.expo.auth.Role;
 import com.expo.auth.dto.LoginRequest;
 import com.expo.auth.dto.LoginResponse;
+
+import com.expo.auth.dto.TokenReissueResponse;
+
 import com.expo.auth.entity.AccountStatus;
 import com.expo.auth.entity.RefreshToken;
 import com.expo.auth.entity.User;
@@ -19,6 +22,10 @@ import com.expo.auth.repository.RefreshTokenRepository;
 import com.expo.auth.repository.UserRepository;
 import com.expo.jwt.JwtProperties;
 import com.expo.jwt.JwtTokenProvider;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

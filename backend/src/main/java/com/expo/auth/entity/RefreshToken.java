@@ -52,6 +52,19 @@ public class RefreshToken extends BaseTimeEntity {
         return token;
     }
 
+
+    public void recordUsage(Instant at) {
+        this.lastUsedAt = at;
+    }
+
+    public Instant getRevokedAt() {
+        return revokedAt;
+    }
+
+    public Instant getLastUsedAt() {
+        return lastUsedAt;
+    }
+
     public Long getId() {
         return id;
     }
