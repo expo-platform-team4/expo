@@ -53,7 +53,7 @@ bun run dev
 
 가장 중요한 규칙 한 줄: **"페이지 껍데기는 `app/`에, 실제 코드는 `features/`에"**
 
-```
+```text
 src/
 ├── app/            # 라우팅 전용. 각 page.tsx는 한 줄짜리 "연결" 파일
 ├── features/       # 도메인별 진짜 코드가 여기 다 있음 (여러분이 작업할 곳!)
@@ -140,9 +140,10 @@ placeholder입니다.** 로그인 상태 확인 로직(`useMe` 같은 훅으로 
 ### 5-1. `api.ts` — 백엔드에 요청 보내는 함수
 
 ```ts
-import api from '@/lib/api'
+import { api } from '@/lib/api'
 
-export const getExpos = (params: ExpoSearchParams) => api.get('/expos', { params })
+export const getExpos = (params: ExpoSearchParams) =>
+  api.get('/expos', { params }).then((res) => res.data)
 ```
 
 `api`는 `lib/api.ts`에 설정된 axios 인스턴스입니다. **새로 axios 인스턴스를 만들거나
@@ -199,7 +200,8 @@ export default ExpoListPage
 - 커밋 전에 아래가 통과하는지 확인합니다:
 
 ```bash
-bun run check   # format:check + lint + typecheck 한 번에
+bun run format   # Prettier 자동 정리
+bun run check     # format:check + lint + typecheck 한 번에
 bun run build
 ```
 
