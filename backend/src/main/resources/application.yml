@@ -64,3 +64,7 @@ app:
 
   s3:
     bucket: ${AWS_S3_BUCKET:expo-local}
+
+  phone-verification:
+    code-expire-minutes: ${PHONE_VERIFICATION_CODE_EXPIRE_MINUTES:3}
+    test-verification-code: ${PHONE_VERIFICATION_TEST_CODE:123456}
