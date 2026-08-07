@@ -8,6 +8,7 @@ import com.expo.auth.entity.RefreshToken;
 import com.expo.auth.entity.User;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
+import com.expo.auth.repository.RefreshTokenRepository;
 import com.expo.auth.repository.UserRepository;
 import com.expo.jwt.JwtProperties;
 import com.expo.jwt.JwtTokenProvider;
@@ -87,9 +88,6 @@ public class LoginService {
         // 랜덤 문자열을 Refresh Token **원문(평문)**으로 만듭니다.
         String refreshTokenPlain = UUID.randomUUID().toString();
         // 랜덤 문자열을 BCrypt 해시로 만듭니다.
-        String refreshTokenHash = passwordEncoder.encode(refreshTokenPlain);
-        // Refresh Token 만료 시각을 계산합니다.
-        String refreshTokenPlain = UUID.randomUUID().toString();
         String refreshTokenHash = passwordEncoder.encode(refreshTokenPlain);
         Instant refreshExpiresAt =
                 now.plus(jwtProperties.getRefreshTokenExpireDays(), ChronoUnit.DAYS);
