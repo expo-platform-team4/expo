@@ -1,39 +1,23 @@
 package com.expo.auth.service;
 
-
 import com.expo.auth.dto.PhoneVerificationConfirmResponse;
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.entity.PhoneVerification;
 import com.expo.auth.entity.PhoneVerificationStatus;
 import com.expo.auth.exception.BusinessException;
 import com.expo.auth.exception.ErrorCode;
-
-import com.expo.auth.dto.PhoneVerificationCreateResponse;
-import com.expo.auth.entity.PhoneVerification;
-import com.expo.auth.entity.PhoneVerificationStatus;
-
 import com.expo.auth.exception.InvalidPhoneNumberException;
 import com.expo.auth.repository.PhoneVerificationRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 휴대폰 본인인증 서비스. PostgreSQL + JPA 로 저장한다. */
-
-@Service
-public class PhoneVerificationService {
-
-    private static final Logger log = LoggerFactory.getLogger(PhoneVerificationService.class);
-
 @Slf4j
 @Service
 public class PhoneVerificationService {
@@ -171,7 +155,7 @@ public class PhoneVerificationService {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             throw new InvalidPhoneNumberException("휴대폰 번호를 입력해 주세요.");
         }
-        String normalized = phoneNumber.trim().replaceAll("[^0-9]", "");
+        String normalized = phoneNumber.trim().replaceAll("\\D", "");
         if (!PHONE_NUMBER.matcher(normalized).matches()) {
             throw new InvalidPhoneNumberException("휴대폰 번호 형식이 올바르지 않습니다.");
         }

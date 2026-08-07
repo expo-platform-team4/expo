@@ -3,10 +3,8 @@ package com.expo.auth.controller;
 import com.expo.auth.dto.AuthApiResponse;
 import com.expo.auth.dto.LoginRequest;
 import com.expo.auth.dto.LoginResponse;
-
 import com.expo.auth.dto.TokenReissueRequest;
 import com.expo.auth.dto.TokenReissueResponse;
-
 import com.expo.auth.service.LoginService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 
 /** 이메일·비밀번호 로그인·토큰 재발급 API (A-API-008, A-API-011). {@link AuthController} 와 분리한다. */
 
