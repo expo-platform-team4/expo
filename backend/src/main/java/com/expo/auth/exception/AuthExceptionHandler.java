@@ -58,6 +58,7 @@ public class AuthExceptionHandler {
         return ResponseEntity.badRequest().body(AuthApiResponse.fail(ex.getMessage()));
     }
 
+
     /**
      * 동시 가입 등으로 DB unique 제약이 위반된 경우 처리.
      *

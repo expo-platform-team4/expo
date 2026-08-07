@@ -5,13 +5,16 @@ import com.expo.auth.dto.BusinessNumberAvailabilityResponse;
 import com.expo.auth.dto.ClientSignupRequest;
 import com.expo.auth.dto.ClientSignupResponse;
 import com.expo.auth.dto.EmailAvailabilityResponse;
+
 import com.expo.auth.dto.NicknameAvailabilityResponse;
 import com.expo.auth.dto.SignupRequest;
 import com.expo.auth.dto.SignupResponse;
 import com.expo.auth.service.AuthService;
 import com.expo.auth.service.BusinessNumberValidationService;
 import com.expo.auth.service.EmailAvailabilityService;
+
 import com.expo.auth.service.NicknameAvailabilityService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,17 +41,21 @@ public class AuthController {
 
     private final AuthService authService;
     private final EmailAvailabilityService emailAvailabilityService;
+
     private final NicknameAvailabilityService nicknameAvailabilityService;
+
     private final BusinessNumberValidationService businessNumberValidationService;
 
     public AuthController(
             AuthService authService,
             EmailAvailabilityService emailAvailabilityService,
+
             NicknameAvailabilityService nicknameAvailabilityService,
             BusinessNumberValidationService businessNumberValidationService) {
         this.authService = authService;
         this.emailAvailabilityService = emailAvailabilityService;
         this.nicknameAvailabilityService = nicknameAvailabilityService;
+
         this.businessNumberValidationService = businessNumberValidationService;
     }
 
@@ -348,7 +355,7 @@ public class AuthController {
         EmailAvailabilityResponse result = emailAvailabilityService.checkAvailability(email);
         return ResponseEntity.ok(AuthApiResponse.ok(result));
     }
-
+                          
     /**
      * 닉네임 사용 가능 여부 확인 (A-API-004).
      *
