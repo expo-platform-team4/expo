@@ -84,6 +84,10 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
+    public void recordLogin(Instant at) {
+        this.lastLoginAt = at;
+    }
+
     public Long getId() {
         return id;
     }
