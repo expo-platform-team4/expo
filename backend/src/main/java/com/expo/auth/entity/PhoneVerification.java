@@ -75,7 +75,6 @@ public class PhoneVerification {
         return expiresAt.isBefore(now);
     }
 
-
     public Long getId() {
         return id;
     }
