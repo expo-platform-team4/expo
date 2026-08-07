@@ -29,8 +29,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       # 스타일을 먼저 돌린다. 컴파일보다 훨씬 빨라 피드백이 빠르다.
-      - name: Style (spotless + checkstyle)
-        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest
+      # checkMigrationFilenames 는 아래 Build 의 check 에도 걸리지만, 파일명 하나 때문에
+      # 컴파일이 다 끝나기를 기다릴 이유가 없어 여기서 먼저 잡는다.
+      - name: Style (spotless + checkstyle + 마이그레이션 파일명)
+        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest checkMigrationFilenames
 
       # 테스트는 아래 backend-test job 이 따로 돌린다.
       - name: Build
