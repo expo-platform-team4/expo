@@ -7,12 +7,26 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+
+import com.expo.auth.dto.PhoneVerificationConfirmResponse;
+import com.expo.auth.dto.PhoneVerificationCreateResponse;
+import com.expo.auth.entity.PhoneVerification;
+import com.expo.auth.entity.PhoneVerificationStatus;
+import com.expo.auth.exception.BusinessException;
+import com.expo.auth.exception.ErrorCode;
+import com.expo.auth.exception.InvalidPhoneNumberException;
+import com.expo.auth.repository.PhoneVerificationRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+
 import com.expo.auth.dto.PhoneVerificationCreateResponse;
 import com.expo.auth.entity.PhoneVerification;
 import com.expo.auth.entity.PhoneVerificationStatus;
 import com.expo.auth.exception.InvalidPhoneNumberException;
 import com.expo.auth.repository.PhoneVerificationRepository;
 import java.time.Instant;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
