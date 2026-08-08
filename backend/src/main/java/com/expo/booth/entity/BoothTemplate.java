@@ -53,4 +53,27 @@ public class BoothTemplate extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "operational_status", nullable = false, length = 20)
     private OperationalStatus operationalStatus;
+
+    /** 부스 템플릿 등록. 운영 상태는 ACTIVE 로 고정한다. */
+    public static BoothTemplate create(
+            String shapeCode,
+            String name,
+            BigDecimal width,
+            BigDecimal height,
+            BigDecimal depth,
+            String dimensionUnit,
+            String defaultIncludedItems) {
+        BoothTemplate template = new BoothTemplate();
+        template.shapeCode = shapeCode;
+        template.name = name;
+        template.width = width;
+        template.height = height;
+        template.depth = depth;
+        if (dimensionUnit != null) {
+            template.dimensionUnit = dimensionUnit;
+        }
+        template.defaultIncludedItems = defaultIncludedItems;
+        template.operationalStatus = OperationalStatus.ACTIVE;
+        return template;
+    }
 }
