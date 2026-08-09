@@ -65,4 +65,23 @@ public class ParticipationApplication extends BaseTimeEntity {
 
     @Column(name = "admin_memo", columnDefinition = "TEXT")
     private String adminMemo;
+
+    /** 참여 신청서 작성. 상태는 DRAFT 로 고정한다. */
+    public static ParticipationApplication create(
+            Long recruitmentNoticeId,
+            Long clientUserId,
+            String companyNameSnapshot,
+            String participationPurpose,
+            String exhibitDescription,
+            Long selectedBoothProductId) {
+        ParticipationApplication application = new ParticipationApplication();
+        application.recruitmentNoticeId = recruitmentNoticeId;
+        application.clientUserId = clientUserId;
+        application.companyNameSnapshot = companyNameSnapshot;
+        application.participationPurpose = participationPurpose;
+        application.exhibitDescription = exhibitDescription;
+        application.selectedBoothProductId = selectedBoothProductId;
+        application.status = ParticipationApplicationStatus.DRAFT;
+        return application;
+    }
 }
