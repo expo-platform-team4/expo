@@ -1,7 +1,7 @@
 package com.expo.ticket.service;
 
-import com.expo.global.CustomException;
-import com.expo.global.ErrorCode;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import com.expo.ticket.converter.TicketProductConverter;
 import com.expo.ticket.dto.TicketProductCreateRequest;
 import com.expo.ticket.dto.TicketProductCreateResponse;
@@ -34,7 +34,7 @@ public class TicketProductCreateService {
 
     private void validateSalesPeriod(TicketProductCreateRequest request) {
         if (!request.salesStartAt().isBefore(request.salesEndAt())) {
-            throw new CustomException(ErrorCode.INVALID_SALES_PERIOD);
+            throw new BusinessException(ErrorCode.INVALID_SALES_PERIOD);
         }
     }
 
