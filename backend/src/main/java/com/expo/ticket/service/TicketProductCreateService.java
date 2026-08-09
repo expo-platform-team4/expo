@@ -1,6 +1,5 @@
 package com.expo.ticket.service;
 
-
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.ticket.converter.TicketProductConverter;
@@ -36,7 +35,6 @@ public class TicketProductCreateService {
     private void validateSalesPeriod(TicketProductCreateRequest request) {
         if (!request.salesStartAt().isBefore(request.salesEndAt())) {
             throw new BusinessException(ErrorCode.INVALID_SALES_PERIOD);
-            throw new CustomException(ErrorCode.INVALID_SALES_PERIOD);
         }
     }
 
