@@ -1,0 +1,26 @@
+package com.expo.recruitment.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
+
+/** 기업 모집 공고 초안 생성 요청. */
+@Schema(description = "기업 모집 공고 초안 생성 요청")
+public record CreateRecruitmentNoticeRequest(
+        @Schema(description = "근거가 되는 모집공고 생성 요청 ID") @NotNull(message = "모집공고 생성 요청은 필수입니다.")
+                Long requestId,
+        @Schema(description = "확정 장소 예약 ID") @NotNull(message = "장소 예약은 필수입니다.")
+                Long venueReservationId,
+        @Schema(description = "공고 제목", example = "2026 서울 테크 박람회 참가기업 모집")
+                @NotBlank(message = "제목은 필수입니다.")
+                @Size(max = 255, message = "제목은 255자 이하여야 합니다.")
+                String title,
+        @Schema(description = "공고 내용") @NotBlank(message = "내용은 필수입니다.") String content,
+        @Schema(description = "참가 자격 요건") String eligibility,
+        @Schema(description = "제출 자료 요구사항(JSON 문자열)") String submissionRequirements,
+        @Schema(description = "신청 시작 일시") @NotNull(message = "신청 시작 일시는 필수입니다.")
+                LocalDateTime applicationStartAt,
+        @Schema(description = "신청 종료 일시") @NotNull(message = "신청 종료 일시는 필수입니다.")
+                LocalDateTime applicationEndAt) {}
