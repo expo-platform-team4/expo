@@ -125,4 +125,29 @@ public class RecruitmentNoticeService {
                 .findById(noticeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
     }
+
+    /** 게시 중인 기업 모집 공고 목록 조회 (공개). */
+    @Transactional(readOnly = true)
+    public List<RecruitmentNoticeResponse> listPublic() {
+        return recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN).stream()
+                .map(recruitmentNoticeConverter::toResponse)
+                .toList();
+    }
+
+    /** 기업 모집 공고 상세 조회 (공개). 초안·취소된 공고는 조회할 수 없다. */
+    @Transactional(readOnly = true)
+    public RecruitmentNoticeResponse getPublic(Long noticeId) {
+        RecruitmentNotice notice =
+                recruitmentNoticeRepository
+                        .findByIdAndStatusNotIn(
+                                noticeId,
+                                List.of(
+                                        RecruitmentNoticeStatus.DRAFT,
+                                        RecruitmentNoticeStatus.CANCELED))
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
+        return recruitmentNoticeConverter.toResponse(notice);
+    }
 }
