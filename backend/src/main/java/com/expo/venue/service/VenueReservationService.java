@@ -2,6 +2,8 @@ package com.expo.venue.service;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
@@ -55,8 +57,15 @@ public class VenueReservationService {
         if (!request.useEndAt().isAfter(request.useStartAt())) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
         }
-        if (!recruitmentNoticeRequestRepository.existsById(request.noticeRequestId())) {
-            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND);
+        RecruitmentNoticeRequest noticeRequest =
+                recruitmentNoticeRequestRepository
+                        .findById(request.noticeRequestId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
+        if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
         }
         if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
