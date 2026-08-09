@@ -77,4 +77,38 @@ public class RecruitmentNoticeRequestService {
                 .map(recruitmentNoticeRequestConverter::toResponse)
                 .toList();
     }
+
+    /** 주최 클라이언트 본인이 작성한 모집공고 생성 요청 상세 조회. */
+    @Transactional(readOnly = true)
+    public RecruitmentNoticeRequestResponse getMine(Long requestId, Long hostClientId) {
+        RecruitmentNoticeRequest request =
+                recruitmentNoticeRequestRepository
+                        .findByIdAndHostClientId(requestId, hostClientId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
+        return recruitmentNoticeRequestConverter.toResponse(request);
+    }
+
+    /** 관리자용 모집공고 생성 요청 목록 조회. */
+    @Transactional(readOnly = true)
+    public List<RecruitmentNoticeRequestResponse> listForAdmin() {
+        return recruitmentNoticeRequestRepository.findAll().stream()
+                .map(recruitmentNoticeRequestConverter::toResponse)
+                .toList();
+    }
+
+    /** 관리자용 모집공고 생성 요청 상세 조회. */
+    @Transactional(readOnly = true)
+    public RecruitmentNoticeRequestResponse getForAdmin(Long requestId) {
+        RecruitmentNoticeRequest request =
+                recruitmentNoticeRequestRepository
+                        .findById(requestId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
+        return recruitmentNoticeRequestConverter.toResponse(request);
+    }
 }
