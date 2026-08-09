@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface VenueHallRepository extends JpaRepository<VenueHall, Long> {
 
     boolean existsByVenueIdAndHallCode(Long venueId, String hallCode);
+
+    boolean existsByIdAndVenueId(Long id, Long venueId);
 }

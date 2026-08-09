@@ -61,14 +61,7 @@ public class VenueReservationService {
         if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
         }
-        if (request.venueHallId() != null
-                && !venueHallRepository.existsById(request.venueHallId())) {
-            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
-        }
-        if (request.venueZoneId() != null
-                && !venueZoneRepository.existsById(request.venueZoneId())) {
-            throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
-        }
+        validateHierarchy(request.virtualVenueId(), request.venueHallId(), request.venueZoneId());
         VenueReservation reservation =
                 VenueReservation.confirmForRecruitmentNotice(
                         request.noticeRequestId(),
@@ -109,15 +102,36 @@ public class VenueReservationService {
             Long venueZoneId,
             LocalDateTime useStartAt,
             LocalDateTime useEndAt) {
-        if (!virtualVenueRepository.existsById(virtualVenueId)) {
-            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
-        }
         if (!useEndAt.isAfter(useStartAt)) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
         }
+        validateHierarchy(virtualVenueId, venueHallId, venueZoneId);
         boolean overlapping =
                 venueReservationRepository.existsOverlapping(
                         virtualVenueId, venueHallId, venueZoneId, useStartAt, useEndAt);
         return new VenueAvailabilityResponse(!overlapping);
+    }
+
+    /** 홀·구역이 지정한 장소·홀 소속인지 검증한다. */
+    private void validateHierarchy(Long virtualVenueId, Long venueHallId, Long venueZoneId) {
+        if (!virtualVenueRepository.existsById(virtualVenueId)) {
+            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
+        }
+        if (venueHallId != null) {
+            if (!venueHallRepository.existsById(venueHallId)) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+            }
+            if (!venueHallRepository.existsByIdAndVenueId(venueHallId, virtualVenueId)) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+            }
+        }
+        if (venueZoneId != null) {
+            if (!venueZoneRepository.existsById(venueZoneId)) {
+                throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+            }
+            if (!venueZoneRepository.existsByIdAndHallId(venueZoneId, venueHallId)) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+            }
+        }
     }
 }
