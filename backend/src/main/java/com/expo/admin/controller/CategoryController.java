@@ -50,7 +50,8 @@ public class CategoryController {
     @PatchMapping("/{categoryId}")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
             @PathVariable Long categoryId, @Valid @RequestBody CategoryUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(categoryService.updateCategory(categoryId, request)));
+        return ResponseEntity.ok(
+                ApiResponse.ok(categoryService.updateCategory(categoryId, request)));
     }
 
     @Operation(summary = "미사용 카테고리 비활성/삭제")

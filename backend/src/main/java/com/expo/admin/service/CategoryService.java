@@ -20,7 +20,8 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final CategoryConverter categoryConverter;
 
-    public CategoryService(CategoryRepository categoryRepository, CategoryConverter categoryConverter) {
+    public CategoryService(
+            CategoryRepository categoryRepository, CategoryConverter categoryConverter) {
         this.categoryRepository = categoryRepository;
         this.categoryConverter = categoryConverter;
     }
