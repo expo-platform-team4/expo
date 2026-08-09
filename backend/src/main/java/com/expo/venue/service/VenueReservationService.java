@@ -5,6 +5,7 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
+import com.expo.venue.dto.VenueAvailabilityResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationStatus;
@@ -12,6 +13,7 @@ import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
+import java.time.LocalDateTime;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,5 +99,25 @@ public class VenueReservationService {
         }
         reservation.release();
         return venueReservationConverter.toResponse(reservation);
+    }
+
+    /** 장소·홀·구역·기간 예약 가능 여부 조회. */
+    @Transactional(readOnly = true)
+    public VenueAvailabilityResponse checkAvailability(
+            Long virtualVenueId,
+            Long venueHallId,
+            Long venueZoneId,
+            LocalDateTime useStartAt,
+            LocalDateTime useEndAt) {
+        if (!virtualVenueRepository.existsById(virtualVenueId)) {
+            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
+        }
+        if (!useEndAt.isAfter(useStartAt)) {
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
+        }
+        boolean overlapping =
+                venueReservationRepository.existsOverlapping(
+                        virtualVenueId, venueHallId, venueZoneId, useStartAt, useEndAt);
+        return new VenueAvailabilityResponse(!overlapping);
     }
 }
