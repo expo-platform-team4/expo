@@ -9,6 +9,7 @@ import com.expo.recruitment.dto.UpdateRecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
+import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.repository.VenueReservationRepository;
@@ -39,6 +40,9 @@ public class RecruitmentNoticeService {
     @Transactional
     public RecruitmentNoticeResponse create(
             Long createdByAdminId, CreateRecruitmentNoticeRequest request) {
+        if (!request.applicationEndAt().isAfter(request.applicationStartAt())) {
+            throw new BusinessException(ErrorCode.APPLICATION_PERIOD_INVALID);
+        }
         RecruitmentNoticeRequest noticeRequest =
                 recruitmentNoticeRequestRepository
                         .findById(request.requestId())
@@ -46,6 +50,9 @@ public class RecruitmentNoticeService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
+        if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
+        }
         if (recruitmentNoticeRepository.existsByRequestId(request.requestId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RECRUITMENT_NOTICE_REQUEST);
         }
@@ -84,6 +91,9 @@ public class RecruitmentNoticeService {
     /** 공고 내용·조건 수정. 초안 상태에서만 가능하다. */
     @Transactional
     public RecruitmentNoticeResponse update(Long noticeId, UpdateRecruitmentNoticeRequest request) {
+        if (!request.applicationEndAt().isAfter(request.applicationStartAt())) {
+            throw new BusinessException(ErrorCode.APPLICATION_PERIOD_INVALID);
+        }
         RecruitmentNotice notice = getEntity(noticeId);
         if (notice.getStatus() != RecruitmentNoticeStatus.DRAFT) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_EDITABLE);

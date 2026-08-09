@@ -38,20 +38,36 @@ public class RecruitmentNoticeRequestService {
         this.recruitmentNoticeRequestConverter = recruitmentNoticeRequestConverter;
     }
 
-    /** 모집공고 생성 요청 작성. 희망 장소가 실제로 존재하는지 검증한다. */
+    /** 모집공고 생성 요청 작성. 희망 장소가 실제로 존재하는지, 기간 순서가 올바른지 검증한다. */
     @Transactional
     public RecruitmentNoticeRequestResponse create(
             Long hostClientId, CreateRecruitmentNoticeRequestRequest request) {
+        if (!request.applicationEndAt().isAfter(request.applicationStartAt())) {
+            throw new BusinessException(ErrorCode.APPLICATION_PERIOD_INVALID);
+        }
+        if (!request.eventEndAt().isAfter(request.eventStartAt())) {
+            throw new BusinessException(ErrorCode.EVENT_PERIOD_INVALID);
+        }
         if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
         }
-        if (request.venueHallId() != null
-                && !venueHallRepository.existsById(request.venueHallId())) {
-            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+        if (request.venueHallId() != null) {
+            if (!venueHallRepository.existsById(request.venueHallId())) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+            }
+            if (!venueHallRepository.existsByIdAndVenueId(
+                    request.venueHallId(), request.virtualVenueId())) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+            }
         }
-        if (request.venueZoneId() != null
-                && !venueZoneRepository.existsById(request.venueZoneId())) {
-            throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        if (request.venueZoneId() != null) {
+            if (!venueZoneRepository.existsById(request.venueZoneId())) {
+                throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+            }
+            if (!venueZoneRepository.existsByIdAndHallId(
+                    request.venueZoneId(), request.venueHallId())) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+            }
         }
         RecruitmentNoticeRequest entity =
                 RecruitmentNoticeRequest.create(
