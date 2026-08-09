@@ -98,4 +98,32 @@ public class RecruitmentNotice extends BaseTimeEntity {
         this.submissionRequirements = submissionRequirements;
         return this;
     }
+
+    /** 공고 내용·조건 수정. */
+    public void update(
+            String title,
+            String content,
+            String eligibility,
+            String submissionRequirements,
+            LocalDateTime applicationStartAt,
+            LocalDateTime applicationEndAt) {
+        this.title = title;
+        this.content = content;
+        this.eligibility = eligibility;
+        this.submissionRequirements = submissionRequirements;
+        this.applicationStartAt = applicationStartAt;
+        this.applicationEndAt = applicationEndAt;
+    }
+
+    /** 공고 게시. */
+    public void publish() {
+        this.status = RecruitmentNoticeStatus.OPEN;
+        this.publishedAt = LocalDateTime.now();
+    }
+
+    /** 기업 모집 조기 마감. 신규 결제를 차단한다. */
+    public void close() {
+        this.status = RecruitmentNoticeStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
 }
