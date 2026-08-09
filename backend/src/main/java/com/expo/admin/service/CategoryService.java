@@ -52,6 +52,10 @@ public class CategoryService {
     @Transactional
     public CategoryResponse updateCategory(Long categoryId, CategoryUpdateRequest request) {
         Category category = getCategoryOrThrow(categoryId);
+        if (request.name() != null
+                && categoryRepository.existsByNameAndIdNot(request.name(), categoryId)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_CATEGORY_NAME);
+        }
         category.update(request.name(), request.sortOrder(), request.active());
         return categoryConverter.toResponse(category);
     }

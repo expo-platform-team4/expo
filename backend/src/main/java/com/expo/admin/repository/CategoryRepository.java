@@ -11,4 +11,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findAllByOrderBySortOrderAsc();
 
     boolean existsBySlug(String slug);
+
+    /** 자기 자신을 제외하고 같은 이름의 카테고리가 있는지 확인한다. */
+    boolean existsByNameAndIdNot(String name, Long id);
 }
