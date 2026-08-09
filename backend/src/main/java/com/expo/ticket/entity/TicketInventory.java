@@ -42,5 +42,14 @@ public class TicketInventory {
     @Column(nullable = false)
     private Long version;
 
+    public static TicketInventory create(TicketProduct ticketProduct, int totalQuantity) {
+        TicketInventory inventory = new TicketInventory();
+        inventory.ticketProduct = ticketProduct;
+        inventory.totalQuantity = totalQuantity;
+        inventory.reservedQuantity = 0;
+        inventory.soldQuantity = 0;
+        return inventory;
+    }
+
     protected TicketInventory() {}
 }
