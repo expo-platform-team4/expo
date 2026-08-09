@@ -8,6 +8,8 @@ import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import com.expo.recruitment.entity.RecruitmentNotice;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,12 +33,19 @@ public class ParticipationApplicationService {
         this.participationApplicationConverter = participationApplicationConverter;
     }
 
-    /** 참여 신청서 작성. 모집공고와 선택한 부스 상품이 실제로 존재하는지 검증한다. */
+    /** 참여 신청서 작성. 모집공고가 게시 중인지, 선택한 부스 상품이 실제로 존재하는지 검증한다. */
     @Transactional
     public ParticipationApplicationResponse create(
             Long clientUserId, CreateParticipationApplicationRequest request) {
-        if (!recruitmentNoticeRepository.existsById(request.recruitmentNoticeId())) {
-            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND);
+        RecruitmentNotice notice =
+                recruitmentNoticeRepository
+                        .findById(request.recruitmentNoticeId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
+        if (notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
         if (request.selectedBoothProductId() != null
                 && !boothProductRepository.existsById(request.selectedBoothProductId())) {
