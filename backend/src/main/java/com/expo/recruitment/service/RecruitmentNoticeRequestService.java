@@ -4,8 +4,10 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.converter.RecruitmentNoticeRequestConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
+import com.expo.recruitment.dto.DecideVenueRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeRequestResponse;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
@@ -110,5 +112,27 @@ public class RecruitmentNoticeRequestService {
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
         return recruitmentNoticeRequestConverter.toResponse(request);
+    }
+
+    /** 장소 충돌 판정. ALLOWED 또는 CANCELED 만 허용하며, 이미 결정된 요청은 다시 판정할 수 없다. */
+    @Transactional
+    public RecruitmentNoticeRequestResponse decideVenue(
+            Long requestId, Long adminId, DecideVenueRequest request) {
+        if (request.decision() != VenueDecision.ALLOWED
+                && request.decision() != VenueDecision.CANCELED) {
+            throw new BusinessException(ErrorCode.VENUE_DECISION_INVALID);
+        }
+        RecruitmentNoticeRequest entity =
+                recruitmentNoticeRequestRepository
+                        .findById(requestId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
+        if (entity.getVenueDecision() != VenueDecision.PENDING) {
+            throw new BusinessException(ErrorCode.VENUE_DECISION_ALREADY_MADE);
+        }
+        entity.decideVenue(request.decision(), adminId, request.reason());
+        return recruitmentNoticeRequestConverter.toResponse(entity);
     }
 }

@@ -129,4 +129,17 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
         this.requestedBoothConfig = requestedBoothConfig;
         return this;
     }
+
+    /** 장소 충돌 판정. ALLOWED 면 승인, CANCELED 면 반려로 처리한다. */
+    public void decideVenue(VenueDecision decision, Long decidedByAdminId, String decisionReason) {
+        this.venueDecision = decision;
+        this.decidedByAdminId = decidedByAdminId;
+        this.decisionReason = decisionReason;
+        this.decidedAt = LocalDateTime.now();
+        this.venueConflictStatus = VenueConflictStatus.RESOLVED;
+        this.status =
+                decision == VenueDecision.ALLOWED
+                        ? RecruitmentNoticeRequestStatus.APPROVED
+                        : RecruitmentNoticeRequestStatus.REJECTED;
+    }
 }
