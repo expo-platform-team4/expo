@@ -10,6 +10,7 @@ import com.expo.ticket.service.TicketSearchService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,7 +32,8 @@ public class TicketController {
                 ticketProductCreateService.ticketCreate(
                         expoId, authPrincipal.getMemberId(), request);
 
-        return ResponseEntity.ok(ApiResponse.ok(response));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.ok(response));
     }
 
     @GetMapping("/client/expos/{expoId}/ticket-search")
