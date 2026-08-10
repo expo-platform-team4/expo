@@ -1,6 +1,7 @@
 package com.expo.participation.repository;
 
 import com.expo.participation.entity.ParticipationApplication;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,6 @@ public interface ParticipationApplicationRepository
         extends JpaRepository<ParticipationApplication, Long> {
 
     Optional<ParticipationApplication> findByIdAndClientUserId(Long id, Long clientUserId);
+
+    List<ParticipationApplication> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
 }
