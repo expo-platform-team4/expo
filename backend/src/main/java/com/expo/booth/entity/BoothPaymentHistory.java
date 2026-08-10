@@ -60,4 +60,25 @@ public class BoothPaymentHistory {
 
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
+
+    /** 결제 이벤트 이력 기록. */
+    public static BoothPaymentHistory record(
+            Long boothPaymentId,
+            BoothPaymentEventType eventType,
+            BoothPaymentStatus fromStatus,
+            BoothPaymentStatus toStatus,
+            BigDecimal amount,
+            String pgTransactionKey,
+            String responsePayload) {
+        BoothPaymentHistory history = new BoothPaymentHistory();
+        history.boothPaymentId = boothPaymentId;
+        history.eventType = eventType;
+        history.fromStatus = fromStatus;
+        history.toStatus = toStatus;
+        history.amount = amount;
+        history.pgTransactionKey = pgTransactionKey;
+        history.responsePayload = responsePayload;
+        history.occurredAt = LocalDateTime.now();
+        return history;
+    }
 }

@@ -119,4 +119,9 @@ public class BoothProduct extends BaseTimeEntity {
     public void cancelReservation() {
         this.salesStatus = BoothSalesStatus.AVAILABLE;
     }
+
+    /** 결제 승인 완료로 판매 확정. */
+    public void markSold() {
+        this.salesStatus = BoothSalesStatus.SOLD;
+    }
 }

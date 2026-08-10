@@ -76,4 +76,9 @@ public class BoothReservation extends BaseTimeEntity {
         this.status = BoothReservationStatus.RELEASED;
         this.releasedAt = LocalDateTime.now();
     }
+
+    /** 결제 승인 완료로 확보를 확정 배정 전 단계로 전환. */
+    public void confirm() {
+        this.status = BoothReservationStatus.CONFIRMED;
+    }
 }

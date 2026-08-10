@@ -68,6 +68,14 @@ public enum ErrorCode {
     BOOTH_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
     BOOTH_ORDER_NOT_CANCELABLE(HttpStatus.CONFLICT, "결제 대기 상태의 주문만 취소할 수 있습니다."),
 
+    // --- 결제 ---
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 결제입니다."),
+    PAYMENT_ORDER_NOT_PENDING(HttpStatus.CONFLICT, "결제 대기 상태의 주문이 아닙니다."),
+    PAYMENT_ORDER_EXPIRED(HttpStatus.CONFLICT, "주문이 만료되었습니다."),
+    PAYMENT_ALREADY_APPROVED(HttpStatus.CONFLICT, "이미 승인된 결제입니다."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "결제 금액이 주문 금액과 일치하지 않습니다."),
+    PAYMENT_APPROVAL_FAILED(HttpStatus.BAD_GATEWAY, "결제 승인에 실패했습니다."),
+
     // --- 모집공고 ---
     DUPLICATE_RECRUITMENT_NOTICE_REQUEST(HttpStatus.CONFLICT, "이미 공고가 생성된 요청입니다."),
     RECRUITMENT_NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 기업 모집 공고입니다."),

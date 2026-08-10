@@ -96,4 +96,10 @@ public class ParticipationApplication extends BaseTimeEntity {
         this.boothOrderId = null;
         this.status = ParticipationApplicationStatus.DRAFT;
     }
+
+    /** 결제 승인 완료로 신청 완료. */
+    public void submit() {
+        this.status = ParticipationApplicationStatus.SUBMITTED;
+        this.submittedAt = LocalDateTime.now();
+    }
 }

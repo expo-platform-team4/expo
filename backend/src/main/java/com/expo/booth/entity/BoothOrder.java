@@ -88,4 +88,10 @@ public class BoothOrder extends BaseTimeEntity {
     public void cancel() {
         this.status = BoothOrderStatus.CANCELED;
     }
+
+    /** 결제 승인 완료. */
+    public void markPaid() {
+        this.status = BoothOrderStatus.PAYMENT_COMPLETED;
+        this.paidAt = LocalDateTime.now();
+    }
 }
