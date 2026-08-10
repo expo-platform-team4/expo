@@ -69,4 +69,31 @@ public class TicketAccessToken {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    private TicketAccessToken(
+            Long ticketOrderId,
+            Long issuedTicketId,
+            String tokenHash,
+            TicketAccessTokenScope scope,
+            Instant expiresAt) {
+        this.ticketOrderId = ticketOrderId;
+        this.issuedTicketId = issuedTicketId;
+        this.tokenHash = tokenHash;
+        this.scope = scope;
+        this.expiresAt = expiresAt;
+        this.status = TicketAccessTokenStatus.ACTIVE;
+        this.accessCount = 0;
+    }
+
+    /**
+     * 주문 전체를 보여주는 링크용 토큰을 발급한다. SMS 로 나가는 링크가 이것이다.
+     *
+     * @param tokenHash 원문이 아니라 해시. 원문은 URL 로만 나가고 저장하지 않는다
+     * @param expiresAt 만료 시각. 입장 당일에 링크가 죽으면 안 되므로 박람회 종료 이후로 잡는다
+     */
+    public static TicketAccessToken forOrder(
+            Long ticketOrderId, String tokenHash, Instant expiresAt) {
+        return new TicketAccessToken(
+                ticketOrderId, null, tokenHash, TicketAccessTokenScope.ORDER_VIEW, expiresAt);
+    }
 }
