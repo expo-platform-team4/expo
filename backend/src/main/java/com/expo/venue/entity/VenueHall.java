@@ -46,4 +46,23 @@ public class VenueHall extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "operational_status", nullable = false, length = 20)
     private OperationalStatus operationalStatus;
+
+    /** 장소 안에 홀 등록. 운영 상태는 ACTIVE 로 고정한다. */
+    public static VenueHall create(
+            Long venueId,
+            String hallCode,
+            String name,
+            BigDecimal width,
+            BigDecimal depth,
+            Long layoutFileId) {
+        VenueHall hall = new VenueHall();
+        hall.venueId = venueId;
+        hall.hallCode = hallCode;
+        hall.name = name;
+        hall.width = width;
+        hall.depth = depth;
+        hall.layoutFileId = layoutFileId;
+        hall.operationalStatus = OperationalStatus.ACTIVE;
+        return hall;
+    }
 }
