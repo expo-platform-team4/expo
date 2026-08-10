@@ -13,6 +13,7 @@ import com.expo.checkin.dto.TicketIssuanceOrderItem;
 import com.expo.checkin.dto.TicketIssueResult;
 import com.expo.checkin.entity.IssuedTicket;
 import com.expo.checkin.entity.TicketAccessToken;
+import com.expo.checkin.event.TicketIssuedEvent;
 import com.expo.checkin.repository.IssuedTicketRepository;
 import com.expo.checkin.repository.TicketAccessTokenRepository;
 import com.expo.checkin.repository.TicketIssuanceMapper;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * 발권 규칙을 DB 없이 못박는다.
@@ -34,6 +36,7 @@ import org.mockito.Mockito;
 class TicketIssueServiceTest {
 
     private static final Long ORDER_ID = 1L;
+    private static final Long MEMBER_USER_ID = 7L;
     private static final Instant EXPO_END_AT = Instant.parse("2026-09-10T10:00:00Z");
 
     private final TicketIssuanceMapper mapper = Mockito.mock(TicketIssuanceMapper.class);
@@ -41,6 +44,8 @@ class TicketIssueServiceTest {
             Mockito.mock(IssuedTicketRepository.class);
     private final TicketAccessTokenRepository accessTokenRepository =
             Mockito.mock(TicketAccessTokenRepository.class);
+    private final ApplicationEventPublisher eventPublisher =
+            Mockito.mock(ApplicationEventPublisher.class);
 
     private TicketIssueService service;
 
@@ -57,7 +62,8 @@ class TicketIssueServiceTest {
                         new TicketCodeGenerator(),
                         new QrTokenGenerator(properties),
                         new AccessTokenGenerator(),
-                        new TokenHasher());
+                        new TokenHasher(),
+                        eventPublisher);
 
         // 시퀀스는 부를 때마다 다른 값을 준다. 실제 DB 시퀀스와 같은 성질이다.
         AtomicLong sequence = new AtomicLong();
@@ -72,7 +78,12 @@ class TicketIssueServiceTest {
         when(mapper.findOrderForIssuance(ORDER_ID))
                 .thenReturn(
                         new TicketIssuanceOrder(
-                                ORDER_ID, "ORD-20260807-0001", status, phoneNumber, EXPO_END_AT));
+                                ORDER_ID,
+                                "ORD-20260807-0001",
+                                status,
+                                MEMBER_USER_ID,
+                                phoneNumber,
+                                EXPO_END_AT));
     }
 
     private void givenItems(TicketIssuanceOrderItem... items) {
@@ -194,6 +205,34 @@ class TicketIssueServiceTest {
         verify(accessTokenRepository).save(captor.capture());
 
         assertThat(captor.getValue().getExpiresAt()).isAfter(EXPO_END_AT);
+    }
+
+    /**
+     * 발권이 끝나면 알림 이벤트가 나가야 한다.
+     *
+     * <p>이게 빠지면 티켓은 생기는데 문자가 안 간다. 발권 서비스가 알림을 직접 부르지 않으므로 이 발행이 유일한 연결 고리다.
+     */
+    @Test
+    void publishesEventSoNotificationCanPickItUp() {
+        givenOrder("PAID", "01012345678");
+        givenItems(new TicketIssuanceOrderItem(10L, 100L, 2));
+
+        TicketIssueResult result = service.issue(ORDER_ID);
+
+        ArgumentCaptor<TicketIssuedEvent> captor = ArgumentCaptor.forClass(TicketIssuedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().result()).isEqualTo(result);
+    }
+
+    /** 발권이 막히면 이벤트도 나가면 안 된다. 나가면 티켓 없이 문자만 간다. */
+    @Test
+    void publishesNothingWhenIssuanceIsRejected() {
+        givenOrder("PAID", "01012345678");
+        when(mapper.countIssuedTickets(ORDER_ID)).thenReturn(2);
+
+        assertThatThrownBy(() -> service.issue(ORDER_ID)).isInstanceOf(BusinessException.class);
+
+        verify(eventPublisher, never()).publishEvent(any(TicketIssuedEvent.class));
     }
 
     /** 소셜 로그인 회원은 번호가 없을 수 있다. 그래도 발권 자체는 성공해야 한다 — 마이페이지에서 QR 을 볼 수 있다. */

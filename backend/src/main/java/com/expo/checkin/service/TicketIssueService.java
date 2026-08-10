@@ -5,6 +5,7 @@ import com.expo.checkin.dto.TicketIssuanceOrderItem;
 import com.expo.checkin.dto.TicketIssueResult;
 import com.expo.checkin.entity.IssuedTicket;
 import com.expo.checkin.entity.TicketAccessToken;
+import com.expo.checkin.event.TicketIssuedEvent;
 import com.expo.checkin.repository.IssuedTicketRepository;
 import com.expo.checkin.repository.TicketAccessTokenRepository;
 import com.expo.checkin.repository.TicketIssuanceMapper;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +58,7 @@ public class TicketIssueService {
     private final QrTokenGenerator qrTokenGenerator;
     private final AccessTokenGenerator accessTokenGenerator;
     private final TokenHasher tokenHasher;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TicketIssueService(
             TicketIssuanceMapper ticketIssuanceMapper,
@@ -64,7 +67,8 @@ public class TicketIssueService {
             TicketCodeGenerator ticketCodeGenerator,
             QrTokenGenerator qrTokenGenerator,
             AccessTokenGenerator accessTokenGenerator,
-            TokenHasher tokenHasher) {
+            TokenHasher tokenHasher,
+            ApplicationEventPublisher eventPublisher) {
         this.ticketIssuanceMapper = ticketIssuanceMapper;
         this.issuedTicketRepository = issuedTicketRepository;
         this.ticketAccessTokenRepository = ticketAccessTokenRepository;
@@ -72,6 +76,7 @@ public class TicketIssueService {
         this.qrTokenGenerator = qrTokenGenerator;
         this.accessTokenGenerator = accessTokenGenerator;
         this.tokenHasher = tokenHasher;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -96,12 +101,18 @@ public class TicketIssueService {
                 order.orderNumber(),
                 issuedTicketIds.size());
 
-        return new TicketIssueResult(
-                order.orderId(),
-                order.orderNumber(),
-                issuedTicketIds,
-                accessTokenValue,
-                order.recipientPhoneNumber());
+        TicketIssueResult result =
+                new TicketIssueResult(
+                        order.orderId(),
+                        order.orderNumber(),
+                        order.memberUserId(),
+                        issuedTicketIds,
+                        accessTokenValue,
+                        order.recipientPhoneNumber());
+
+        // SMS 발송은 이 트랜잭션이 커밋된 뒤에 일어난다. 리스너가 AFTER_COMMIT 으로 받는다.
+        eventPublisher.publishEvent(new TicketIssuedEvent(result));
+        return result;
     }
 
     private TicketIssuanceOrder loadPaidOrder(Long ticketOrderId) {
