@@ -19,6 +19,7 @@ import com.expo.venue.dto.VenueAvailabilityResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationStatus;
+import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
@@ -149,6 +150,56 @@ class VenueReservationServiceTest {
     }
 
     @Test
+    void createRejectsWhenZoneDoesNotBelongToGivenHall() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        Long otherHallId = 999L;
+        when(venueZoneRepository.findById(ZONE_ID))
+                .thenReturn(Optional.of(zoneOf(ZONE_ID, HALL_ID)));
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, requestWith(otherHallId, ZONE_ID)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+    }
+
+    /** 홀 없이 구역만 지정해도 구역이 속한 홀을 조회해서 정상 처리돼야 한다 (버그 회귀 테스트). */
+    @Test
+    void createSucceedsWithZoneOnlyResolvesHallAutomatically() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueZoneRepository.findById(ZONE_ID))
+                .thenReturn(Optional.of(zoneOf(ZONE_ID, HALL_ID)));
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
+        when(venueReservationRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        VenueReservationResponse response = service.create(ADMIN_ID, requestWith(null, ZONE_ID));
+
+        assertThat(response.status()).isEqualTo(VenueReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void createSucceedsWithHallAndMatchingZone() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueZoneRepository.findById(ZONE_ID))
+                .thenReturn(Optional.of(zoneOf(ZONE_ID, HALL_ID)));
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
+        when(venueReservationRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        VenueReservationResponse response = service.create(ADMIN_ID, requestWith(HALL_ID, ZONE_ID));
+
+        assertThat(response.status()).isEqualTo(VenueReservationStatus.CONFIRMED);
+    }
+
+    @Test
     void createSucceedsAndReturnsConfirmedReservation() {
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
@@ -170,12 +221,30 @@ class VenueReservationServiceTest {
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
         when(venueReservationRepository.saveAndFlush(any()))
-                .thenThrow(new DataIntegrityViolationException("exclusion violation"));
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "duplicate key value violates exclusion constraint"
+                                        + " \"ex_venue_reservations_period\""));
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, requestWith(null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
+    }
+
+    /** 기간 중복이 아닌 다른 무결성 위반은 그대로 다시 던져야 한다 (원인이 가려지면 안 된다). */
+    @Test
+    void createRethrowsUnrelatedConstraintViolation() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueReservationRepository.saveAndFlush(any()))
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "insert or update violates foreign key constraint"));
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, requestWith(null, null)))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -223,6 +292,14 @@ class VenueReservationServiceTest {
     }
 
     @Test
+    void checkAvailabilityRejectsWhenEndNotAfterStart() {
+        assertThatThrownBy(() -> service.checkAvailability(VENUE_ID, null, null, END, START))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
+    }
+
+    @Test
     void checkAvailabilityReturnsTrueWhenNotOverlapping() {
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
         when(venueReservationRepository.existsOverlapping(VENUE_ID, null, null, START, END))
@@ -237,5 +314,18 @@ class VenueReservationServiceTest {
     private VenueReservation confirmedReservation() {
         return VenueReservation.confirmForRecruitmentNotice(
                 REQUEST_ID, VENUE_ID, HALL_ID, ZONE_ID, START, END, ADMIN_ID);
+    }
+
+    /** id 는 {@code @GeneratedValue} 라 팩토리로 못 채워서, 조회된 것처럼 리플렉션으로 세팅한다. */
+    private VenueZone zoneOf(Long zoneId, Long hallId) {
+        VenueZone zone = VenueZone.create(hallId, "ZONE-1", "1구역", 10, null, null, null);
+        try {
+            java.lang.reflect.Field field = VenueZone.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(zone, zoneId);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+        return zone;
     }
 }

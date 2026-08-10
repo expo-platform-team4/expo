@@ -8,6 +8,7 @@ import com.expo.venue.dto.VenueHallResponse;
 import com.expo.venue.entity.VenueHall;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,12 @@ public class VenueHallService {
         this.venueHallConverter = venueHallConverter;
     }
 
-    /** 장소 안에 홀 등록. 같은 장소 안에서 홀 코드가 중복될 수 없다. */
+    /**
+     * 장소 안에 홀 등록. 같은 장소 안에서 홀 코드가 중복될 수 없다.
+     *
+     * <p>사전 중복 검사만으로는 동시 요청 사이의 중복 삽입을 막지 못해, DB의 {@code uq_venue_halls_code} 고유 제약을 최종
+     * 방어선으로 삼는다.
+     */
     @Transactional
     public VenueHallResponse create(Long venueId, CreateVenueHallRequest request) {
         if (!virtualVenueRepository.existsById(venueId)) {
@@ -44,7 +50,15 @@ public class VenueHallService {
                         request.width(),
                         request.depth(),
                         request.layoutFileId());
-        VenueHall saved = venueHallRepository.save(hall);
-        return venueHallConverter.toResponse(saved);
+        try {
+            VenueHall saved = venueHallRepository.saveAndFlush(hall);
+            return venueHallConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_venue_halls_code")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_VENUE_HALL_CODE);
+            }
+            throw e;
+        }
     }
 }

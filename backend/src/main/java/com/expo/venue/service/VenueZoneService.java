@@ -8,6 +8,7 @@ import com.expo.venue.dto.VenueZoneResponse;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,12 @@ public class VenueZoneService {
         this.venueZoneConverter = venueZoneConverter;
     }
 
-    /** 홀 안에 구역 등록. 같은 홀 안에서 구역 코드가 중복될 수 없다. */
+    /**
+     * 홀 안에 구역 등록. 같은 홀 안에서 구역 코드가 중복될 수 없다.
+     *
+     * <p>사전 중복 검사만으로는 동시 요청 사이의 중복 삽입을 막지 못해, DB의 {@code uq_venue_zones_code} 고유 제약을 최종
+     * 방어선으로 삼는다.
+     */
     @Transactional
     public VenueZoneResponse create(Long hallId, CreateVenueZoneRequest request) {
         if (!venueHallRepository.existsById(hallId)) {
@@ -45,7 +51,15 @@ public class VenueZoneService {
                         request.width(),
                         request.depth(),
                         request.layoutFileId());
-        VenueZone saved = venueZoneRepository.save(zone);
-        return venueZoneConverter.toResponse(saved);
+        try {
+            VenueZone saved = venueZoneRepository.saveAndFlush(zone);
+            return venueZoneConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_venue_zones_code")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_VENUE_ZONE_CODE);
+            }
+            throw e;
+        }
     }
 }

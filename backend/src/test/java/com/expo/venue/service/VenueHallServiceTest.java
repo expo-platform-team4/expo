@@ -49,7 +49,7 @@ class VenueHallServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
-        verify(venueHallRepository, never()).save(any());
+        verify(venueHallRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -67,11 +67,13 @@ class VenueHallServiceTest {
     void createSucceeds() {
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
         when(venueHallRepository.existsByVenueIdAndHallCode(VENUE_ID, "HALL-A")).thenReturn(false);
-        when(venueHallRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(venueHallRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         VenueHallResponse response = service.create(VENUE_ID, request());
 
         assertThat(response.venueId()).isEqualTo(VENUE_ID);
         assertThat(response.hallCode()).isEqualTo("HALL-A");
+        verify(venueHallRepository).saveAndFlush(any());
     }
 }

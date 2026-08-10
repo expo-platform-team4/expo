@@ -44,19 +44,20 @@ class VirtualVenueServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.DUPLICATE_VIRTUAL_VENUE_NAME);
-        verify(virtualVenueRepository, never()).save(any());
+        verify(virtualVenueRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void createSucceedsWithActiveStatus() {
         when(virtualVenueRepository.existsByName("코엑스")).thenReturn(false);
-        when(virtualVenueRepository.save(any()))
+        when(virtualVenueRepository.saveAndFlush(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         VirtualVenueResponse response = service.create(request());
 
         assertThat(response.name()).isEqualTo("코엑스");
         assertThat(response.operationalStatus()).isEqualTo(OperationalStatus.ACTIVE);
+        verify(virtualVenueRepository).saveAndFlush(any());
     }
 
     @Test

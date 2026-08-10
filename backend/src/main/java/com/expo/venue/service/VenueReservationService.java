@@ -11,15 +11,18 @@ import com.expo.venue.dto.VenueAvailabilityResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationStatus;
+import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class VenueReservationService {
 
@@ -67,9 +70,6 @@ public class VenueReservationService {
         if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
         }
-        if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
-            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
-        }
         validateHierarchy(request.virtualVenueId(), request.venueHallId(), request.venueZoneId());
         VenueReservation reservation =
                 VenueReservation.confirmForRecruitmentNotice(
@@ -84,7 +84,12 @@ public class VenueReservationService {
             VenueReservation saved = venueReservationRepository.saveAndFlush(reservation);
             return venueReservationConverter.toResponse(saved);
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("ex_venue_reservations_period")) {
+                throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
+            }
+            log.warn("장소 예약 저장 중 예상하지 못한 무결성 제약 위반", e);
+            throw e;
         }
     }
 
@@ -121,24 +126,33 @@ public class VenueReservationService {
         return new VenueAvailabilityResponse(!overlapping);
     }
 
-    /** 홀·구역이 지정한 장소·홀 소속인지 검증한다. */
+    /**
+     * 홀·구역이 지정한 장소·홀 소속인지 검증한다.
+     *
+     * <p>구역만 지정하고 홀을 안 넘긴 경우, 구역이 속한 홀을 조회해서 검증 기준으로 삼는다. 그래야 홀 없이 구역만 지정한 요청도
+     * 정상 처리된다.
+     */
     private void validateHierarchy(Long virtualVenueId, Long venueHallId, Long venueZoneId) {
         if (!virtualVenueRepository.existsById(virtualVenueId)) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
         }
-        if (venueHallId != null) {
-            if (!venueHallRepository.existsById(venueHallId)) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
-            }
-            if (!venueHallRepository.existsByIdAndVenueId(venueHallId, virtualVenueId)) {
+        Long effectiveHallId = venueHallId;
+        if (venueZoneId != null) {
+            VenueZone zone =
+                    venueZoneRepository
+                            .findById(venueZoneId)
+                            .orElseThrow(
+                                    () -> new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND));
+            if (venueHallId != null && !zone.getHallId().equals(venueHallId)) {
                 throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
             }
+            effectiveHallId = zone.getHallId();
         }
-        if (venueZoneId != null) {
-            if (!venueZoneRepository.existsById(venueZoneId)) {
-                throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        if (effectiveHallId != null) {
+            if (!venueHallRepository.existsById(effectiveHallId)) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
             }
-            if (!venueZoneRepository.existsByIdAndHallId(venueZoneId, venueHallId)) {
+            if (!venueHallRepository.existsByIdAndVenueId(effectiveHallId, virtualVenueId)) {
                 throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
             }
         }

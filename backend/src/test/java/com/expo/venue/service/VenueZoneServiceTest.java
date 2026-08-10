@@ -50,7 +50,7 @@ class VenueZoneServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_HALL_NOT_FOUND);
-        verify(venueZoneRepository, never()).save(any());
+        verify(venueZoneRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -68,11 +68,13 @@ class VenueZoneServiceTest {
     void createSucceeds() {
         when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
         when(venueZoneRepository.existsByHallIdAndZoneCode(HALL_ID, "ZONE-1")).thenReturn(false);
-        when(venueZoneRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(venueZoneRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         VenueZoneResponse response = service.create(HALL_ID, request());
 
         assertThat(response.hallId()).isEqualTo(HALL_ID);
         assertThat(response.zoneCode()).isEqualTo("ZONE-1");
+        verify(venueZoneRepository).saveAndFlush(any());
     }
 }
