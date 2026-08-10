@@ -13,6 +13,5 @@ public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNo
 
     List<RecruitmentNotice> findAllByStatus(RecruitmentNoticeStatus status);
 
-    Optional<RecruitmentNotice> findByIdAndStatusNotIn(
-            Long id, List<RecruitmentNoticeStatus> statuses);
+    Optional<RecruitmentNotice> findByIdAndStatus(Long id, RecruitmentNoticeStatus status);
 }

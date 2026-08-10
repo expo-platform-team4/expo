@@ -152,7 +152,7 @@ class RecruitmentNoticeRequestServiceTest {
 
     @Test
     void decideVenueRejectsWhenRequestNotFound() {
-        when(recruitmentNoticeRequestRepository.findById(1L)).thenReturn(Optional.empty());
+        when(recruitmentNoticeRequestRepository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
         DecideVenueRequest request = new DecideVenueRequest(VenueDecision.ALLOWED, "사유");
 
         assertThatThrownBy(() -> service.decideVenue(1L, ADMIN_ID, request))
@@ -165,7 +165,8 @@ class RecruitmentNoticeRequestServiceTest {
     void decideVenueRejectsWhenAlreadyDecided() {
         RecruitmentNoticeRequest entity = draftRequest();
         entity.decideVenue(VenueDecision.ALLOWED, ADMIN_ID, "이전 승인");
-        when(recruitmentNoticeRequestRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(recruitmentNoticeRequestRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(entity));
         DecideVenueRequest request = new DecideVenueRequest(VenueDecision.CANCELED, "사유");
 
         assertThatThrownBy(() -> service.decideVenue(1L, ADMIN_ID, request))
@@ -177,7 +178,8 @@ class RecruitmentNoticeRequestServiceTest {
     @Test
     void decideVenueAllowedApprovesRequest() {
         RecruitmentNoticeRequest entity = draftRequest();
-        when(recruitmentNoticeRequestRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(recruitmentNoticeRequestRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(entity));
         DecideVenueRequest request = new DecideVenueRequest(VenueDecision.ALLOWED, "충돌 없음");
 
         RecruitmentNoticeRequestResponse response = service.decideVenue(1L, ADMIN_ID, request);
@@ -189,7 +191,8 @@ class RecruitmentNoticeRequestServiceTest {
     @Test
     void decideVenueCanceledRejectsRequest() {
         RecruitmentNoticeRequest entity = draftRequest();
-        when(recruitmentNoticeRequestRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(recruitmentNoticeRequestRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(entity));
         DecideVenueRequest request = new DecideVenueRequest(VenueDecision.CANCELED, "충돌 발생");
 
         RecruitmentNoticeRequestResponse response = service.decideVenue(1L, ADMIN_ID, request);

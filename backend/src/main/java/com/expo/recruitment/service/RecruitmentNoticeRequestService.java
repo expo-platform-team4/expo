@@ -140,7 +140,7 @@ public class RecruitmentNoticeRequestService {
         }
         RecruitmentNoticeRequest entity =
                 recruitmentNoticeRequestRepository
-                        .findById(requestId)
+                        .findByIdForUpdate(requestId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(

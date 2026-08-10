@@ -20,6 +20,7 @@ import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
+import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -66,6 +67,11 @@ class RecruitmentNoticeServiceTest {
                 RecruitmentNoticeRequest.create(HOST_CLIENT_ID, "제목", "설명", T1, T2, T3, T4, 1L);
         entity.decideVenue(VenueDecision.ALLOWED, ADMIN_ID, "충돌 없음");
         return entity;
+    }
+
+    private VenueReservation confirmedReservation(Long noticeRequestId) {
+        return VenueReservation.confirmForRecruitmentNotice(
+                noticeRequestId, 1L, null, null, T3, T4, ADMIN_ID);
     }
 
     @Test
@@ -121,7 +127,7 @@ class RecruitmentNoticeServiceTest {
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.existsById(RESERVATION_ID)).thenReturn(false);
+        when(venueReservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -129,12 +135,44 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
     }
 
+    /** 다른 요청의 확정 예약 ID를 잘못 지정한 경우를 거부해야 한다. */
+    @Test
+    void createRejectsWhenReservationBelongsToAnotherRequest() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
+        when(venueReservationRepository.findById(RESERVATION_ID))
+                .thenReturn(Optional.of(confirmedReservation(REQUEST_ID + 1)));
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+    }
+
+    /** 이미 해제된 예약을 연결하려는 경우를 거부해야 한다. */
+    @Test
+    void createRejectsWhenReservationAlreadyReleased() {
+        VenueReservation released = confirmedReservation(REQUEST_ID);
+        released.release();
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
+        when(venueReservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.of(released));
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
+    }
+
     @Test
     void createSucceedsAsDraft() {
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.existsById(RESERVATION_ID)).thenReturn(true);
+        when(venueReservationRepository.findById(RESERVATION_ID))
+                .thenReturn(Optional.of(confirmedReservation(REQUEST_ID)));
         when(recruitmentNoticeRepository.save(any()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -222,23 +260,36 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void listPublicReturnsOnlyOpenNotices() {
+        RecruitmentNotice published = draftNotice();
+        published.publish();
         when(recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN))
-                .thenReturn(java.util.List.of(draftNotice()));
+                .thenReturn(java.util.List.of(published));
 
         assertThat(service.listPublic()).hasSize(1);
+        assertThat(service.listPublic().get(0).status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
     }
 
+    /** 초안·마감 등 게시 중이 아닌 공고는 공개 상세 조회에서 볼 수 없어야 한다. */
     @Test
-    void getPublicRejectsDraftNotice() {
-        when(recruitmentNoticeRepository.findByIdAndStatusNotIn(
-                        1L,
-                        java.util.List.of(
-                                RecruitmentNoticeStatus.DRAFT, RecruitmentNoticeStatus.CANCELED)))
+    void getPublicRejectsWhenNotOpen() {
+        when(recruitmentNoticeRepository.findByIdAndStatus(1L, RecruitmentNoticeStatus.OPEN))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getPublic(1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND);
+    }
+
+    @Test
+    void getPublicReturnsOpenNotice() {
+        RecruitmentNotice published = draftNotice();
+        published.publish();
+        when(recruitmentNoticeRepository.findByIdAndStatus(1L, RecruitmentNoticeStatus.OPEN))
+                .thenReturn(Optional.of(published));
+
+        RecruitmentNoticeResponse response = service.getPublic(1L);
+
+        assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
     }
 }

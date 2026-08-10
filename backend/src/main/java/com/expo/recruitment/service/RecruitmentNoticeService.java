@@ -12,6 +12,8 @@ import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
+import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -56,8 +58,16 @@ public class RecruitmentNoticeService {
         if (recruitmentNoticeRepository.existsByRequestId(request.requestId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RECRUITMENT_NOTICE_REQUEST);
         }
-        if (!venueReservationRepository.existsById(request.venueReservationId())) {
+        VenueReservation reservation =
+                venueReservationRepository
+                        .findById(request.venueReservationId())
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND));
+        if (!request.requestId().equals(reservation.getNoticeRequestId())) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+        }
+        if (reservation.getStatus() != VenueReservationStatus.CONFIRMED) {
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
         RecruitmentNotice notice =
                 RecruitmentNotice.create(
@@ -144,16 +154,12 @@ public class RecruitmentNoticeService {
                 .toList();
     }
 
-    /** 기업 모집 공고 상세 조회 (공개). 초안·취소된 공고는 조회할 수 없다. */
+    /** 기업 모집 공고 상세 조회 (공개). 게시 중인 공고만 조회할 수 있다. */
     @Transactional(readOnly = true)
     public RecruitmentNoticeResponse getPublic(Long noticeId) {
         RecruitmentNotice notice =
                 recruitmentNoticeRepository
-                        .findByIdAndStatusNotIn(
-                                noticeId,
-                                List.of(
-                                        RecruitmentNoticeStatus.DRAFT,
-                                        RecruitmentNoticeStatus.CANCELED))
+                        .findByIdAndStatus(noticeId, RecruitmentNoticeStatus.OPEN)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(
