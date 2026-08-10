@@ -42,4 +42,17 @@ public class VirtualVenue extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "operational_status", nullable = false, length = 20)
     private OperationalStatus operationalStatus;
+
+    /** 가상 장소 등록. 운영 상태는 ACTIVE 로 고정한다. */
+    public static VirtualVenue create(
+            String name, String address, String regionCode, String description, Long mapFileId) {
+        VirtualVenue venue = new VirtualVenue();
+        venue.name = name;
+        venue.address = address;
+        venue.regionCode = regionCode;
+        venue.description = description;
+        venue.mapFileId = mapFileId;
+        venue.operationalStatus = OperationalStatus.ACTIVE;
+        return venue;
+    }
 }

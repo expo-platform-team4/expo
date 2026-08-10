@@ -51,7 +51,7 @@ public class RecruitmentNoticeService {
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
         if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
-            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_CREATION_NOT_ALLOWED);
         }
         if (recruitmentNoticeRepository.existsByRequestId(request.requestId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RECRUITMENT_NOTICE_REQUEST);

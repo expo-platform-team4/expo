@@ -101,7 +101,7 @@ class RecruitmentNoticeServiceTest {
         assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_CREATION_NOT_ALLOWED);
     }
 
     @Test

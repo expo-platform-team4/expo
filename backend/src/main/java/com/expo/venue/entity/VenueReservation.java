@@ -70,4 +70,33 @@ public class VenueReservation extends BaseTimeEntity {
 
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
+
+    /** 모집공고 생성 요청 경로의 확정 장소 예약 생성. */
+    public static VenueReservation confirmForRecruitmentNotice(
+            Long noticeRequestId,
+            Long virtualVenueId,
+            Long venueHallId,
+            Long venueZoneId,
+            LocalDateTime useStartAt,
+            LocalDateTime useEndAt,
+            Long confirmedByAdminId) {
+        VenueReservation reservation = new VenueReservation();
+        reservation.reservationSourceType = ReservationSourceType.RECRUITMENT_NOTICE;
+        reservation.noticeRequestId = noticeRequestId;
+        reservation.virtualVenueId = virtualVenueId;
+        reservation.venueHallId = venueHallId;
+        reservation.venueZoneId = venueZoneId;
+        reservation.useStartAt = useStartAt;
+        reservation.useEndAt = useEndAt;
+        reservation.status = VenueReservationStatus.CONFIRMED;
+        reservation.confirmedByAdminId = confirmedByAdminId;
+        reservation.confirmedAt = LocalDateTime.now();
+        return reservation;
+    }
+
+    /** 박람회 취소 등으로 확정 예약을 해제한다. */
+    public void release() {
+        this.status = VenueReservationStatus.RELEASED;
+        this.releasedAt = LocalDateTime.now();
+    }
 }
