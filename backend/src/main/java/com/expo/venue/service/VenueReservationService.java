@@ -124,10 +124,10 @@ public class VenueReservationService {
         if (!useEndAt.isAfter(useStartAt)) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
         }
-        validateHierarchy(virtualVenueId, venueHallId, venueZoneId);
+        Long effectiveHallId = validateHierarchy(virtualVenueId, venueHallId, venueZoneId);
         boolean overlapping =
                 venueReservationRepository.existsOverlapping(
-                        virtualVenueId, venueHallId, venueZoneId, useStartAt, useEndAt);
+                        virtualVenueId, effectiveHallId, venueZoneId, useStartAt, useEndAt);
         return new VenueAvailabilityResponse(!overlapping);
     }
 

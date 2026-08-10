@@ -314,6 +314,26 @@ class VenueReservationServiceTest {
         assertThat(response.available()).isTrue();
     }
 
+    /**
+     * 구역만 지정하고 홀을 안 넘긴 조회는, 구역이 속한 홀로 겹침 여부를 확인해야 한다. 원본 요청의 null 홀 ID를 그대로 쓰면
+     * 홀이 지정된 기존 예약과의 충돌을 못 잡는다 (버그 회귀 테스트).
+     */
+    @Test
+    void checkAvailabilityUsesResolvedHallIdForZoneOnlyQuery() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueZoneRepository.findById(ZONE_ID))
+                .thenReturn(Optional.of(zoneOf(ZONE_ID, HALL_ID)));
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
+        when(venueReservationRepository.existsOverlapping(VENUE_ID, HALL_ID, ZONE_ID, START, END))
+                .thenReturn(true);
+
+        VenueAvailabilityResponse response =
+                service.checkAvailability(VENUE_ID, null, ZONE_ID, START, END);
+
+        assertThat(response.available()).isFalse();
+    }
+
     private VenueReservation confirmedReservation() {
         return VenueReservation.confirmForRecruitmentNotice(
                 REQUEST_ID, VENUE_ID, HALL_ID, ZONE_ID, START, END, ADMIN_ID);
