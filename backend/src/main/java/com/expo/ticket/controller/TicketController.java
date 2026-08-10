@@ -32,8 +32,7 @@ public class TicketController {
                 ticketProductCreateService.ticketCreate(
                         expoId, authPrincipal.getMemberId(), request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.ok(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
     @GetMapping("/client/expos/{expoId}/ticket-search")
