@@ -1,0 +1,43 @@
+package com.expo.ticket.converter;
+
+import com.expo.ticket.dto.TicketProductCreateRequest;
+import com.expo.ticket.dto.TicketProductCreateResponse;
+import com.expo.ticket.entity.TicketInventory;
+import com.expo.ticket.entity.TicketProduct;
+import org.springframework.stereotype.Component;
+
+@Component
+public class TicketProductConverter {
+
+    public TicketProduct toEntity(Long expoId, TicketProductCreateRequest request) {
+        return TicketProduct.create(
+                expoId,
+                request.name(),
+                request.description(),
+                request.price(),
+                request.salesStartAt(),
+                request.salesEndAt(),
+                request.maxQuantityPerOrder());
+    }
+
+    public TicketProductCreateResponse toCreateResponse(TicketProduct product) {
+        TicketInventory inventory = product.getInventory();
+        int availableQuantity =
+                inventory.getTotalQuantity()
+                        - inventory.getReservedQuantity()
+                        - inventory.getSoldQuantity();
+
+        return new TicketProductCreateResponse(
+                product.getId(),
+                product.getExpoId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getSalesStartAt(),
+                product.getSalesEndAt(),
+                inventory.getTotalQuantity(),
+                availableQuantity,
+                product.getMaxQuantityPerOrder(),
+                product.getStatus());
+    }
+}
