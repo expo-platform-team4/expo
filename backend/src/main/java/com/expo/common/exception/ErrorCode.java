@@ -27,7 +27,11 @@ public enum ErrorCode {
     PHONE_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않습니다."),
 
     // --- 티켓 ---
-    INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다.");
+    INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다."),
+
+    // --- 박람회 ---
+    EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
+    NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "클라이언트를 찾을 수 업습니다.");
 
     private final HttpStatus status;
     private final String message;
