@@ -59,5 +59,31 @@ public class TicketProduct extends BaseTimeEntity {
     @OneToOne(mappedBy = "ticketProduct", cascade = CascadeType.ALL, orphanRemoval = true)
     private TicketInventory inventory;
 
+    public static TicketProduct create(
+            Long expoId,
+            String name,
+            String description,
+            BigDecimal price,
+            Instant salesStartAt,
+            Instant salesEndAt,
+            int maxQuantityPerOrder) {
+        TicketProduct product = new TicketProduct();
+        product.expoId = expoId;
+        product.name = name;
+        product.description = description;
+        product.price = price;
+        product.salesStartAt = salesStartAt;
+        product.salesEndAt = salesEndAt;
+        product.maxQuantityPerOrder = maxQuantityPerOrder;
+        product.status = TicketProductStatus.DRAFT;
+
+        return product;
+    }
+
+    /** 상품 생성 시 만든 재고를 연결한다. */
+    public void attachInventory(TicketInventory inventory) {
+        this.inventory = inventory;
+    }
+
     protected TicketProduct() {}
 }
