@@ -1,6 +1,7 @@
 package com.expo.auth.repository;
 
 import com.expo.auth.entity.User;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -18,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * <pre>{@code SELECT COUNT(u) > 0 FROM User u WHERE u.email = ?1}</pre>
      *
      * @param email 검사할 이메일
-     * @return 존재하면 {@code true} (회원가입 시 {@link com.expo.auth.exception.ErrorCode#DUPLICATE_EMAIL})
+     * @return 존재하면 {@code true} (회원가입 시 {@link com.expo.common.exception.ErrorCode#DUPLICATE_EMAIL})
      */
     boolean existsByEmail(String email);
 
@@ -28,7 +29,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * <p>{@link User} 엔티티의 {@code nickname} 컬럼(unique) 기준으로 조회한다.
      *
      * @param nickname 검사할 닉네임
-     * @return 존재하면 {@code true} (회원가입 시 {@link com.expo.auth.exception.ErrorCode#DUPLICATE_NICKNAME})
+     * @return 존재하면 {@code true} (회원가입 시 {@link com.expo.common.exception.ErrorCode#DUPLICATE_NICKNAME})
      */
     boolean existsByNickname(String nickname);
+
+    Optional<User> findByEmail(String email);
 }

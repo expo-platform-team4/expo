@@ -68,3 +68,8 @@ app:
   phone-verification:
     code-expire-minutes: ${PHONE_VERIFICATION_CODE_EXPIRE_MINUTES:3}
     test-verification-code: ${PHONE_VERIFICATION_TEST_CODE:123456}
+
+  qr:
+    # 발권 티켓 QR 원문의 HMAC 서명 키. JWT_SECRET 과 반드시 다른 값을 쓴다.
+    # 이 값을 바꾸면 이미 발권된 티켓의 QR 이 전부 무효가 된다.
+    token-secret: ${QR_TOKEN_SECRET}

@@ -307,6 +307,14 @@ AUTH-10 비밀번호 재설정 링크의 일회용 토큰과 만료·사용 상�
 | `checked_in_at` | `ISSUED_TICKETS.checked_in_at` |
 | `expo_id`, `expo_title` | `EXPOS` |
 | `secure_qr_access` | `TICKET_ACCESS_TOKENS` 유효성 |
+| `event_start_at`, `event_end_at` | `EXPOS` — 2026-08-07 추가 |
+| `order_item_quantity` | `TICKET_ORDER_ITEMS.quantity` — 2026-08-07 추가 |
+
+> **2026-08-07 추가** — 마이페이지가 "어떤 박람회에 며칠, 몇 명 입장 가능한지" 를 보여주는데 원본
+> 출력 필드에는 행사 기간도 수량도 없어 화면이 티켓 코드와 상태밖에 그릴 수 없었다.
+>
+> 새 컬럼은 **SELECT 목록 맨 끝에만** 붙인다. `CREATE OR REPLACE VIEW` 는 기존 컬럼의 이름·타입·순서를
+> 바꾸지 못해, 중간에 끼워 넣으면 마이그레이션이 실패한다.
 
 ---
 
@@ -852,11 +860,21 @@ QR 또는 티켓 코드 검증·입장 처리 결과를 저장한다.
 
 ---
 
-## 6-8. 카카오 알림
+## 6-8. 알림
 
-결제·환불·박람회 취소 안내와 QR 접근 URL 의 카카오 메시지 발송 요청, 성공·실패 및 재시도 이력을 관리한다.
+결제·환불·박람회 취소 안내와 QR 접근 URL 의 메시지 발송 요청, 성공·실패 및 재시도 이력을 관리한다.
 
-**엔티티** — `NOTIFICATIONS`, `KAKAO_MESSAGE_HISTORIES`
+> **v16 이후 변경 (2026-08-07)** — 원본은 이 절을 "카카오 알림" 으로 두고 발송 채널을 카카오 알림톡
+> 하나로 가정했다. 실제 발송은 **Solapi SMS** 로 확정되어 아래 둘을 바꿨다.
+> 마이그레이션은 `V202608071533__add_sms_notification_channel.sql` 이다.
+>
+> - `NOTIFICATIONS.channel` CHECK 에 `SMS` 추가 → `KAKAO`, `SMS`, `EMAIL`, `IN_APP`
+> - `KAKAO_MESSAGE_HISTORIES` → **`MESSAGE_HISTORIES`** 로 이름 변경, `channel` 컬럼 추가
+>
+> 알림톡 채널 개설과 템플릿 사전 승인이 단기간에 끝나지 않아 SMS 를 먼저 붙인다.
+> 카카오를 포기한 것이 아니라 채널이 둘 이상이 된 것이므로, 이력 테이블을 채널 중립으로 바꿨다.
+
+**엔티티** — `NOTIFICATIONS`, `MESSAGE_HISTORIES`
 
 ### NOTIFICATIONS
 
@@ -867,7 +885,7 @@ QR 또는 티켓 코드 검증·입장 처리 결과를 저장한다.
 | `id` | BIGSERIAL | PK | 알림 ID |
 | `recipient_user_id` | BIGINT | FK → USERS.id, NULL | 회원 수신자 |
 | `recipient_phone_number` | VARCHAR(20) | NULL | 비회원/카카오 수신 번호 |
-| `channel` | VARCHAR(20) | NOT NULL, CHECK | `KAKAO`, `EMAIL`, `IN_APP` |
+| `channel` | VARCHAR(20) | NOT NULL, CHECK | `KAKAO`, `SMS`, `EMAIL`, `IN_APP` — `SMS` 는 2026-08-07 추가 |
 | `template_code` | VARCHAR(50) | NOT NULL | 알림 템플릿 코드 |
 | `reference_type` | VARCHAR(30) | NULL | `ORDER`, `PAYMENT`, `REFUND`, `EXPO`, `TICKET` 등 — 열거가 개방형이라 CHECK 미적용 (D-2) |
 | `reference_id` | BIGINT | NULL | 참조 데이터 ID |
@@ -880,15 +898,16 @@ QR 또는 티켓 코드 검증·입장 처리 결과를 저장한다.
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 수정 일시 |
 
-### KAKAO_MESSAGE_HISTORIES
+### MESSAGE_HISTORIES
 
-카카오 알림톡 발송 시도별 외부 시스템 응답.
+발송 시도별 외부 시스템 응답. (구 `KAKAO_MESSAGE_HISTORIES`)
 
 | 컬럼명 | 타입 | 제약조건 | 설명 |
 |-|-|-|-|
-| `id` | BIGSERIAL | PK | 카카오 발송 이력 ID |
+| `id` | BIGSERIAL | PK | 발송 이력 ID |
 | `notification_id` | BIGINT | FK → NOTIFICATIONS.id, NOT NULL | 알림 |
-| `provider_message_id` | VARCHAR(200) | NULL | 카카오/대행사 메시지 ID |
+| `channel` | VARCHAR(20) | NOT NULL, CHECK | `KAKAO`, `SMS`, `EMAIL` — 2026-08-07 추가. 아래 처리 규칙 참고 |
+| `provider_message_id` | VARCHAR(200) | NULL | 발송 대행사 메시지 ID |
 | `status` | VARCHAR(20) | NOT NULL, CHECK | `REQUESTED`, `SENT`, `DELIVERED`, `FAILED` |
 | `request_payload` | JSONB | NULL | 요청 데이터 |
 | `response_payload` | JSONB | NULL | 응답 데이터 |
@@ -897,6 +916,11 @@ QR 또는 티켓 코드 검증·입장 처리 결과를 저장한다.
 | `requested_at` | TIMESTAMPTZ | NOT NULL | 요청 일시 |
 | `completed_at` | TIMESTAMPTZ | NULL | 완료 일시 |
 | `(notification_id, attempt_no)` | — | UNIQUE | 알림별 시도 번호 중복 방지 |
+
+> **`channel` 을 알림이 아니라 시도에 두는 이유**
+> `NOTIFICATIONS.channel` 이 이미 있는데 이력에도 채널을 두는 것은, **한 알림의 시도마다 채널이 달라질 수
+> 있어서**다. Solapi 는 알림톡 발송이 실패하면 SMS 로 대체발송하는 것이 표준 동작이라, 알림 단위 채널
+> 하나로는 "1차는 알림톡, 2차는 SMS" 를 표현할 수 없다.
 
 ---
 
