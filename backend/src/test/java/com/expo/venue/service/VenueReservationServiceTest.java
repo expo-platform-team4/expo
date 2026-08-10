@@ -180,6 +180,9 @@ class VenueReservationServiceTest {
         VenueReservationResponse response = service.create(ADMIN_ID, requestWith(null, ZONE_ID));
 
         assertThat(response.status()).isEqualTo(VenueReservationStatus.CONFIRMED);
+        assertThat(response.venueHallId())
+                .as("구역만 지정해도 실제 저장되는 예약에는 구역이 속한 홀 ID가 채워져야 한다")
+                .isEqualTo(HALL_ID);
     }
 
     @Test

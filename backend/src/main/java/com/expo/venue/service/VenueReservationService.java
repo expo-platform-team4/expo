@@ -70,12 +70,14 @@ public class VenueReservationService {
         if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
         }
-        validateHierarchy(request.virtualVenueId(), request.venueHallId(), request.venueZoneId());
+        Long effectiveHallId =
+                validateHierarchy(
+                        request.virtualVenueId(), request.venueHallId(), request.venueZoneId());
         VenueReservation reservation =
                 VenueReservation.confirmForRecruitmentNotice(
                         request.noticeRequestId(),
                         request.virtualVenueId(),
-                        request.venueHallId(),
+                        effectiveHallId,
                         request.venueZoneId(),
                         request.useStartAt(),
                         request.useEndAt(),
@@ -88,7 +90,10 @@ public class VenueReservationService {
             if (cause != null && cause.contains("ex_venue_reservations_period")) {
                 throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
             }
-            log.warn("장소 예약 저장 중 예상하지 못한 무결성 제약 위반", e);
+            log.warn(
+                    "장소 예약 저장 중 예상하지 못한 무결성 제약 위반. noticeRequestId={}",
+                    request.noticeRequestId(),
+                    e);
             throw e;
         }
     }
@@ -127,12 +132,13 @@ public class VenueReservationService {
     }
 
     /**
-     * 홀·구역이 지정한 장소·홀 소속인지 검증한다.
+     * 홀·구역이 지정한 장소·홀 소속인지 검증하고, 실제로 사용할 홀 ID를 반환한다.
      *
-     * <p>구역만 지정하고 홀을 안 넘긴 경우, 구역이 속한 홀을 조회해서 검증 기준으로 삼는다. 그래야 홀 없이 구역만 지정한 요청도
-     * 정상 처리된다.
+     * <p>구역만 지정하고 홀을 안 넘긴 경우, 구역이 속한 홀을 조회해서 검증 기준이자 반환값으로 삼는다. 저장되는 예약에도 이
+     * 반환값을 써야 한다 — {@code venue_zone_id} 를 지정하면 {@code venue_hall_id} 도 반드시 있어야 한다는 DB 제약을
+     * 만족시키기 위함이다.
      */
-    private void validateHierarchy(Long virtualVenueId, Long venueHallId, Long venueZoneId) {
+    private Long validateHierarchy(Long virtualVenueId, Long venueHallId, Long venueZoneId) {
         if (!virtualVenueRepository.existsById(virtualVenueId)) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
         }
@@ -156,5 +162,6 @@ public class VenueReservationService {
                 throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
             }
         }
+        return effectiveHallId;
     }
 }

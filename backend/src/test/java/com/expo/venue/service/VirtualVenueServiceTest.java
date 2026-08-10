@@ -19,6 +19,7 @@ import com.expo.venue.repository.VirtualVenueRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /** {@link VirtualVenueService} 의 이름 중복 검증과 목록 조회를 검증한다. */
 class VirtualVenueServiceTest {
@@ -58,6 +59,33 @@ class VirtualVenueServiceTest {
         assertThat(response.name()).isEqualTo("코엑스");
         assertThat(response.operationalStatus()).isEqualTo(OperationalStatus.ACTIVE);
         verify(virtualVenueRepository).saveAndFlush(any());
+    }
+
+    /** 사전 중복 검사를 통과해도 동시 삽입으로 제약 위반이 나면 같은 오류로 변환돼야 한다. */
+    @Test
+    void createTranslatesNameConstraintViolationToDuplicateName() {
+        when(virtualVenueRepository.existsByName("코엑스")).thenReturn(false);
+        when(virtualVenueRepository.saveAndFlush(any()))
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "duplicate key value violates unique constraint"
+                                        + " \"virtual_venues_name_key\""));
+
+        assertThatThrownBy(() -> service.create(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_VIRTUAL_VENUE_NAME);
+    }
+
+    /** 이름 중복이 아닌 다른 무결성 위반은 그대로 다시 던져야 한다. */
+    @Test
+    void createRethrowsUnrelatedConstraintViolation() {
+        when(virtualVenueRepository.existsByName("코엑스")).thenReturn(false);
+        when(virtualVenueRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("some other constraint"));
+
+        assertThatThrownBy(() -> service.create(request()))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
