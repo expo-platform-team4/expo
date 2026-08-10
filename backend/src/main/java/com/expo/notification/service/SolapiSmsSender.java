@@ -1,10 +1,14 @@
 package com.expo.notification.service;
 
 import com.expo.notification.dto.MessageSendResult;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -15,6 +19,8 @@ import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -47,18 +53,38 @@ public class SolapiSmsSender implements SmsSender {
     private static final String SEND_PATH = "/messages/v4/send";
     private static final String SIGNATURE_ALGORITHM = "HmacSHA256";
     private static final int SALT_BYTES = 16;
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     private final RestClient restClient;
     private final String apiKey;
     private final String apiSecret;
     private final String senderNumber;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SolapiSmsSender(SolapiProperties properties, RestClient.Builder restClientBuilder) {
+    public SolapiSmsSender(SolapiProperties properties) {
         this.apiKey = required(properties.getApiKey(), "SOLAPI_SMS_API_PUBLIC_KEY");
         this.apiSecret = required(properties.getApiSecret(), "SOLAPI_SMS_API_SECRET_KEY");
         this.senderNumber = required(properties.getSenderNumber(), "SOLAPI_SENDER_NUMBER");
-        this.restClient = restClientBuilder.baseUrl(properties.getApiBaseUrl()).build();
+        this.restClient =
+                RestClient.builder()
+                        .baseUrl(properties.getApiBaseUrl())
+                        .requestFactory(requestFactory())
+                        .build();
+    }
+
+    /**
+     * 타임아웃을 <b>반드시</b> 건 요청 팩토리.
+     *
+     * <p>기본값은 무한 대기다. 이 호출은 커밋 후 스레드에서 일어나므로, 대행사가 응답하지 않으면 그 스레드가 그대로 묶인다. 문자 한 통 때문에 그럴
+     * 이유가 없어서 짧게 끊고 실패로 기록한다.
+     */
+    private static ClientHttpRequestFactory requestFactory() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(CONNECT_TIMEOUT);
+        factory.setReadTimeout(READ_TIMEOUT);
+        return factory;
     }
 
     /**
@@ -92,8 +118,18 @@ public class SolapiSmsSender implements SmsSender {
                             .retrieve()
                             .toEntity(String.class);
 
-            log.info("SMS 발송 접수 status={}", response.getStatusCode().value());
-            return MessageSendResult.accepted(null, requestPayload, response.getBody());
+            String responseBody = response.getBody();
+            String statusCode = readField(responseBody, "statusCode");
+            String messageId = readField(responseBody, "messageId");
+
+            // 200 안에 실패가 담겨 오는 경우가 있다. 접수 성공은 2000 번대다.
+            if (statusCode != null && !statusCode.startsWith("2")) {
+                log.warn("SMS 발송 거부 statusCode={}", statusCode);
+                return MessageSendResult.failed(statusCode, requestPayload, responseBody);
+            }
+
+            log.info("SMS 발송 접수 statusCode={} messageId={}", statusCode, messageId);
+            return MessageSendResult.accepted(messageId, requestPayload, responseBody);
 
         } catch (RestClientResponseException e) {
             // 대행사가 4xx/5xx 를 돌려준 경우. 응답 본문에 실패 사유가 들어 있다.
@@ -107,6 +143,25 @@ public class SolapiSmsSender implements SmsSender {
             // 연결 실패·타임아웃 등 응답 자체가 없는 경우.
             log.warn("SMS 발송 실패 (응답 없음)", e);
             return MessageSendResult.failed("TRANSPORT_ERROR", requestPayload, null);
+        }
+    }
+
+    /**
+     * 응답에서 문자열 필드 하나를 꺼낸다. 없거나 파싱에 실패하면 {@code null}.
+     *
+     * <p>응답 전체를 DTO 로 매핑하지 않는 이유는 앞의 클래스 주석과 같다 — 대행사가 필드를 추가·변경해도 깨지지 않아야 한다. 여기서 꺼내는
+     * 두 값을 못 읽어도 발송 자체는 이미 끝났고 원문은 이력에 남으므로, 실패로 뒤집지 않고 {@code null} 로 넘긴다.
+     */
+    private String readField(String responseBody, String fieldName) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return null;
+        }
+        try {
+            JsonNode field = objectMapper.readTree(responseBody).get(fieldName);
+            return field == null || field.isNull() ? null : field.asText();
+        } catch (JsonProcessingException e) {
+            log.warn("Solapi 응답을 파싱하지 못했습니다. 원문은 이력에 그대로 남습니다.");
+            return null;
         }
     }
 
