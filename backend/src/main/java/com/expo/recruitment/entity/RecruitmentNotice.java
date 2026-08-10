@@ -68,4 +68,62 @@ public class RecruitmentNotice extends BaseTimeEntity {
 
     @Column(name = "created_by_admin_id", nullable = false)
     private Long createdByAdminId;
+
+    /** 기업 모집 공고 초안 생성. 상태는 DRAFT 로 고정한다. */
+    public static RecruitmentNotice create(
+            Long requestId,
+            Long hostClientId,
+            Long venueReservationId,
+            String title,
+            String content,
+            LocalDateTime applicationStartAt,
+            LocalDateTime applicationEndAt,
+            Long createdByAdminId) {
+        RecruitmentNotice notice = new RecruitmentNotice();
+        notice.requestId = requestId;
+        notice.hostClientId = hostClientId;
+        notice.venueReservationId = venueReservationId;
+        notice.title = title;
+        notice.content = content;
+        notice.applicationStartAt = applicationStartAt;
+        notice.applicationEndAt = applicationEndAt;
+        notice.createdByAdminId = createdByAdminId;
+        notice.status = RecruitmentNoticeStatus.DRAFT;
+        return notice;
+    }
+
+    /** 자격 요건과 제출 자료 요구사항 지정. */
+    public RecruitmentNotice withDetails(String eligibility, String submissionRequirements) {
+        this.eligibility = eligibility;
+        this.submissionRequirements = submissionRequirements;
+        return this;
+    }
+
+    /** 공고 내용·조건 수정. */
+    public void update(
+            String title,
+            String content,
+            String eligibility,
+            String submissionRequirements,
+            LocalDateTime applicationStartAt,
+            LocalDateTime applicationEndAt) {
+        this.title = title;
+        this.content = content;
+        this.eligibility = eligibility;
+        this.submissionRequirements = submissionRequirements;
+        this.applicationStartAt = applicationStartAt;
+        this.applicationEndAt = applicationEndAt;
+    }
+
+    /** 공고 게시. */
+    public void publish() {
+        this.status = RecruitmentNoticeStatus.OPEN;
+        this.publishedAt = LocalDateTime.now();
+    }
+
+    /** 기업 모집 조기 마감. 신규 결제를 차단한다. */
+    public void close() {
+        this.status = RecruitmentNoticeStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
 }
