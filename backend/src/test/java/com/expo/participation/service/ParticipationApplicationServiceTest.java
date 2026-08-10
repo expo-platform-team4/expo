@@ -55,16 +55,19 @@ class ParticipationApplicationServiceTest {
                 NOTICE_ID, "테스트 참가기업", null, null, boothProductId);
     }
 
-    /** 이 브랜치의 엔티티에는 아직 팩토리 메서드가 없어 리플렉션으로 status 만 세팅한다. */
+    /** 이 브랜치의 엔티티에는 아직 팩토리 메서드가 없어 리플렉션으로 id·status 만 세팅한다. */
     private RecruitmentNotice noticeWithStatus(RecruitmentNoticeStatus status) {
         try {
             Constructor<RecruitmentNotice> constructor =
                     RecruitmentNotice.class.getDeclaredConstructor();
             constructor.setAccessible(true);
             RecruitmentNotice notice = constructor.newInstance();
-            Field field = RecruitmentNotice.class.getDeclaredField("status");
-            field.setAccessible(true);
-            field.set(notice, status);
+            Field idField = RecruitmentNotice.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(notice, NOTICE_ID);
+            Field statusField = RecruitmentNotice.class.getDeclaredField("status");
+            statusField.setAccessible(true);
+            statusField.set(notice, status);
             return notice;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
@@ -97,7 +100,8 @@ class ParticipationApplicationServiceTest {
     void createRejectsWhenBoothProductNotFound() {
         when(recruitmentNoticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
-        when(boothProductRepository.existsById(BOOTH_PRODUCT_ID)).thenReturn(false);
+        when(boothProductRepository.existsByIdAndRecruitmentNoticeId(BOOTH_PRODUCT_ID, NOTICE_ID))
+                .thenReturn(false);
 
         assertThatThrownBy(
                         () ->
@@ -106,6 +110,21 @@ class ParticipationApplicationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    void createSucceedsWithBoothProductFromSameNotice() {
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
+        when(boothProductRepository.existsByIdAndRecruitmentNoticeId(BOOTH_PRODUCT_ID, NOTICE_ID))
+                .thenReturn(true);
+        when(participationApplicationRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ParticipationApplicationResponse response =
+                service.create(CLIENT_USER_ID, requestWithBoothProduct(BOOTH_PRODUCT_ID));
+
+        assertThat(response.selectedBoothProductId()).isEqualTo(BOOTH_PRODUCT_ID);
     }
 
     @Test

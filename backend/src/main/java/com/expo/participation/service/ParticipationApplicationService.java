@@ -48,7 +48,8 @@ public class ParticipationApplicationService {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
         if (request.selectedBoothProductId() != null
-                && !boothProductRepository.existsById(request.selectedBoothProductId())) {
+                && !boothProductRepository.existsByIdAndRecruitmentNoticeId(
+                        request.selectedBoothProductId(), notice.getId())) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
         }
         ParticipationApplication application =
