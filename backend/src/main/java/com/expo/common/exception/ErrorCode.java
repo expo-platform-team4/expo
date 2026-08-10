@@ -29,6 +29,10 @@ public enum ErrorCode {
     // --- 티켓 ---
     INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다."),
 
+    // --- 박람회 ---
+    EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
+    NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "해당 박람회의 주최자가 아닙니다."),
+
     // --- 관리자 · 카테고리 ---
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),
     DUPLICATE_CATEGORY_NAME(HttpStatus.CONFLICT, "이미 사용 중인 카테고리명입니다."),
