@@ -73,4 +73,40 @@ public class BoothProduct extends BaseTimeEntity {
     @Version
     @Column(nullable = false)
     private Long version;
+
+    /** 부스 상품 등록. 부가세 포함 총액은 공급가+부가세로 계산한다. */
+    public static BoothProduct create(
+            Long recruitmentNoticeId,
+            Long boothId,
+            BigDecimal supplyPrice,
+            BigDecimal vatAmount,
+            boolean vatIncluded,
+            String includedItems) {
+        BigDecimal effectiveVatAmount = vatAmount != null ? vatAmount : BigDecimal.ZERO;
+        BoothProduct product = new BoothProduct();
+        product.recruitmentNoticeId = recruitmentNoticeId;
+        product.boothId = boothId;
+        product.supplyPrice = supplyPrice;
+        product.vatAmount = effectiveVatAmount;
+        product.totalPrice = supplyPrice.add(effectiveVatAmount);
+        product.vatIncluded = vatIncluded;
+        product.includedItems = includedItems;
+        product.paymentEnabled = true;
+        product.salesStatus = BoothSalesStatus.AVAILABLE;
+        return product;
+    }
+
+    /** 판매 기간·결제 가능 여부 설정. */
+    public BoothProduct schedule(
+            LocalDateTime salesStartAt, LocalDateTime salesEndAt, boolean paymentEnabled) {
+        this.salesStartAt = salesStartAt;
+        this.salesEndAt = salesEndAt;
+        this.paymentEnabled = paymentEnabled;
+        return this;
+    }
+
+    /** 관리자 판매 상태 변경. 주문 흐름이 이미 점유한 RESERVED·SOLD 상태는 이 경로로 바꿀 수 없다. */
+    public void changeSalesStatus(BoothSalesStatus status) {
+        this.salesStatus = status;
+    }
 }

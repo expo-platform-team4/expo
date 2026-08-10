@@ -57,6 +57,10 @@ public enum ErrorCode {
     DUPLICATE_BOOTH_TEMPLATE_SHAPE_CODE(HttpStatus.CONFLICT, "이미 등록된 형태 코드입니다."),
     BOOTH_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 템플릿입니다."),
     DUPLICATE_BOOTH_NUMBER(HttpStatus.CONFLICT, "이미 등록된 부스 번호입니다."),
+    BOOTH_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스입니다."),
+    DUPLICATE_BOOTH_PRODUCT(HttpStatus.CONFLICT, "이미 해당 공고에 등록된 부스 상품입니다."),
+    BOOTH_SALES_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "판매 종료 일시는 시작 일시보다 늦어야 합니다."),
+    BOOTH_PRODUCT_NOT_EDITABLE(HttpStatus.CONFLICT, "예약·판매 완료된 부스 상품의 상태는 관리자가 직접 바꿀 수 없습니다."),
 
     // --- 모집공고 ---
     DUPLICATE_RECRUITMENT_NOTICE_REQUEST(HttpStatus.CONFLICT, "이미 공고가 생성된 요청입니다."),
