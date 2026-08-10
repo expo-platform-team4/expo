@@ -8,9 +8,12 @@ import com.expo.booth.repository.BoothTemplateRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class BoothTemplateService {
 
@@ -39,8 +42,17 @@ public class BoothTemplateService {
                         request.depth(),
                         request.dimensionUnit(),
                         request.defaultIncludedItems());
-        BoothTemplate saved = boothTemplateRepository.save(template);
-        return boothTemplateConverter.toResponse(saved);
+        try {
+            BoothTemplate saved = boothTemplateRepository.saveAndFlush(template);
+            return boothTemplateConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("booth_templates_shape_code_key")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_TEMPLATE_SHAPE_CODE);
+            }
+            log.warn("부스 템플릿 저장 중 예상하지 못한 무결성 제약 위반. shapeCode={}", request.shapeCode(), e);
+            throw e;
+        }
     }
 
     /** 부스 템플릿 목록 조회. */

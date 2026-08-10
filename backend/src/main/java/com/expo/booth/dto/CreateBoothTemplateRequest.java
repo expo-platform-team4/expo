@@ -2,6 +2,7 @@ package com.expo.booth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,12 +22,18 @@ public record CreateBoothTemplateRequest(
         @Schema(description = "가로 길이(m)")
                 @NotNull(message = "가로 길이는 필수입니다.")
                 @DecimalMin(value = "0.01", message = "가로 길이는 0보다 커야 합니다.")
+                @Digits(integer = 6, fraction = 2, message = "가로 길이는 정수부 6자리, 소수부 2자리 이하여야 합니다.")
                 BigDecimal width,
-        @Schema(description = "높이(m)") @DecimalMin(value = "0.01", message = "높이는 0보다 커야 합니다.")
+        @Schema(description = "높이(m)")
+                @DecimalMin(value = "0.01", message = "높이는 0보다 커야 합니다.")
+                @Digits(integer = 6, fraction = 2, message = "높이는 정수부 6자리, 소수부 2자리 이하여야 합니다.")
                 BigDecimal height,
         @Schema(description = "세로 길이(m)")
                 @NotNull(message = "세로 길이는 필수입니다.")
                 @DecimalMin(value = "0.01", message = "세로 길이는 0보다 커야 합니다.")
+                @Digits(integer = 6, fraction = 2, message = "세로 길이는 정수부 6자리, 소수부 2자리 이하여야 합니다.")
                 BigDecimal depth,
-        @Schema(description = "치수 단위", example = "M") String dimensionUnit,
+        @Schema(description = "치수 단위", example = "M")
+                @Size(max = 10, message = "치수 단위는 10자 이하여야 합니다.")
+                String dimensionUnit,
         @Schema(description = "기본 제공 항목(JSON 문자열)") String defaultIncludedItems) {}

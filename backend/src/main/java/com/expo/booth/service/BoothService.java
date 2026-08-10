@@ -9,9 +9,12 @@ import com.expo.booth.repository.BoothTemplateRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.repository.VenueZoneRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class BoothService {
 
@@ -59,7 +62,20 @@ public class BoothService {
                                 request.positionY(),
                                 request.rotationDegree(),
                                 request.sortOrder());
-        Booth saved = boothRepository.save(booth);
-        return boothConverter.toResponse(saved);
+        try {
+            Booth saved = boothRepository.saveAndFlush(booth);
+            return boothConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_booths_number")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_NUMBER);
+            }
+            log.warn(
+                    "부스 저장 중 예상하지 못한 무결성 제약 위반. venueZoneId={}, boothNumber={}",
+                    venueZoneId,
+                    request.boothNumber(),
+                    e);
+            throw e;
+        }
     }
 }

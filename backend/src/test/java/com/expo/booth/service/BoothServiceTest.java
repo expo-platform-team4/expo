@@ -19,6 +19,7 @@ import com.expo.venue.repository.VenueZoneRepository;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /** {@link BoothService} 의 구역 존재 여부·템플릿 존재 여부·부스 번호 중복 검증을 확인한다. */
 class BoothServiceTest {
@@ -67,7 +68,7 @@ class BoothServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
-        verify(boothRepository, never()).save(any());
+        verify(boothRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -96,12 +97,14 @@ class BoothServiceTest {
     void createSucceedsWithoutTemplate() {
         when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
         when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
-        when(boothRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(boothRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         BoothResponse response = service.create(ZONE_ID, requestWithTemplate(null));
 
         assertThat(response.venueZoneId()).isEqualTo(ZONE_ID);
         assertThat(response.boothNumber()).isEqualTo("A-01");
+        verify(boothRepository).saveAndFlush(any());
     }
 
     @Test
@@ -109,10 +112,40 @@ class BoothServiceTest {
         when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
         when(boothTemplateRepository.existsById(TEMPLATE_ID)).thenReturn(true);
         when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
-        when(boothRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(boothRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         BoothResponse response = service.create(ZONE_ID, requestWithTemplate(TEMPLATE_ID));
 
         assertThat(response.boothTemplateId()).isEqualTo(TEMPLATE_ID);
+    }
+
+    /** 사전 중복 검사를 통과해도 동시 삽입으로 제약 위반이 나면 같은 오류로 변환돼야 한다. */
+    @Test
+    void createTranslatesBoothNumberConstraintViolationToDuplicate() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
+        when(boothRepository.saveAndFlush(any()))
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "duplicate key value violates unique constraint"
+                                        + " \"uq_booths_number\""));
+
+        assertThatThrownBy(() -> service.create(ZONE_ID, requestWithTemplate(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_BOOTH_NUMBER);
+    }
+
+    /** 부스 번호 중복이 아닌 다른 무결성 위반은 그대로 다시 던져야 한다. */
+    @Test
+    void createRethrowsUnrelatedConstraintViolation() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
+        when(boothRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("some other constraint"));
+
+        assertThatThrownBy(() -> service.create(ZONE_ID, requestWithTemplate(null)))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }
