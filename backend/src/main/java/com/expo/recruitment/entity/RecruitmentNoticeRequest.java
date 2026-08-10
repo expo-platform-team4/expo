@@ -91,4 +91,55 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
 
     @Column(name = "decision_reason", columnDefinition = "TEXT")
     private String decisionReason;
+
+    /** 모집공고 생성 요청 작성. 상태는 DRAFT, 장소 충돌은 CLEAR, 장소 결정은 PENDING 으로 고정한다. */
+    public static RecruitmentNoticeRequest create(
+            Long hostClientId,
+            String title,
+            String description,
+            LocalDateTime applicationStartAt,
+            LocalDateTime applicationEndAt,
+            LocalDateTime eventStartAt,
+            LocalDateTime eventEndAt,
+            Long virtualVenueId) {
+        RecruitmentNoticeRequest request = new RecruitmentNoticeRequest();
+        request.hostClientId = hostClientId;
+        request.title = title;
+        request.description = description;
+        request.applicationStartAt = applicationStartAt;
+        request.applicationEndAt = applicationEndAt;
+        request.eventStartAt = eventStartAt;
+        request.eventEndAt = eventEndAt;
+        request.virtualVenueId = virtualVenueId;
+        request.status = RecruitmentNoticeRequestStatus.DRAFT;
+        request.venueConflictStatus = VenueConflictStatus.CLEAR;
+        request.venueDecision = VenueDecision.PENDING;
+        return request;
+    }
+
+    /** 희망 장소 세부 정보와 부스 구성 지정. */
+    public RecruitmentNoticeRequest withVenueDetails(
+            Long venueHallId,
+            Long venueZoneId,
+            Integer targetCompanyCount,
+            String requestedBoothConfig) {
+        this.venueHallId = venueHallId;
+        this.venueZoneId = venueZoneId;
+        this.targetCompanyCount = targetCompanyCount;
+        this.requestedBoothConfig = requestedBoothConfig;
+        return this;
+    }
+
+    /** 장소 충돌 판정. ALLOWED 면 승인, CANCELED 면 반려로 처리한다. */
+    public void decideVenue(VenueDecision decision, Long decidedByAdminId, String decisionReason) {
+        this.venueDecision = decision;
+        this.decidedByAdminId = decidedByAdminId;
+        this.decisionReason = decisionReason;
+        this.decidedAt = LocalDateTime.now();
+        this.venueConflictStatus = VenueConflictStatus.RESOLVED;
+        this.status =
+                decision == VenueDecision.ALLOWED
+                        ? RecruitmentNoticeRequestStatus.APPROVED
+                        : RecruitmentNoticeRequestStatus.REJECTED;
+    }
 }

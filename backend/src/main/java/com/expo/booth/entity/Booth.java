@@ -64,4 +64,46 @@ public class Booth extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "operational_status", nullable = false, length = 20)
     private OperationalStatus operationalStatus;
+
+    /** 구역 안에 부스 공간 등록. 운영 상태는 ACTIVE 로 고정한다. */
+    public static Booth create(
+            Long venueZoneId,
+            Long boothTemplateId,
+            String boothNumber,
+            String shapeCode,
+            BigDecimal width,
+            BigDecimal height,
+            BigDecimal depth,
+            String dimensionUnit) {
+        Booth booth = new Booth();
+        booth.venueZoneId = venueZoneId;
+        booth.boothTemplateId = boothTemplateId;
+        booth.boothNumber = boothNumber;
+        booth.shapeCode = shapeCode;
+        booth.width = width;
+        booth.height = height;
+        booth.depth = depth;
+        if (dimensionUnit != null) {
+            booth.dimensionUnit = dimensionUnit;
+        }
+        booth.operationalStatus = OperationalStatus.ACTIVE;
+        return booth;
+    }
+
+    /** 구역 도면 위 배치 정보 지정. */
+    public Booth place(
+            BigDecimal positionX,
+            BigDecimal positionY,
+            BigDecimal rotationDegree,
+            Integer sortOrder) {
+        this.positionX = positionX;
+        this.positionY = positionY;
+        if (rotationDegree != null) {
+            this.rotationDegree = rotationDegree;
+        }
+        if (sortOrder != null) {
+            this.sortOrder = sortOrder;
+        }
+        return this;
+    }
 }
