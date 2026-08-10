@@ -18,7 +18,8 @@ import lombok.NoArgsConstructor;
 /**
  * 참여 신청에서 고른 단일 부스 상품의 주문.
  *
- * <p>부스는 신청당 1개만 선택하므로 별도 주문 항목 테이블 없이 {@link #boothProductId} 를 직접 연결한다.
+ * <p>부스가 1개만 선택되므로 주문 항목 테이블을 두지 않고 상품을 직접 연결한다. 결제(토스페이먼츠) 연동 전까지는 {@code
+ * PENDING_PAYMENT} 상태의 주문 생성·취소만 다룬다.
  */
 @Getter
 @Entity
@@ -60,4 +61,31 @@ public class BoothOrder extends BaseTimeEntity {
 
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 100)
     private String idempotencyKey;
+
+    /** 부스 상품 주문 생성. 단일 부스이므로 결제액은 항상 단가와 같다. */
+    public static BoothOrder create(
+            Long applicationId,
+            Long clientUserId,
+            Long boothProductId,
+            String orderNumber,
+            BigDecimal unitPrice,
+            String idempotencyKey,
+            LocalDateTime expiresAt) {
+        BoothOrder order = new BoothOrder();
+        order.applicationId = applicationId;
+        order.clientUserId = clientUserId;
+        order.boothProductId = boothProductId;
+        order.orderNumber = orderNumber;
+        order.unitPrice = unitPrice;
+        order.totalAmount = unitPrice;
+        order.idempotencyKey = idempotencyKey;
+        order.expiresAt = expiresAt;
+        order.status = BoothOrderStatus.PENDING_PAYMENT;
+        return order;
+    }
+
+    /** 결제 전 주문 취소. */
+    public void cancel() {
+        this.status = BoothOrderStatus.CANCELED;
+    }
 }

@@ -61,6 +61,12 @@ public enum ErrorCode {
     DUPLICATE_BOOTH_PRODUCT(HttpStatus.CONFLICT, "이미 해당 공고에 등록된 부스 상품입니다."),
     BOOTH_SALES_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "판매 종료 일시는 시작 일시보다 늦어야 합니다."),
     BOOTH_PRODUCT_NOT_EDITABLE(HttpStatus.CONFLICT, "예약·판매 완료된 부스 상품의 상태는 관리자가 직접 바꿀 수 없습니다."),
+    BOOTH_ORDER_NOT_ALLOWED(HttpStatus.CONFLICT, "초안 상태의 신청서만 부스 상품을 주문할 수 있습니다."),
+    BOOTH_PRODUCT_NOT_SELECTED(HttpStatus.BAD_REQUEST, "신청서에 선택된 부스 상품이 없습니다."),
+    BOOTH_PRODUCT_NOT_AVAILABLE(HttpStatus.CONFLICT, "구매 가능한 상태의 부스 상품이 아닙니다."),
+    BOOTH_PRODUCT_SALES_NOT_OPEN(HttpStatus.CONFLICT, "지금은 부스 상품 판매 기간이 아닙니다."),
+    BOOTH_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
+    BOOTH_ORDER_NOT_CANCELABLE(HttpStatus.CONFLICT, "결제 대기 상태의 주문만 취소할 수 있습니다."),
 
     // --- 모집공고 ---
     DUPLICATE_RECRUITMENT_NOTICE_REQUEST(HttpStatus.CONFLICT, "이미 공고가 생성된 요청입니다."),

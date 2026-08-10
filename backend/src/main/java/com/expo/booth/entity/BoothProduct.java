@@ -109,4 +109,14 @@ public class BoothProduct extends BaseTimeEntity {
     public void changeSalesStatus(BoothSalesStatus status) {
         this.salesStatus = status;
     }
+
+    /** 주문 생성으로 임시 확보. */
+    public void reserve() {
+        this.salesStatus = BoothSalesStatus.RESERVED;
+    }
+
+    /** 주문 취소·만료로 확보 해제. */
+    public void cancelReservation() {
+        this.salesStatus = BoothSalesStatus.AVAILABLE;
+    }
 }

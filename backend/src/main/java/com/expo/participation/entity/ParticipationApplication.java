@@ -84,4 +84,16 @@ public class ParticipationApplication extends BaseTimeEntity {
         application.status = ParticipationApplicationStatus.DRAFT;
         return application;
     }
+
+    /** 부스 주문 생성. 결제 대기 상태로 전이한다. */
+    public void startPayment(Long boothOrderId) {
+        this.boothOrderId = boothOrderId;
+        this.status = ParticipationApplicationStatus.PAYMENT_PENDING;
+    }
+
+    /** 결제 전 주문 취소. 다시 주문을 시도할 수 있도록 초안 상태로 되돌린다. */
+    public void cancelPayment() {
+        this.boothOrderId = null;
+        this.status = ParticipationApplicationStatus.DRAFT;
+    }
 }
