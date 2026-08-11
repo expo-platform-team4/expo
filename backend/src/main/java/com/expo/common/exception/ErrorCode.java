@@ -29,6 +29,10 @@ public enum ErrorCode {
     // --- 티켓 ---
     INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다."),
 
+    // --- 박람회 ---
+    EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
+    NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "해당 박람회의 주최자가 아닙니다."),
+
     // --- 관리자 · 카테고리 ---
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),
     DUPLICATE_CATEGORY_NAME(HttpStatus.CONFLICT, "이미 사용 중인 카테고리명입니다."),
@@ -71,7 +75,13 @@ public enum ErrorCode {
     BOOTH_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 상품입니다."),
     PARTICIPATION_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 참여 신청서입니다."),
     RECRUITMENT_NOTICE_NOT_OPEN(HttpStatus.CONFLICT, "게시 중인 모집공고에만 참여 신청할 수 있습니다."),
-    CORRECTION_NOT_REQUESTED(HttpStatus.CONFLICT, "보완 요청이 없는 신청서는 보완 완료 처리할 수 없습니다.");
+    CORRECTION_NOT_REQUESTED(HttpStatus.CONFLICT, "보완 요청이 없는 신청서는 보완 완료 처리할 수 없습니다."),
+
+    // --- 발권 · QR ---
+    TICKET_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
+    TICKET_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제가 완료된 주문만 발권할 수 있습니다."),
+    TICKET_ORDER_HAS_NO_ITEM(HttpStatus.CONFLICT, "발권할 항목이 없는 주문입니다."),
+    TICKET_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발권된 주문입니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -1,5 +1,6 @@
 package com.expo.notification.entity;
 
+import com.expo.notification.dto.MessageSendResult;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -68,4 +69,43 @@ public class MessageHistory {
 
     @Column(name = "completed_at")
     private Instant completedAt;
+
+    private MessageHistory(
+            Long notificationId,
+            MessageChannel channel,
+            int attemptNo,
+            MessageSendResult sendResult,
+            Instant requestedAt,
+            Instant completedAt) {
+        this.notificationId = notificationId;
+        this.channel = channel;
+        this.attemptNo = attemptNo;
+        this.status = sendResult.success() ? MessageStatus.SENT : MessageStatus.FAILED;
+        this.providerMessageId = sendResult.providerMessageId();
+        this.requestPayload = sendResult.requestPayload();
+        this.responsePayload = sendResult.responsePayload();
+        this.errorCode = sendResult.errorCode();
+        this.requestedAt = requestedAt;
+        this.completedAt = completedAt;
+    }
+
+    /**
+     * 끝난 발송 시도 하나를 기록한다.
+     *
+     * <p>요청과 응답이 모두 끝난 뒤에 부르므로 {@code requestedAt} 과 {@code completedAt} 을 함께 받는다. 발송 전에
+     * {@code REQUESTED} 행을 미리 남겼다가 나중에 갱신하는 방식은 쓰지 않는다 — 행 하나에 두 번 쓰게 되고, 우리는 동기 발송이라 그럴 이유가 없다.
+     *
+     * @param attemptNo 이 알림의 몇 번째 시도인지. {@code (notification_id, attempt_no)} 가 UNIQUE 다
+     * @param sendResult 대행사 응답. 성공·실패와 원문이 함께 들어 있다
+     */
+    public static MessageHistory record(
+            Long notificationId,
+            MessageChannel channel,
+            int attemptNo,
+            MessageSendResult sendResult,
+            Instant requestedAt,
+            Instant completedAt) {
+        return new MessageHistory(
+                notificationId, channel, attemptNo, sendResult, requestedAt, completedAt);
+    }
 }
