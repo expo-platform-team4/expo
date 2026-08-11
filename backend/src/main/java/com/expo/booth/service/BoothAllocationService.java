@@ -4,10 +4,7 @@ import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.dto.BoothAllocationResponse;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothAllocationStatus;
-import com.expo.booth.entity.BoothProduct;
-import com.expo.booth.entity.BoothSalesStatus;
 import com.expo.booth.repository.BoothAllocationRepository;
-import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.List;
@@ -19,15 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoothAllocationService {
 
     private final BoothAllocationRepository boothAllocationRepository;
-    private final BoothProductRepository boothProductRepository;
     private final BoothAllocationConverter boothAllocationConverter;
 
     public BoothAllocationService(
             BoothAllocationRepository boothAllocationRepository,
-            BoothProductRepository boothProductRepository,
             BoothAllocationConverter boothAllocationConverter) {
         this.boothAllocationRepository = boothAllocationRepository;
-        this.boothProductRepository = boothProductRepository;
         this.boothAllocationConverter = boothAllocationConverter;
     }
 
@@ -56,7 +50,14 @@ public class BoothAllocationService {
         return boothAllocationConverter.toResponse(getEntity(allocationId));
     }
 
-    /** 관리자 배정 취소. 부스 이중 배정 등 운영상 정정이 필요할 때만 쓰며, 부스 상품을 다시 판매 가능하게 되돌린다. */
+    /**
+     * 관리자 배정 취소. 부스 이중 배정 등 운영상 정정이 필요할 때만 쓴다.
+     *
+     * <p>부스 상품은 되돌리지 않고 {@code SOLD} 로 남긴다. {@code booth_allocations.booth_product_id} 는
+     * 전역 UNIQUE 라 상품을 다시 팔 수 있게 하면, 그 상품이 재판매·재결제된 시점에 새 배정 저장이 같은
+     * 상품 ID 로 유니크 제약 위반이 난다. 취소된 배정을 재판매로 이어가려면 주문·결제·예약·신청서·배정을
+     * 함께 되돌리는 보상 흐름이 먼저 있어야 한다.
+     */
     @Transactional
     public BoothAllocationResponse cancel(Long allocationId, String reason) {
         BoothAllocation allocation = getEntity(allocationId);
@@ -64,14 +65,7 @@ public class BoothAllocationService {
             throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
         }
         allocation.cancel(reason);
-        boothProductRepository
-                .findById(allocation.getBoothProductId())
-                .ifPresent(this::revertToAvailable);
         return boothAllocationConverter.toResponse(allocation);
-    }
-
-    private void revertToAvailable(BoothProduct product) {
-        product.changeSalesStatus(BoothSalesStatus.AVAILABLE);
     }
 
     private BoothAllocation getEntity(Long allocationId) {

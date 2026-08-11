@@ -133,7 +133,12 @@ public class BoothOrderService {
         return boothOrderConverter.toResponse(getOwnedEntity(orderId, clientUserId));
     }
 
-    /** 결제 전 주문 취소. 임시 확보를 풀고 부스 상품을 다시 구매 가능하게 되돌린다. */
+    /**
+     * 결제 전 주문 취소. 임시 확보를 풀고 부스 상품을 다시 구매 가능하게 되돌린다.
+     *
+     * <p>이 주문이 실제로 갖고 있던 활성 예약을 찾아 해제했을 때만 부스 상품을 되돌린다. 상품 상태만 보고 되돌리면, 이 주문의
+     * 예약이 이미 만료·해제된 뒤 다른 주문이 같은 상품을 새로 예약한 경우 그 새 예약을 엉뚱하게 풀어버릴 수 있다.
+     */
     @Transactional
     public BoothOrderResponse cancel(Long orderId, Long clientUserId) {
         BoothOrder order = getOwnedEntity(orderId, clientUserId);
@@ -142,14 +147,22 @@ public class BoothOrderService {
         }
         order.cancel();
 
-        boothReservationRepository
-                .findFirstByBoothOrderIdAndStatus(orderId, BoothReservationStatus.ACTIVE)
-                .ifPresent(BoothReservation::release);
+        boolean releasedOwnReservation =
+                boothReservationRepository
+                        .findFirstByBoothOrderIdAndStatus(orderId, BoothReservationStatus.ACTIVE)
+                        .map(
+                                reservation -> {
+                                    reservation.release();
+                                    return true;
+                                })
+                        .orElse(false);
 
-        boothProductRepository
-                .findById(order.getBoothProductId())
-                .filter(product -> product.getSalesStatus() == BoothSalesStatus.RESERVED)
-                .ifPresent(BoothProduct::cancelReservation);
+        if (releasedOwnReservation) {
+            boothProductRepository
+                    .findById(order.getBoothProductId())
+                    .filter(product -> product.getSalesStatus() == BoothSalesStatus.RESERVED)
+                    .ifPresent(BoothProduct::cancelReservation);
+        }
 
         participationApplicationRepository
                 .findByIdAndClientUserId(order.getApplicationId(), clientUserId)

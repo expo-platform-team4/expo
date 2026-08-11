@@ -1,4 +1,4 @@
-package com.expo.booth.client;
+package com.expo.common.config;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

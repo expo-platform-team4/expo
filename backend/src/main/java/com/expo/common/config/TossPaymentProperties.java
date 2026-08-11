@@ -1,4 +1,4 @@
-package com.expo.booth.config;
+package com.expo.common.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 토스페이먼츠 연동 설정 ({@code app.toss}).
  *
  * <p>키 미발급 상태에서도 애플리케이션은 기동돼야 하므로 값이 비어 있어도 검증에 걸리지 않는다. 대신 {@link
- * com.expo.booth.client.TossPaymentClient} 가 실제 결제 승인 호출 시점에 비어 있으면 막는다.
+ * com.expo.common.config.TossPaymentClient} 가 실제 결제 승인 호출 시점에 비어 있으면 막는다.
  */
 @ConfigurationProperties(prefix = "app.toss")
 public class TossPaymentProperties {

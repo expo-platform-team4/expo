@@ -183,6 +183,51 @@ class BoothProductServiceTest {
         assertThat(responses).hasSize(1);
     }
 
+    /** AVAILABLE 상태여도 결제 불가로 설정된 상품은 공개 목록에서 빠져야 한다. */
+    @Test
+    void listAvailableExcludesPaymentDisabledProduct() {
+        BoothProduct paymentDisabled =
+                BoothProduct.create(
+                                NOTICE_ID,
+                                BOOTH_ID,
+                                BigDecimal.valueOf(1_000_000),
+                                BigDecimal.valueOf(100_000),
+                                true,
+                                null)
+                        .schedule(null, null, false);
+        when(boothProductRepository.findAllByRecruitmentNoticeIdAndSalesStatus(
+                        NOTICE_ID, BoothSalesStatus.AVAILABLE))
+                .thenReturn(List.of(paymentDisabled));
+
+        List<BoothProductResponse> responses = service.listAvailable(NOTICE_ID);
+
+        assertThat(responses).isEmpty();
+    }
+
+    /** 판매 기간 밖(시작 전·종료 후)인 상품은 공개 목록에서 빠져야 한다. */
+    @Test
+    void listAvailableExcludesProductOutsideSalesWindow() {
+        BoothProduct notYetOnSale =
+                BoothProduct.create(
+                                NOTICE_ID,
+                                BOOTH_ID,
+                                BigDecimal.valueOf(1_000_000),
+                                BigDecimal.valueOf(100_000),
+                                true,
+                                null)
+                        .schedule(
+                                LocalDateTime.now().plusDays(1),
+                                LocalDateTime.now().plusDays(2),
+                                true);
+        when(boothProductRepository.findAllByRecruitmentNoticeIdAndSalesStatus(
+                        NOTICE_ID, BoothSalesStatus.AVAILABLE))
+                .thenReturn(List.of(notYetOnSale));
+
+        List<BoothProductResponse> responses = service.listAvailable(NOTICE_ID);
+
+        assertThat(responses).isEmpty();
+    }
+
     @Test
     void getRejectsWhenNotFound() {
         when(boothProductRepository.findById(PRODUCT_ID)).thenReturn(Optional.empty());

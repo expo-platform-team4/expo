@@ -1,14 +1,17 @@
-package com.expo.booth.client;
+package com.expo.common.config;
 
-import com.expo.booth.config.TossPaymentProperties;
 import java.math.BigDecimal;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 /**
@@ -22,27 +25,32 @@ public class TossPaymentClientImpl implements TossPaymentClient {
 
     private static final String CONFIRM_PATH = "/v1/payments/confirm";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     private final RestClient restClient;
     private final TossPaymentProperties properties;
 
     public TossPaymentClientImpl(TossPaymentProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.create();
+        JdkClientHttpRequestFactory requestFactory =
+                new JdkClientHttpRequestFactory(
+                        HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
+        requestFactory.setReadTimeout(READ_TIMEOUT);
+        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
     @Override
     public String getClientKey() {
+        requireConfigured(properties.getClientKey(), "TOSS_CLIENT_KEY");
         return properties.getClientKey();
     }
 
     @Override
     public TossConfirmResult confirmPayment(
             String paymentKey, String orderId, BigDecimal amount, String idempotencyKey) {
-        if (properties.getSecretKey() == null || properties.getSecretKey().isBlank()) {
-            throw new IllegalStateException(
-                    "TOSS_SECRET_KEY 가 설정되지 않았습니다. 토스페이먼츠 테스트 키를 발급받아 환경변수로 설정하십시오.");
-        }
+        requireConfigured(properties.getSecretKey(), "TOSS_SECRET_KEY");
+        requireConfigured(properties.getApiBaseUrl(), "app.toss.api-base-url");
         String credentials =
                 Base64.getEncoder()
                         .encodeToString(
@@ -74,7 +82,17 @@ public class TossPaymentClientImpl implements TossPaymentClient {
             TossErrorResponse error = e.getResponseBodyAs(TossErrorResponse.class);
             String code = error != null ? error.code() : "UNKNOWN";
             String message = error != null ? error.message() : e.getMessage();
-            throw new TossApiException(code, message, e.getResponseBodyAsString());
+            throw new TossApiException(code, message, e.getResponseBodyAsString(), e);
+        } catch (RestClientException e) {
+            throw new TossApiException(
+                    "NETWORK_ERROR", "토스 결제 서버 호출에 실패했습니다: " + e.getMessage(), null, e);
+        }
+    }
+
+    private void requireConfigured(String value, String settingName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(
+                    settingName + " 가 설정되지 않았습니다. 토스페이먼츠 테스트 키를 발급받아 환경변수로 설정하십시오.");
         }
     }
 

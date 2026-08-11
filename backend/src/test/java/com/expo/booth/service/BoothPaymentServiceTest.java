@@ -8,9 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.expo.booth.client.TossApiException;
-import com.expo.booth.client.TossConfirmResult;
-import com.expo.booth.client.TossPaymentClient;
 import com.expo.booth.converter.BoothPaymentConverter;
 import com.expo.booth.dto.BoothPaymentResponse;
 import com.expo.booth.dto.InitiateBoothPaymentResponse;
@@ -27,6 +24,9 @@ import com.expo.booth.repository.BoothPaymentHistoryRepository;
 import com.expo.booth.repository.BoothPaymentRepository;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.booth.repository.BoothReservationRepository;
+import com.expo.common.config.TossApiException;
+import com.expo.common.config.TossConfirmResult;
+import com.expo.common.config.TossPaymentClient;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
@@ -115,8 +115,7 @@ class BoothPaymentServiceTest {
 
     @Test
     void initiateRejectsWhenOrderNotFound() {
-        when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
-                .thenReturn(Optional.empty());
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.initiate(ORDER_ID, CLIENT_USER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -135,8 +134,7 @@ class BoothPaymentServiceTest {
                         BigDecimal.valueOf(1_100_000),
                         "idem-order",
                         LocalDateTime.now().minusMinutes(1));
-        when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
-                .thenReturn(Optional.of(order));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> service.initiate(ORDER_ID, CLIENT_USER_ID))
                 .isInstanceOf(BusinessException.class)
@@ -148,7 +146,7 @@ class BoothPaymentServiceTest {
     void initiateRejectsWhenAlreadyApproved() {
         BoothPayment approved = readyPayment();
         approved.approve("payKey", "카드", BigDecimal.valueOf(1_100_000));
-        when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
                 .thenReturn(Optional.of(pendingOrder()));
         when(boothPaymentRepository.findAllByBoothOrderId(ORDER_ID)).thenReturn(List.of(approved));
 
@@ -161,7 +159,7 @@ class BoothPaymentServiceTest {
     @Test
     void initiateReusesExistingReadyPayment() {
         BoothPayment existing = readyPayment();
-        when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
                 .thenReturn(Optional.of(pendingOrder()));
         when(boothPaymentRepository.findAllByBoothOrderId(ORDER_ID)).thenReturn(List.of(existing));
 
@@ -172,7 +170,7 @@ class BoothPaymentServiceTest {
 
     @Test
     void initiateCreatesNewAttemptWhenNoneExists() {
-        when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
                 .thenReturn(Optional.of(pendingOrder()));
         when(boothPaymentRepository.findAllByBoothOrderId(ORDER_ID)).thenReturn(List.of());
         when(boothPaymentRepository.saveAndFlush(any()))
@@ -204,7 +202,8 @@ class BoothPaymentServiceTest {
     void confirmRejectsWhenOrderNotOwnedByCaller() {
         when(boothPaymentRepository.findByPgOrderId(PG_ORDER_ID))
                 .thenReturn(Optional.of(readyPayment()));
-        when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(pendingOrder()));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
+                .thenReturn(Optional.of(pendingOrder()));
 
         assertThatThrownBy(
                         () ->
@@ -219,7 +218,8 @@ class BoothPaymentServiceTest {
     void confirmRejectsWhenAmountMismatch() {
         when(boothPaymentRepository.findByPgOrderId(PG_ORDER_ID))
                 .thenReturn(Optional.of(readyPayment()));
-        when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(pendingOrder()));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
+                .thenReturn(Optional.of(pendingOrder()));
 
         assertThatThrownBy(
                         () ->
@@ -257,7 +257,7 @@ class BoothPaymentServiceTest {
         application.startPayment(ORDER_ID);
 
         when(boothPaymentRepository.findByPgOrderId(PG_ORDER_ID)).thenReturn(Optional.of(payment));
-        when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
         when(tossPaymentClient.confirmPayment(anyString(), anyString(), any(), anyString()))
                 .thenReturn(
                         new TossConfirmResult(
@@ -294,7 +294,7 @@ class BoothPaymentServiceTest {
         BoothOrder order = pendingOrder();
 
         when(boothPaymentRepository.findByPgOrderId(PG_ORDER_ID)).thenReturn(Optional.of(payment));
-        when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
         when(tossPaymentClient.confirmPayment(anyString(), anyString(), any(), anyString()))
                 .thenThrow(new TossApiException("REJECT_CARD_COMPANY", "카드사 거절", "{}"));
 

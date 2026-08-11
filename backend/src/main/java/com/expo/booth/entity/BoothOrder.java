@@ -31,7 +31,11 @@ public class BoothOrder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "application_id", nullable = false, unique = true)
+    /**
+     * 신청서 ID. DB 는 취소·만료된 주문을 제외한 활성 주문에만 유일성을 강제한다({@code
+     * uq_booth_orders_active_application} 부분 UNIQUE 인덱스) — 취소 후 재주문을 허용하기 위해서다.
+     */
+    @Column(name = "application_id", nullable = false)
     private Long applicationId;
 
     @Column(name = "client_user_id", nullable = false)

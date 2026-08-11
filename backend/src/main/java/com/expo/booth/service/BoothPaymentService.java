@@ -1,8 +1,5 @@
 package com.expo.booth.service;
 
-import com.expo.booth.client.TossApiException;
-import com.expo.booth.client.TossConfirmResult;
-import com.expo.booth.client.TossPaymentClient;
 import com.expo.booth.converter.BoothPaymentConverter;
 import com.expo.booth.dto.BoothPaymentResponse;
 import com.expo.booth.dto.InitiateBoothPaymentResponse;
@@ -15,6 +12,9 @@ import com.expo.booth.entity.BoothPaymentStatus;
 import com.expo.booth.repository.BoothOrderRepository;
 import com.expo.booth.repository.BoothPaymentHistoryRepository;
 import com.expo.booth.repository.BoothPaymentRepository;
+import com.expo.common.config.TossApiException;
+import com.expo.common.config.TossConfirmResult;
+import com.expo.common.config.TossPaymentClient;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.math.BigDecimal;
@@ -55,10 +55,12 @@ public class BoothPaymentService {
     /**
      * 결제 시작. 이미 진행 중인 결제가 있으면 그대로 재사용하고, 없으면 새 결제 시도를 만든다. 주문이 결제 대기 상태가 아니거나
      * 만료됐으면 시작할 수 없다.
+     *
+     * <p>주문 행에 잠금을 걸어, 동시에 들어온 두 시작 요청이 서로 다른 결제 시도를 중복 생성하지 못하게 막는다.
      */
     @Transactional
     public InitiateBoothPaymentResponse initiate(Long orderId, Long clientUserId) {
-        BoothOrder order = getOwnedOrder(orderId, clientUserId);
+        BoothOrder order = getOwnedOrderForUpdate(orderId, clientUserId);
         validateOrderPayable(order);
 
         List<BoothPayment> existing = boothPaymentRepository.findAllByBoothOrderId(orderId);
@@ -104,7 +106,11 @@ public class BoothPaymentService {
         return saved;
     }
 
-    /** 토스 결제창에서 돌아온 뒤 결제 승인 요청. 실패해도 주문은 결제 대기 상태로 남아 재시도할 수 있다. */
+    /**
+     * 토스 결제창에서 돌아온 뒤 결제 승인 요청. 실패해도 주문은 결제 대기 상태로 남아 재시도할 수 있다.
+     *
+     * <p>주문 행에 잠금을 걸어, 동시에 들어온 두 승인 요청이 둘 다 상태 검사를 통과해 배정을 중복 생성하는 것을 막는다.
+     */
     @Transactional
     public BoothPaymentResponse confirm(
             String pgOrderId, String paymentKey, BigDecimal amount, Long clientUserId) {
@@ -114,7 +120,7 @@ public class BoothPaymentService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
         BoothOrder order =
                 boothOrderRepository
-                        .findById(payment.getBoothOrderId())
+                        .findByIdForUpdate(payment.getBoothOrderId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND));
         if (!order.getClientUserId().equals(clientUserId)) {
             throw new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND);
@@ -162,7 +168,8 @@ public class BoothPaymentService {
                     "부스 결제 승인 실패. boothOrderId={}, pgOrderId={}, tossCode={}",
                     order.getId(),
                     pgOrderId,
-                    e.getCode());
+                    e.getCode(),
+                    e);
             throw new BusinessException(ErrorCode.PAYMENT_APPROVAL_FAILED);
         }
 
@@ -182,6 +189,17 @@ public class BoothPaymentService {
         return boothOrderRepository
                 .findByIdAndClientUserId(orderId, clientUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND));
+    }
+
+    private BoothOrder getOwnedOrderForUpdate(Long orderId, Long clientUserId) {
+        BoothOrder order =
+                boothOrderRepository
+                        .findByIdForUpdate(orderId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND));
+        if (!order.getClientUserId().equals(clientUserId)) {
+            throw new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND);
+        }
+        return order;
     }
 
     private void validateOrderPayable(BoothOrder order) {

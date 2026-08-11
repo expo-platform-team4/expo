@@ -7,13 +7,9 @@ import static org.mockito.Mockito.when;
 
 import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.entity.BoothAllocation;
-import com.expo.booth.entity.BoothProduct;
-import com.expo.booth.entity.BoothSalesStatus;
 import com.expo.booth.repository.BoothAllocationRepository;
-import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
-import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,21 +22,16 @@ class BoothAllocationServiceTest {
     private static final Long APPLICATION_ID = 3L;
     private static final Long ORDER_ID = 4L;
     private static final Long BOOTH_PRODUCT_ID = 5L;
-    private static final Long NOTICE_ID = 6L;
 
     private BoothAllocationRepository boothAllocationRepository;
-    private BoothProductRepository boothProductRepository;
     private BoothAllocationService service;
 
     @BeforeEach
     void setUp() {
         boothAllocationRepository = mock(BoothAllocationRepository.class);
-        boothProductRepository = mock(BoothProductRepository.class);
         service =
                 new BoothAllocationService(
-                        boothAllocationRepository,
-                        boothProductRepository,
-                        new BoothAllocationConverter());
+                        boothAllocationRepository, new BoothAllocationConverter());
     }
 
     private BoothAllocation allocation() {
@@ -90,26 +81,15 @@ class BoothAllocationServiceTest {
                 .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
     }
 
+    /** 재판매 보상 흐름이 없어 부스 상품 상태는 건드리지 않고 배정만 취소 기록으로 남겨야 한다. */
     @Test
-    void cancelSucceedsAndRevertsProductToAvailable() {
+    void cancelSucceedsWithoutTouchingBoothProduct() {
         BoothAllocation allocation = allocation();
-        BoothProduct product =
-                BoothProduct.create(
-                                NOTICE_ID,
-                                10L,
-                                BigDecimal.valueOf(1_000_000),
-                                BigDecimal.valueOf(100_000),
-                                true,
-                                null)
-                        .schedule(null, null, true);
-        product.reserve();
-        product.markSold();
         when(boothAllocationRepository.findById(ALLOCATION_ID)).thenReturn(Optional.of(allocation));
-        when(boothProductRepository.findById(BOOTH_PRODUCT_ID)).thenReturn(Optional.of(product));
 
         var response = service.cancel(ALLOCATION_ID, "이중 배정 정정");
 
         assertThat(response.cancelReason()).isEqualTo("이중 배정 정정");
-        assertThat(product.getSalesStatus()).isEqualTo(BoothSalesStatus.AVAILABLE);
+        assertThat(response.status().name()).isEqualTo("CANCELED");
     }
 }
