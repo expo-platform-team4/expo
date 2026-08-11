@@ -15,12 +15,16 @@ import org.springframework.stereotype.Component;
  * 어디서나 같은 QR 을 다시 보여줄 수 있다. DB 에는 {@link TokenHasher} 로 만든 해시만 둔다.
  *
  * <pre>
- * 원문   = "v1." + base64url(HMAC-SHA256(시크릿, "{발권티켓ID}:{티켓코드}"))
+ * 원문   = "v1." + base64url(HMAC-SHA256(시크릿, 티켓코드))
  * 저장값 = SHA-256(원문)   → issued_tickets.qr_token_hash
  * 검증   = 스캔한 원문을 해시해 qr_token_hash 와 대조 (UNIQUE 라 조회 키로도 쓴다)
  * </pre>
  *
- * <p>티켓 ID 를 원문에 노출하지 않는다. HMAC 결과만 넣어도 {@code qr_token_hash} 가 UNIQUE 라 스캔값만으로 티켓을 찾을 수 있다.
+ * <p><b>서명 대상은 티켓 코드 하나다.</b> HMAC 의 안전성은 비밀키에서 나오지 메시지의 예측 불가능성에서 나오지 않는다. 코드가 {@code
+ * EXPO-20260807-000123} 처럼 순차적이어도 키가 없으면 서명을 만들 수 없다. {@code ticket_code} 는 UNIQUE 라 티켓을 1:1 로 지목한다.
+ *
+ * <p>티켓 {@code id} 를 함께 서명하려다 뺐다. 안전성에 보태는 것이 없는데, {@code id} 는 INSERT 뒤에야 정해져서 NOT NULL·UNIQUE 인
+ * {@code qr_token_hash} 에 임시값을 넣었다가 덮어쓰는 2단계 쓰기를 강요한다.
  *
  * <p>접두어 {@code v1.} 은 키 로테이션 대비다. 시크릿을 바꾸면 기존 QR 이 전부 깨지므로, 나중에 구·신 키를 함께 검증해야 할 때 이 접두어로 구분한다.
  */
@@ -38,17 +42,15 @@ public class QrTokenGenerator {
     }
 
     /**
-     * 발권 티켓 하나의 QR 원문을 만든다.
+     * 발권 티켓 하나의 QR 원문을 만든다. 같은 코드면 언제나 같은 값이 나온다.
      *
-     * @param issuedTicketId {@code issued_tickets.id}
      * @param ticketCode {@code issued_tickets.ticket_code}
      */
-    public String generatePayload(long issuedTicketId, String ticketCode) {
+    public String generatePayload(String ticketCode) {
         if (ticketCode == null || ticketCode.isBlank()) {
             throw new IllegalArgumentException("티켓 코드가 없습니다.");
         }
-        String message = issuedTicketId + ":" + ticketCode;
-        return KEY_VERSION + "." + ENCODER.encodeToString(sign(message));
+        return KEY_VERSION + "." + ENCODER.encodeToString(sign(ticketCode));
     }
 
     private byte[] sign(String message) {
