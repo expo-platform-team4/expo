@@ -80,7 +80,14 @@ public enum ErrorCode {
     TICKET_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
     TICKET_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제가 완료된 주문만 발권할 수 있습니다."),
     TICKET_ORDER_HAS_NO_ITEM(HttpStatus.CONFLICT, "발권할 항목이 없는 주문입니다."),
-    TICKET_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발권된 주문입니다.");
+    TICKET_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발권된 주문입니다."),
+
+    // --- 티켓 조회 링크 ---
+    // 셋을 나눈 이유는 받는 사람이 할 수 있는 일이 다르기 때문이다.
+    // 만료는 재발급을 안내할 수 있지만, 폐기는 안내하면 안 된다.
+    TICKET_ACCESS_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다."),
+    TICKET_ACCESS_TOKEN_EXPIRED(HttpStatus.GONE, "링크 유효기간이 지났습니다."),
+    TICKET_ACCESS_TOKEN_REVOKED(HttpStatus.FORBIDDEN, "사용할 수 없는 링크입니다.");
 
     private final HttpStatus status;
     private final String message;
