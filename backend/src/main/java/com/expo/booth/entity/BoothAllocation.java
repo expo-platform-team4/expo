@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,14 +38,14 @@ public class BoothAllocation extends BaseTimeEntity {
     private Long clientUserId;
 
     @Column(name = "allocated_at", nullable = false)
-    private LocalDateTime allocatedAt;
+    private Instant allocatedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BoothAllocationStatus status;
 
     @Column(name = "canceled_at")
-    private LocalDateTime canceledAt;
+    private Instant canceledAt;
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;

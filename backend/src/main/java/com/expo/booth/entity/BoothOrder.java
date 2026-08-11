@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,10 +53,10 @@ public class BoothOrder extends BaseTimeEntity {
     private BoothOrderStatus status;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    private Instant paidAt;
 
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 100)
     private String idempotencyKey;

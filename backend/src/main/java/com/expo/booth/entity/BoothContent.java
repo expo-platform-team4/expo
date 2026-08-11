@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -57,10 +57,10 @@ public class BoothContent extends BaseTimeEntity {
     private BoothContentStatus status;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     @Column(name = "correction_requested_at")
-    private LocalDateTime correctionRequestedAt;
+    private Instant correctionRequestedAt;
 
     @Column(name = "correction_message", columnDefinition = "TEXT")
     private String correctionMessage;
@@ -69,5 +69,5 @@ public class BoothContent extends BaseTimeEntity {
     private Long checkedByAdminId;
 
     @Column(name = "checked_at")
-    private LocalDateTime checkedAt;
+    private Instant checkedAt;
 }

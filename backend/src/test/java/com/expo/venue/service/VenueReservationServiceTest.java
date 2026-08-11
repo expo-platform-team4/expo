@@ -24,7 +24,7 @@ import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,8 +38,8 @@ class VenueReservationServiceTest {
     private static final Long VENUE_ID = 100L;
     private static final Long HALL_ID = 200L;
     private static final Long ZONE_ID = 300L;
-    private static final LocalDateTime START = LocalDateTime.of(2026, 10, 1, 0, 0);
-    private static final LocalDateTime END = LocalDateTime.of(2026, 10, 5, 0, 0);
+    private static final Instant START = Instant.parse("2026-10-01T00:00:00Z");
+    private static final Instant END = Instant.parse("2026-10-05T00:00:00Z");
 
     private VenueReservationRepository venueReservationRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;

@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -49,7 +49,7 @@ public class BoothPayment extends BaseTimeEntity {
     private BigDecimal approvedAmount;
 
     @Column(name = "approved_at")
-    private LocalDateTime approvedAt;
+    private Instant approvedAt;
 
     @Column(name = "canceled_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal canceledAmount = BigDecimal.ZERO;

@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,13 +39,13 @@ public class BoothReservation extends BaseTimeEntity {
     private Long reservedByClientId;
 
     @Column(name = "reserved_at", nullable = false)
-    private LocalDateTime reservedAt;
+    private Instant reservedAt;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "released_at")
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
