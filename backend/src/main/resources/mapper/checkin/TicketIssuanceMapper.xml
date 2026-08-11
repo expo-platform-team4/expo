@@ -31,6 +31,7 @@
         SELECT o.id                                        AS order_id,
                o.order_number                              AS order_number,
                o.status                                    AS status,
+               o.member_user_id                            AS member_user_id,
                COALESCE(u.phone_number, g.phone_number)    AS recipient_phone_number,
                e.event_end_at                              AS expo_end_at
         FROM ticket_orders o

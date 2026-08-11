@@ -7,6 +7,7 @@ import java.util.List;
  *
  * @param orderId 발권한 주문
  * @param orderNumber 주문번호. SMS 본문에 쓴다
+ * @param memberUserId 회원 주문자. 비회원이면 {@code null}. 알림의 수신자 FK 로 쓴다
  * @param issuedTicketIds 발급된 입장권 ID 목록. 크기가 곧 발권 매수다
  * @param accessTokenValue <b>접근 토큰 원문.</b> DB 에는 해시만 저장되므로 이 값은 여기서만 나온다. 링크에 실어 보내고 나면 다시 얻을 수
  *     없다. <b>로그에 남기지 않는다</b> — 이 토큰이 곧 인증 수단이다
@@ -15,6 +16,7 @@ import java.util.List;
 public record TicketIssueResult(
         Long orderId,
         String orderNumber,
+        Long memberUserId,
         List<Long> issuedTicketIds,
         String accessTokenValue,
         String recipientPhoneNumber) {
