@@ -110,8 +110,13 @@ public class BoothPaymentService {
      * 토스 결제창에서 돌아온 뒤 결제 승인 요청. 실패해도 주문은 결제 대기 상태로 남아 재시도할 수 있다.
      *
      * <p>주문 행에 잠금을 걸어, 동시에 들어온 두 승인 요청이 둘 다 상태 검사를 통과해 배정을 중복 생성하는 것을 막는다.
+     *
+     * <p>{@code noRollbackFor}: 토스 승인 실패 시 {@code payment.fail(...)}과 FAIL 이력 저장을 남긴 뒤
+     * {@link ErrorCode#PAYMENT_APPROVAL_FAILED} 로 변환해 던진다. 기본 롤백 정책대로면 이 실패 기록 자체가
+     * 롤백되어 사라지므로, 여기서는 롤백하지 않는다 — 이 시점까지 발생하는 다른 {@link BusinessException} 은 아직
+     * 아무 것도 쓰지 않은 조회 단계에서만 던져지므로 커밋해도 부작용이 없다.
      */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public BoothPaymentResponse confirm(
             String pgOrderId, String paymentKey, BigDecimal amount, Long clientUserId) {
         BoothPayment payment =

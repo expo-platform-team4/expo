@@ -7,7 +7,9 @@ import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,10 +30,11 @@ public class AdminBoothAllocationController {
         this.boothAllocationService = boothAllocationService;
     }
 
-    @Operation(summary = "부스 확정 배정 목록 조회")
+    @Operation(summary = "부스 확정 배정 목록 조회 (페이지 단위)")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<BoothAllocationResponse>>> list() {
-        return ResponseEntity.ok(ApiResponse.ok(boothAllocationService.listForAdmin()));
+    public ResponseEntity<ApiResponse<Page<BoothAllocationResponse>>> list(
+            @PageableDefault(sort = "allocatedAt") Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(boothAllocationService.listForAdmin(pageable)));
     }
 
     @Operation(summary = "부스 확정 배정 상세 조회")

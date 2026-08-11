@@ -10,9 +10,14 @@ import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /** {@link BoothAllocationService} 의 조회·취소 규칙을 확인한다. */
 class BoothAllocationServiceTest {
@@ -60,8 +65,41 @@ class BoothAllocationServiceTest {
     }
 
     @Test
-    void cancelRejectsWhenNotFound() {
+    void listForAdminConvertsPagedResult() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<BoothAllocation> page = new PageImpl<>(List.of(allocation()), pageable, 1);
+        when(boothAllocationRepository.findAll(pageable)).thenReturn(page);
+
+        Page<?> response = service.listForAdmin(pageable);
+
+        assertThat(response.getTotalElements()).isEqualTo(1);
+        assertThat(response.getContent()).hasSize(1);
+    }
+
+    @Test
+    void getForAdminRejectsWhenNotFound() {
         when(boothAllocationRepository.findById(ALLOCATION_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getForAdmin(ALLOCATION_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND);
+    }
+
+    @Test
+    void getForAdminSucceeds() {
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+
+        var response = service.getForAdmin(ALLOCATION_ID);
+
+        assertThat(response.applicationId()).isEqualTo(APPLICATION_ID);
+    }
+
+    @Test
+    void cancelRejectsWhenNotFound() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, "이중 배정 정정"))
                 .isInstanceOf(BusinessException.class)
@@ -73,7 +111,8 @@ class BoothAllocationServiceTest {
     void cancelRejectsWhenAlreadyCanceled() {
         BoothAllocation canceled = allocation();
         canceled.cancel("이전 취소");
-        when(boothAllocationRepository.findById(ALLOCATION_ID)).thenReturn(Optional.of(canceled));
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceled));
 
         assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, "이중 배정 정정"))
                 .isInstanceOf(BusinessException.class)
@@ -85,7 +124,8 @@ class BoothAllocationServiceTest {
     @Test
     void cancelSucceedsWithoutTouchingBoothProduct() {
         BoothAllocation allocation = allocation();
-        when(boothAllocationRepository.findById(ALLOCATION_ID)).thenReturn(Optional.of(allocation));
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
 
         var response = service.cancel(ALLOCATION_ID, "이중 배정 정정");
 

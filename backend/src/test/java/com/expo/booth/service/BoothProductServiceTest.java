@@ -219,9 +219,21 @@ class BoothProductServiceTest {
                                 LocalDateTime.now().plusDays(1),
                                 LocalDateTime.now().plusDays(2),
                                 true);
+        BoothProduct alreadyEnded =
+                BoothProduct.create(
+                                NOTICE_ID,
+                                BOOTH_ID,
+                                BigDecimal.valueOf(1_000_000),
+                                BigDecimal.valueOf(100_000),
+                                true,
+                                null)
+                        .schedule(
+                                LocalDateTime.now().minusDays(2),
+                                LocalDateTime.now().minusDays(1),
+                                true);
         when(boothProductRepository.findAllByRecruitmentNoticeIdAndSalesStatus(
                         NOTICE_ID, BoothSalesStatus.AVAILABLE))
-                .thenReturn(List.of(notYetOnSale));
+                .thenReturn(List.of(notYetOnSale, alreadyEnded));
 
         List<BoothProductResponse> responses = service.listAvailable(NOTICE_ID);
 

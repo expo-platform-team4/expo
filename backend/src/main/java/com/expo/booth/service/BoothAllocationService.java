@@ -7,7 +7,8 @@ import com.expo.booth.entity.BoothAllocationStatus;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +37,12 @@ public class BoothAllocationService {
         return boothAllocationConverter.toResponse(allocation);
     }
 
-    /** 관리자용 배정 목록 조회. */
+    /** 관리자용 배정 목록 조회 (페이지 단위). */
     @Transactional(readOnly = true)
-    public List<BoothAllocationResponse> listForAdmin() {
-        return boothAllocationRepository.findAll().stream()
-                .map(boothAllocationConverter::toResponse)
-                .toList();
+    public Page<BoothAllocationResponse> listForAdmin(Pageable pageable) {
+        return boothAllocationRepository
+                .findAll(pageable)
+                .map(boothAllocationConverter::toResponse);
     }
 
     /** 관리자용 배정 상세 조회. */
@@ -60,7 +61,11 @@ public class BoothAllocationService {
      */
     @Transactional
     public BoothAllocationResponse cancel(Long allocationId, String reason) {
-        BoothAllocation allocation = getEntity(allocationId);
+        BoothAllocation allocation =
+                boothAllocationRepository
+                        .findByIdForUpdate(allocationId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND));
         if (allocation.getStatus() != BoothAllocationStatus.ASSIGNED) {
             throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
         }

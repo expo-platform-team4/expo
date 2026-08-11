@@ -1,5 +1,7 @@
 package com.expo.common.config;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +32,7 @@ public class TossPaymentClientImpl implements TossPaymentClient {
 
     private final RestClient restClient;
     private final TossPaymentProperties properties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TossPaymentClientImpl(TossPaymentProperties properties) {
         this.properties = properties;
@@ -57,7 +60,7 @@ public class TossPaymentClientImpl implements TossPaymentClient {
                                 (properties.getSecretKey() + ":").getBytes(StandardCharsets.UTF_8));
 
         try {
-            TossConfirmApiResponse response =
+            String rawBody =
                     restClient
                             .post()
                             .uri(properties.getApiBaseUrl() + CONFIRM_PATH)
@@ -66,9 +69,16 @@ public class TossPaymentClientImpl implements TossPaymentClient {
                             .contentType(MediaType.APPLICATION_JSON)
                             .body(new TossConfirmApiRequest(paymentKey, orderId, amount))
                             .retrieve()
-                            .body(TossConfirmApiResponse.class);
-            if (response == null) {
+                            .body(String.class);
+            if (rawBody == null || rawBody.isBlank()) {
                 throw new TossApiException("EMPTY_RESPONSE", "토스 결제 승인 응답이 비어 있습니다.", null);
+            }
+            TossConfirmApiResponse response;
+            try {
+                response = objectMapper.readValue(rawBody, TossConfirmApiResponse.class);
+            } catch (JsonProcessingException e) {
+                throw new TossApiException(
+                        "INVALID_RESPONSE", "토스 결제 승인 응답을 해석할 수 없습니다.", rawBody, e);
             }
             return new TossConfirmResult(
                     response.paymentKey(),
@@ -77,7 +87,7 @@ public class TossPaymentClientImpl implements TossPaymentClient {
                     response.method(),
                     response.totalAmount(),
                     response.approvedAt(),
-                    response.toString());
+                    rawBody);
         } catch (RestClientResponseException e) {
             TossErrorResponse error = e.getResponseBodyAs(TossErrorResponse.class);
             String code = error != null ? error.code() : "UNKNOWN";
