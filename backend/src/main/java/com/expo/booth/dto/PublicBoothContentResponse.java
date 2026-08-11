@@ -22,4 +22,5 @@ public record PublicBoothContentResponse(
         @Schema(description = "로고 파일 ID") Long logoFileId,
         @Schema(description = "대표 이미지 파일 ID") Long mainImageFileId,
         @Schema(description = "공개 일시") Instant publishedAt,
-        @Schema(description = "첨부 파일 목록") List<BoothContentFileResponse> files) {}
+        @Schema(description = "첨부 파일 목록") List<BoothContentFileResponse> files,
+        @Schema(description = "외부 링크 목록") List<ExternalLinkResponse> links) {}

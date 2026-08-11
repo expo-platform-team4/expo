@@ -10,10 +10,12 @@ import static org.mockito.Mockito.when;
 import com.expo.booth.converter.BoothContentConverter;
 import com.expo.booth.converter.BoothContentFileConverter;
 import com.expo.booth.converter.BoothManagementHistoryConverter;
+import com.expo.booth.converter.ExternalLinkConverter;
 import com.expo.booth.entity.BoothContent;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
+import com.expo.booth.repository.ExternalLinkRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.lang.reflect.Field;
@@ -32,6 +34,7 @@ class AdminBoothContentServiceTest {
 
     private BoothContentRepository boothContentRepository;
     private BoothContentFileRepository boothContentFileRepository;
+    private ExternalLinkRepository externalLinkRepository;
     private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private AdminBoothContentService service;
 
@@ -39,15 +42,20 @@ class AdminBoothContentServiceTest {
     void setUp() {
         boothContentRepository = mock(BoothContentRepository.class);
         boothContentFileRepository = mock(BoothContentFileRepository.class);
+        externalLinkRepository = mock(ExternalLinkRepository.class);
         boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new AdminBoothContentService(
                         boothContentRepository,
                         boothContentFileRepository,
+                        externalLinkRepository,
                         boothManagementHistoryRepository,
-                        new BoothContentConverter(new BoothContentFileConverter()),
+                        new BoothContentConverter(
+                                new BoothContentFileConverter(), new ExternalLinkConverter()),
                         new BoothManagementHistoryConverter());
         when(boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
+                .thenReturn(List.of());
+        when(externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
                 .thenReturn(List.of());
     }
 

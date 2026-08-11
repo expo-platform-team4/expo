@@ -9,9 +9,11 @@ import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentStatus;
 import com.expo.booth.entity.BoothManagementActionType;
 import com.expo.booth.entity.BoothManagementHistory;
+import com.expo.booth.entity.ExternalLink;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
+import com.expo.booth.repository.ExternalLinkRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.List;
@@ -26,6 +28,7 @@ public class AdminBoothContentService {
 
     private final BoothContentRepository boothContentRepository;
     private final BoothContentFileRepository boothContentFileRepository;
+    private final ExternalLinkRepository externalLinkRepository;
     private final BoothManagementHistoryRepository boothManagementHistoryRepository;
     private final BoothContentConverter boothContentConverter;
     private final BoothManagementHistoryConverter boothManagementHistoryConverter;
@@ -33,11 +36,13 @@ public class AdminBoothContentService {
     public AdminBoothContentService(
             BoothContentRepository boothContentRepository,
             BoothContentFileRepository boothContentFileRepository,
+            ExternalLinkRepository externalLinkRepository,
             BoothManagementHistoryRepository boothManagementHistoryRepository,
             BoothContentConverter boothContentConverter,
             BoothManagementHistoryConverter boothManagementHistoryConverter) {
         this.boothContentRepository = boothContentRepository;
         this.boothContentFileRepository = boothContentFileRepository;
+        this.externalLinkRepository = externalLinkRepository;
         this.boothManagementHistoryRepository = boothManagementHistoryRepository;
         this.boothContentConverter = boothContentConverter;
         this.boothManagementHistoryConverter = boothManagementHistoryConverter;
@@ -48,7 +53,7 @@ public class AdminBoothContentService {
     public Page<BoothContentResponse> list(Pageable pageable) {
         return boothContentRepository
                 .findAll(pageable)
-                .map(content -> boothContentConverter.toResponse(content, List.of()));
+                .map(content -> boothContentConverter.toResponse(content, List.of(), List.of()));
     }
 
     /** 부스 콘텐츠 상세 조회. */
@@ -132,7 +137,10 @@ public class AdminBoothContentService {
         List<BoothContentFile> files =
                 boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
                         content.getId());
-        return boothContentConverter.toResponse(content, files);
+        List<ExternalLink> links =
+                externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
+                        content.getId());
+        return boothContentConverter.toResponse(content, files, links);
     }
 
     private BoothContent getEntity(Long contentId) {

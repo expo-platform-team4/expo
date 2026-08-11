@@ -2,20 +2,26 @@ package com.expo.booth.service;
 
 import com.expo.booth.converter.BoothContentConverter;
 import com.expo.booth.converter.BoothContentFileConverter;
+import com.expo.booth.converter.ExternalLinkConverter;
 import com.expo.booth.dto.AddBoothContentFileRequest;
+import com.expo.booth.dto.AddExternalLinkRequest;
 import com.expo.booth.dto.BoothContentFileResponse;
 import com.expo.booth.dto.BoothContentResponse;
 import com.expo.booth.dto.CreateBoothContentRequest;
+import com.expo.booth.dto.ExternalLinkResponse;
 import com.expo.booth.dto.PublicBoothContentResponse;
 import com.expo.booth.dto.UpdateBoothContentRequest;
+import com.expo.booth.dto.UpdateExternalLinkRequest;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothAllocationStatus;
 import com.expo.booth.entity.BoothContent;
 import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentStatus;
+import com.expo.booth.entity.ExternalLink;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
+import com.expo.booth.repository.ExternalLinkRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.EnumSet;
@@ -36,21 +42,27 @@ public class ClientBoothContentService {
 
     private final BoothContentRepository boothContentRepository;
     private final BoothContentFileRepository boothContentFileRepository;
+    private final ExternalLinkRepository externalLinkRepository;
     private final BoothAllocationRepository boothAllocationRepository;
     private final BoothContentConverter boothContentConverter;
     private final BoothContentFileConverter boothContentFileConverter;
+    private final ExternalLinkConverter externalLinkConverter;
 
     public ClientBoothContentService(
             BoothContentRepository boothContentRepository,
             BoothContentFileRepository boothContentFileRepository,
+            ExternalLinkRepository externalLinkRepository,
             BoothAllocationRepository boothAllocationRepository,
             BoothContentConverter boothContentConverter,
-            BoothContentFileConverter boothContentFileConverter) {
+            BoothContentFileConverter boothContentFileConverter,
+            ExternalLinkConverter externalLinkConverter) {
         this.boothContentRepository = boothContentRepository;
         this.boothContentFileRepository = boothContentFileRepository;
+        this.externalLinkRepository = externalLinkRepository;
         this.boothAllocationRepository = boothAllocationRepository;
         this.boothContentConverter = boothContentConverter;
         this.boothContentFileConverter = boothContentFileConverter;
+        this.externalLinkConverter = externalLinkConverter;
     }
 
     /** 부스 콘텐츠 작성. 확정 배정 1건당 콘텐츠는 하나만 가질 수 있다. */
@@ -76,7 +88,7 @@ public class ClientBoothContentService {
                         .attachImages(request.logoFileId(), request.mainImageFileId());
         try {
             BoothContent saved = boothContentRepository.saveAndFlush(content);
-            return boothContentConverter.toResponse(saved, List.of());
+            return boothContentConverter.toResponse(saved, List.of(), List.of());
         } catch (DataIntegrityViolationException e) {
             String cause = e.getMostSpecificCause().getMessage();
             if (cause != null && cause.contains("booth_contents_booth_allocation_id_key")) {
@@ -108,7 +120,10 @@ public class ClientBoothContentService {
         List<BoothContentFile> files =
                 boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
                         content.getId());
-        return boothContentConverter.toPublicResponse(content, files);
+        List<ExternalLink> links =
+                externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
+                        content.getId());
+        return boothContentConverter.toPublicResponse(content, files, links);
     }
 
     /** 콘텐츠 본문 수정. 초안·보완 요청 상태에서만 수정할 수 있다. */
@@ -187,6 +202,56 @@ public class ClientBoothContentService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_CONTENT_FILE_NOT_FOUND));
     }
 
+    /** 외부 링크 등록. */
+    @Transactional
+    public ExternalLinkResponse addLink(
+            Long contentId, AddExternalLinkRequest request, Long clientUserId) {
+        BoothContent content = getEditableOwnedEntity(contentId, clientUserId);
+        ExternalLink link =
+                ExternalLink.createForBoothContent(
+                        content.getId(),
+                        request.linkType(),
+                        request.label(),
+                        request.url(),
+                        request.sortOrder());
+        ExternalLink saved = externalLinkRepository.saveAndFlush(link);
+        return externalLinkConverter.toResponse(saved);
+    }
+
+    /** 외부 링크 수정. */
+    @Transactional
+    public ExternalLinkResponse updateLink(
+            Long contentId, Long linkId, UpdateExternalLinkRequest request, Long clientUserId) {
+        getEditableOwnedEntity(contentId, clientUserId);
+        ExternalLink link = getOwnedLink(contentId, linkId);
+        link.update(request.linkType(), request.label(), request.url());
+        return externalLinkConverter.toResponse(link);
+    }
+
+    /** 외부 링크 삭제. */
+    @Transactional
+    public void removeLink(Long contentId, Long linkId, Long clientUserId) {
+        getEditableOwnedEntity(contentId, clientUserId);
+        ExternalLink link = getOwnedLink(contentId, linkId);
+        externalLinkRepository.delete(link);
+    }
+
+    /** 외부 링크 노출 순서 변경. */
+    @Transactional
+    public ExternalLinkResponse reorderLink(
+            Long contentId, Long linkId, int sortOrder, Long clientUserId) {
+        getEditableOwnedEntity(contentId, clientUserId);
+        ExternalLink link = getOwnedLink(contentId, linkId);
+        link.changeSortOrder(sortOrder);
+        return externalLinkConverter.toResponse(link);
+    }
+
+    private ExternalLink getOwnedLink(Long contentId, Long linkId) {
+        return externalLinkRepository
+                .findByIdAndBoothContentId(linkId, contentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXTERNAL_LINK_NOT_FOUND));
+    }
+
     /** 소유권과 함께 수정 가능 상태(초안·보완 요청)인지 확인한다. */
     private BoothContent getEditableOwnedEntity(Long contentId, Long clientUserId) {
         BoothContent content = getOwnedEntity(contentId, clientUserId);
@@ -200,7 +265,10 @@ public class ClientBoothContentService {
         List<BoothContentFile> files =
                 boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
                         content.getId());
-        return boothContentConverter.toResponse(content, files);
+        List<ExternalLink> links =
+                externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
+                        content.getId());
+        return boothContentConverter.toResponse(content, files, links);
     }
 
     private BoothContent getOwnedEntity(Long contentId, Long clientUserId) {

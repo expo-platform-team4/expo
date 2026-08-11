@@ -8,16 +8,22 @@ import static org.mockito.Mockito.when;
 
 import com.expo.booth.converter.BoothContentConverter;
 import com.expo.booth.converter.BoothContentFileConverter;
+import com.expo.booth.converter.ExternalLinkConverter;
 import com.expo.booth.dto.AddBoothContentFileRequest;
+import com.expo.booth.dto.AddExternalLinkRequest;
 import com.expo.booth.dto.CreateBoothContentRequest;
 import com.expo.booth.dto.UpdateBoothContentRequest;
+import com.expo.booth.dto.UpdateExternalLinkRequest;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothContent;
 import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentFileType;
+import com.expo.booth.entity.ExternalLink;
+import com.expo.booth.entity.ExternalLinkType;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
+import com.expo.booth.repository.ExternalLinkRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.lang.reflect.Field;
@@ -38,6 +44,7 @@ class ClientBoothContentServiceTest {
 
     private BoothContentRepository boothContentRepository;
     private BoothContentFileRepository boothContentFileRepository;
+    private ExternalLinkRepository externalLinkRepository;
     private BoothAllocationRepository boothAllocationRepository;
     private ClientBoothContentService service;
 
@@ -45,14 +52,20 @@ class ClientBoothContentServiceTest {
     void setUp() {
         boothContentRepository = mock(BoothContentRepository.class);
         boothContentFileRepository = mock(BoothContentFileRepository.class);
+        externalLinkRepository = mock(ExternalLinkRepository.class);
         boothAllocationRepository = mock(BoothAllocationRepository.class);
         service =
                 new ClientBoothContentService(
                         boothContentRepository,
                         boothContentFileRepository,
+                        externalLinkRepository,
                         boothAllocationRepository,
-                        new BoothContentConverter(new BoothContentFileConverter()),
-                        new BoothContentFileConverter());
+                        new BoothContentConverter(
+                                new BoothContentFileConverter(), new ExternalLinkConverter()),
+                        new BoothContentFileConverter(),
+                        new ExternalLinkConverter());
+        when(externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
+                .thenReturn(List.of());
     }
 
     private BoothAllocation allocation() {
@@ -295,5 +308,75 @@ class ClientBoothContentServiceTest {
         var response = service.reorderFile(CONTENT_ID, 20L, 3, CLIENT_USER_ID);
 
         assertThat(response.sortOrder()).isEqualTo(3);
+    }
+
+    @Test
+    void addLinkSucceeds() {
+        BoothContent content = content();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(externalLinkRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        AddExternalLinkRequest request =
+                new AddExternalLinkRequest(
+                        ExternalLinkType.HOMEPAGE, "홈페이지", "https://example.com", 0);
+
+        var response = service.addLink(CONTENT_ID, request, CLIENT_USER_ID);
+
+        assertThat(response.url()).isEqualTo("https://example.com");
+        assertThat(response.linkType()).isEqualTo(ExternalLinkType.HOMEPAGE);
+    }
+
+    @Test
+    void removeLinkRejectsWhenNotFound() {
+        BoothContent content = content();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(externalLinkRepository.findByIdAndBoothContentId(99L, CONTENT_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.removeLink(CONTENT_ID, 99L, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.EXTERNAL_LINK_NOT_FOUND);
+    }
+
+    @Test
+    void updateLinkSucceeds() {
+        BoothContent content = content();
+        withId(content, CONTENT_ID);
+        ExternalLink link =
+                ExternalLink.createForBoothContent(
+                        CONTENT_ID, ExternalLinkType.SOCIAL, "인스타", "https://old.example.com", 0);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(externalLinkRepository.findByIdAndBoothContentId(20L, CONTENT_ID))
+                .thenReturn(Optional.of(link));
+        UpdateExternalLinkRequest request =
+                new UpdateExternalLinkRequest(
+                        ExternalLinkType.HOMEPAGE, "새 홈페이지", "https://new.example.com");
+
+        var response = service.updateLink(CONTENT_ID, 20L, request, CLIENT_USER_ID);
+
+        assertThat(response.url()).isEqualTo("https://new.example.com");
+        assertThat(response.linkType()).isEqualTo(ExternalLinkType.HOMEPAGE);
+    }
+
+    @Test
+    void reorderLinkSucceeds() {
+        BoothContent content = content();
+        withId(content, CONTENT_ID);
+        ExternalLink link =
+                ExternalLink.createForBoothContent(
+                        CONTENT_ID, ExternalLinkType.SOCIAL, "인스타", "https://example.com", 0);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(externalLinkRepository.findByIdAndBoothContentId(20L, CONTENT_ID))
+                .thenReturn(Optional.of(link));
+
+        var response = service.reorderLink(CONTENT_ID, 20L, 5, CLIENT_USER_ID);
+
+        assertThat(response.sortOrder()).isEqualTo(5);
     }
 }

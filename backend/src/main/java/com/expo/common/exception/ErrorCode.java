@@ -90,6 +90,7 @@ public enum ErrorCode {
     BOOTH_CONTENT_NOT_RESTORABLE(HttpStatus.CONFLICT, "숨김 상태의 콘텐츠만 숨김 해제할 수 있습니다."),
     BOOTH_CONTENT_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠 첨부 파일입니다."),
     DUPLICATE_BOOTH_CONTENT_FILE(HttpStatus.CONFLICT, "이미 등록된 첨부 파일입니다."),
+    EXTERNAL_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 외부 링크입니다."),
 
     // --- 모집공고 ---
     DUPLICATE_RECRUITMENT_NOTICE_REQUEST(HttpStatus.CONFLICT, "이미 공고가 생성된 요청입니다."),

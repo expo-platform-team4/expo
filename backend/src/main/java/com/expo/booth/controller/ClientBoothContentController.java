@@ -1,11 +1,15 @@
 package com.expo.booth.controller;
 
 import com.expo.booth.dto.AddBoothContentFileRequest;
+import com.expo.booth.dto.AddExternalLinkRequest;
 import com.expo.booth.dto.BoothContentFileResponse;
 import com.expo.booth.dto.BoothContentResponse;
 import com.expo.booth.dto.CreateBoothContentRequest;
+import com.expo.booth.dto.ExternalLinkResponse;
 import com.expo.booth.dto.ReorderBoothContentFileRequest;
+import com.expo.booth.dto.ReorderExternalLinkRequest;
 import com.expo.booth.dto.UpdateBoothContentRequest;
+import com.expo.booth.dto.UpdateExternalLinkRequest;
 import com.expo.booth.service.ClientBoothContentService;
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
@@ -115,5 +119,54 @@ public class ClientBoothContentController {
                                 fileEntryId,
                                 request.sortOrder(),
                                 principal.getMemberId())));
+    }
+
+    @Operation(summary = "부스 콘텐츠 외부 링크 등록")
+    @PostMapping("/{contentId}/links")
+    public ResponseEntity<ApiResponse<ExternalLinkResponse>> addLink(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long contentId,
+            @Valid @RequestBody AddExternalLinkRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        ApiResponse.ok(
+                                clientBoothContentService.addLink(
+                                        contentId, request, principal.getMemberId())));
+    }
+
+    @Operation(summary = "부스 콘텐츠 외부 링크 수정")
+    @PutMapping("/{contentId}/links/{linkId}")
+    public ResponseEntity<ApiResponse<ExternalLinkResponse>> updateLink(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long contentId,
+            @PathVariable Long linkId,
+            @Valid @RequestBody UpdateExternalLinkRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        clientBoothContentService.updateLink(
+                                contentId, linkId, request, principal.getMemberId())));
+    }
+
+    @Operation(summary = "부스 콘텐츠 외부 링크 삭제")
+    @DeleteMapping("/{contentId}/links/{linkId}")
+    public ResponseEntity<Void> removeLink(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long contentId,
+            @PathVariable Long linkId) {
+        clientBoothContentService.removeLink(contentId, linkId, principal.getMemberId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "부스 콘텐츠 외부 링크 노출 순서 변경")
+    @PutMapping("/{contentId}/links/{linkId}/sort-order")
+    public ResponseEntity<ApiResponse<ExternalLinkResponse>> reorderLink(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long contentId,
+            @PathVariable Long linkId,
+            @Valid @RequestBody ReorderExternalLinkRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        clientBoothContentService.reorderLink(
+                                contentId, linkId, request.sortOrder(), principal.getMemberId())));
     }
 }
