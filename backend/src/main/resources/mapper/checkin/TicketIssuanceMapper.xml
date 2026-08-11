@@ -11,6 +11,21 @@
       박람회 종료 시각은 첫 항목의 상품을 타고 온다. ticket_orders 에 expo_id 가 없어서다.
       한 주문에 여러 박람회가 섞이면 이 값이 틀리는데, "한 주문 한 박람회" 는 코드에만 있는 약속이라
       order 담당자와 확인이 필요하다 (docs 6절).
+
+      FOR UPDATE OF o 가 반드시 있어야 한다.
+
+      중복 발권 방어는 countIssuedTickets 로 세어 보는 check-then-act 이고, 이걸 막아 주는
+      DB 제약이 없다. issued_tickets 의 UNIQUE 는 ticket_code 와 qr_token_hash 인데 둘 다
+      발권할 때마다 새로 만들어지는 값이라, 같은 주문을 동시에 발권해도 서로 다른 값이 들어가
+      제약에 걸리지 않는다. ticket_access_tokens.token_hash 도 난수라 마찬가지다.
+      즉 두 트랜잭션이 나란히 count = 0 을 보고 양쪽 다 발권해 버린다.
+
+      결제 웹훅은 재시도되므로 실무에서 반드시 겪는 경우다. 주문 행을 잠가 직렬화한다.
+      두 번째 트랜잭션은 첫 번째가 커밋될 때까지 여기서 기다렸다가, 그 다음 countIssuedTickets
+      에서 이미 발권된 것을 보고 TICKET_ALREADY_ISSUED 로 막힌다.
+
+      OF o 로 대상을 ticket_orders 에 한정한다. 대상을 지정하지 않으면 조인된 테이블까지
+      잠그려 하고, LEFT JOIN 의 nullable 쪽에는 FOR UPDATE 를 걸 수 없어 에러가 난다.
     -->
     <select id="findOrderForIssuance" resultType="com.expo.checkin.dto.TicketIssuanceOrder">
         SELECT o.id                                        AS order_id,
@@ -32,6 +47,7 @@
         LEFT JOIN ticket_products tp ON tp.id = first_item.ticket_product_id
         LEFT JOIN expos           e  ON e.id = tp.expo_id
         WHERE o.id = #{ticketOrderId}
+        FOR UPDATE OF o
     </select>
 
     <select id="findOrderItems" resultType="com.expo.checkin.dto.TicketIssuanceOrderItem">

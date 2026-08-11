@@ -115,6 +115,14 @@ public class TicketIssueService {
         return result;
     }
 
+    /**
+     * 주문을 읽고 발권해도 되는지 확인한다.
+     *
+     * <p>순서가 중요하다. {@code findOrderForIssuance} 가 <b>주문 행을 잠그고</b>({@code FOR UPDATE})
+     * 돌아온 뒤에 발권 여부를 센다. 중복 발권 방어는 세어 보고 판단하는 check-then-act 인데, 이걸 막아 주는
+     * DB 제약이 없어서 잠그지 않으면 두 트랜잭션이 나란히 0 을 보고 양쪽 다 발권한다. 결제 웹훅은 재시도되므로
+     * 실무에서 반드시 겪는 경우다.
+     */
     private TicketIssuanceOrder loadPaidOrder(Long ticketOrderId) {
         TicketIssuanceOrder order = ticketIssuanceMapper.findOrderForIssuance(ticketOrderId);
         if (order == null) {
