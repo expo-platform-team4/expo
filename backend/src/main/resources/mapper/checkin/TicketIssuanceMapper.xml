@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.checkin.repository.TicketIssuanceMapper">
+
+    <!--
+      수신 번호는 주문자 유형에 따라 출처가 다르다.
+        회원   users.phone_number            (NULL 일 수 있다 - 소셜 로그인 회원)
+        비회원 guest_order_infos.phone_number (NOT NULL)
+      COALESCE 로 둘 중 있는 쪽을 고른다. 둘 다 없으면 NULL 이고, 그 처리는 서비스가 한다.
+
+      박람회 종료 시각은 첫 항목의 상품을 타고 온다. ticket_orders 에 expo_id 가 없어서다.
+      한 주문에 여러 박람회가 섞이면 이 값이 틀리는데, "한 주문 한 박람회" 는 코드에만 있는 약속이라
+      order 담당자와 확인이 필요하다 (docs 6절).
+
+      FOR UPDATE OF o 가 반드시 있어야 한다.
+
+      중복 발권 방어는 countIssuedTickets 로 세어 보는 check-then-act 이고, 이걸 막아 주는
+      DB 제약이 없다. issued_tickets 의 UNIQUE 는 ticket_code 와 qr_token_hash 인데 둘 다
+      발권할 때마다 새로 만들어지는 값이라, 같은 주문을 동시에 발권해도 서로 다른 값이 들어가
+      제약에 걸리지 않는다. ticket_access_tokens.token_hash 도 난수라 마찬가지다.
+      즉 두 트랜잭션이 나란히 count = 0 을 보고 양쪽 다 발권해 버린다.
+
+      결제 웹훅은 재시도되므로 실무에서 반드시 겪는 경우다. 주문 행을 잠가 직렬화한다.
+      두 번째 트랜잭션은 첫 번째가 커밋될 때까지 여기서 기다렸다가, 그 다음 countIssuedTickets
+      에서 이미 발권된 것을 보고 TICKET_ALREADY_ISSUED 로 막힌다.
+
+      OF o 로 대상을 ticket_orders 에 한정한다. 대상을 지정하지 않으면 조인된 테이블까지
+      잠그려 하고, LEFT JOIN 의 nullable 쪽에는 FOR UPDATE 를 걸 수 없어 에러가 난다.
+    -->
+    <select id="findOrderForIssuance" resultType="com.expo.checkin.dto.TicketIssuanceOrder">
+        SELECT o.id                                        AS order_id,
+               o.order_number                              AS order_number,
+               o.status                                    AS status,
+               o.member_user_id                            AS member_user_id,
+               COALESCE(u.phone_number, g.phone_number)    AS recipient_phone_number,
+               e.event_end_at                              AS expo_end_at
+        FROM ticket_orders o
+        LEFT JOIN users             u ON u.id = o.member_user_id
+        LEFT JOIN guest_order_infos g ON g.ticket_order_id = o.id
+        LEFT JOIN LATERAL (
+            SELECT oi.ticket_product_id
+              FROM ticket_order_items oi
+             WHERE oi.ticket_order_id = o.id
+             ORDER BY oi.id
+             LIMIT 1
+        ) first_item ON TRUE
+        LEFT JOIN ticket_products tp ON tp.id = first_item.ticket_product_id
+        LEFT JOIN expos           e  ON e.id = tp.expo_id
+        WHERE o.id = #{ticketOrderId}
+        FOR UPDATE OF o
+    </select>
+
+    <select id="findOrderItems" resultType="com.expo.checkin.dto.TicketIssuanceOrderItem">
+        SELECT oi.id                AS order_item_id,
+               tp.expo_id           AS expo_id,
+               oi.quantity          AS quantity
+        FROM ticket_order_items oi
+        JOIN ticket_products    tp ON tp.id = oi.ticket_product_id
+        WHERE oi.ticket_order_id = #{ticketOrderId}
+        ORDER BY oi.id
+    </select>
+
+    <!--
+      flushCache="true" 가 반드시 있어야 한다.
+
+      MyBatis 1차 캐시는 같은 SqlSession(= 같은 트랜잭션) 안에서 "같은 구문 + 같은 파라미터" 의
+      SELECT 결과를 재사용한다. 이 구문은 파라미터가 없어서 두 번째 호출부터 무조건 캐시에 걸린다.
+      그러면 한 주문의 티켓이 전부 같은 일련번호를 받고, ticket_code 가 UNIQUE 라
+      두 번째 INSERT 에서 duplicate key 로 터진다. 실제로 그렇게 터졌다.
+
+      nextval 은 부를 때마다 값이 달라야 하는 구문이므로 캐시를 끈다.
+    -->
+    <select id="nextTicketCodeSequence" resultType="long" flushCache="true">
+        SELECT nextval('seq_issued_ticket_code')
+    </select>
+
+    <select id="countIssuedTickets" resultType="int">
+        SELECT count(*)
+        FROM issued_tickets it
+        JOIN ticket_order_items oi ON oi.id = it.ticket_order_item_id
+        WHERE oi.ticket_order_id = #{ticketOrderId}
+    </select>
+
+</mapper>

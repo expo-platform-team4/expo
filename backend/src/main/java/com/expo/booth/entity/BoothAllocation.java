@@ -49,4 +49,24 @@ public class BoothAllocation extends BaseTimeEntity {
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
+
+    /** 결제 승인 완료로 부스 확정 배정. */
+    public static BoothAllocation create(
+            Long applicationId, Long boothOrderId, Long boothProductId, Long clientUserId) {
+        BoothAllocation allocation = new BoothAllocation();
+        allocation.applicationId = applicationId;
+        allocation.boothOrderId = boothOrderId;
+        allocation.boothProductId = boothProductId;
+        allocation.clientUserId = clientUserId;
+        allocation.allocatedAt = LocalDateTime.now();
+        allocation.status = BoothAllocationStatus.ASSIGNED;
+        return allocation;
+    }
+
+    /** 관리자 배정 취소. 부스 이중 배정 등 운영상 정정이 필요할 때만 쓴다. */
+    public void cancel(String reason) {
+        this.status = BoothAllocationStatus.CANCELED;
+        this.canceledAt = LocalDateTime.now();
+        this.cancelReason = reason;
+    }
 }
