@@ -29,6 +29,10 @@ public enum ErrorCode {
     // --- 티켓 ---
     INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다."),
 
+    // --- 박람회 ---
+    EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
+    NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "해당 박람회의 주최자가 아닙니다."),
+
     // --- 관리자 · 카테고리 ---
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),
     DUPLICATE_CATEGORY_NAME(HttpStatus.CONFLICT, "이미 사용 중인 카테고리명입니다."),
@@ -66,6 +70,11 @@ public enum ErrorCode {
     EVENT_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "행사 종료 일시는 시작 일시보다 늦어야 합니다."),
     RECRUITMENT_NOTICE_CREATION_NOT_ALLOWED(
             HttpStatus.CONFLICT, "장소 충돌 판정에서 승인(ALLOWED)된 요청만 공고를 생성할 수 있습니다."),
+
+    // --- 참여 신청 ---
+    BOOTH_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 상품입니다."),
+    PARTICIPATION_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 참여 신청서입니다."),
+    RECRUITMENT_NOTICE_NOT_OPEN(HttpStatus.CONFLICT, "게시 중인 모집공고에만 참여 신청할 수 있습니다."),
 
     // --- 발권 · QR ---
     TICKET_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
