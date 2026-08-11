@@ -9,9 +9,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ApplicationOperationHistoryRepository
         extends JpaRepository<ApplicationOperationHistory, Long> {
 
-    List<ApplicationOperationHistory> findAllByApplicationIdOrderByCreatedAtDesc(
+    List<ApplicationOperationHistory> findAllByApplicationIdOrderByCreatedAtDescIdDesc(
             Long applicationId);
 
-    Optional<ApplicationOperationHistory> findFirstByApplicationIdOrderByCreatedAtDesc(
+    /** {@code createdAt} 이 같은 이력이 있어도 {@code id} 로 최신 순서를 결정적으로 가린다. */
+    Optional<ApplicationOperationHistory> findFirstByApplicationIdOrderByCreatedAtDescIdDesc(
             Long applicationId);
 }

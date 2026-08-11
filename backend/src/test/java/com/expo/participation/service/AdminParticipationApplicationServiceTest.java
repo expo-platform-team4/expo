@@ -115,10 +115,10 @@ class AdminParticipationApplicationServiceTest {
 
     @Test
     void completeCorrectionRejectsWhenNoCorrectionWasRequested() {
-        when(participationApplicationRepository.findById(APPLICATION_ID))
+        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
-        when(applicationOperationHistoryRepository.findFirstByApplicationIdOrderByCreatedAtDesc(
-                        APPLICATION_ID))
+        when(applicationOperationHistoryRepository
+                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(APPLICATION_ID))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.completeCorrection(APPLICATION_ID, ADMIN_ID, "완료"))
@@ -129,10 +129,10 @@ class AdminParticipationApplicationServiceTest {
 
     @Test
     void completeCorrectionRejectsWhenLatestHistoryIsNotCorrectionRequest() {
-        when(participationApplicationRepository.findById(APPLICATION_ID))
+        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
-        when(applicationOperationHistoryRepository.findFirstByApplicationIdOrderByCreatedAtDesc(
-                        APPLICATION_ID))
+        when(applicationOperationHistoryRepository
+                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(APPLICATION_ID))
                 .thenReturn(
                         Optional.of(
                                 ApplicationOperationHistory.create(
@@ -149,10 +149,10 @@ class AdminParticipationApplicationServiceTest {
 
     @Test
     void completeCorrectionSucceedsWhenLatestHistoryIsCorrectionRequest() {
-        when(participationApplicationRepository.findById(APPLICATION_ID))
+        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
-        when(applicationOperationHistoryRepository.findFirstByApplicationIdOrderByCreatedAtDesc(
-                        APPLICATION_ID))
+        when(applicationOperationHistoryRepository
+                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(APPLICATION_ID))
                 .thenReturn(
                         Optional.of(
                                 ApplicationOperationHistory.create(
@@ -204,7 +204,7 @@ class AdminParticipationApplicationServiceTest {
     void listHistoryReturnsHistoriesNewestFirst() {
         when(participationApplicationRepository.findById(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
-        when(applicationOperationHistoryRepository.findAllByApplicationIdOrderByCreatedAtDesc(
+        when(applicationOperationHistoryRepository.findAllByApplicationIdOrderByCreatedAtDescIdDesc(
                         APPLICATION_ID))
                 .thenReturn(
                         List.of(

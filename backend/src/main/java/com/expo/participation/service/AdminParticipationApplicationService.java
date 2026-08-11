@@ -80,14 +80,25 @@ public class AdminParticipationApplicationService {
         return participationApplicationConverter.toAdminResponse(getEntity(applicationId));
     }
 
-    /** 보완 완료 처리. 가장 최근 이력이 보완 요청이어야 한다. */
+    /**
+     * 보완 완료 처리. 가장 최근 이력이 보완 요청이어야 한다.
+     *
+     * <p>이력 조회와 그 결과로 완료 이력을 남기는 것 사이에 신청서 행 잠금을 걸어, 동시에 들어온 두 완료 요청이 같은 보완 요청
+     * 이력을 보고 둘 다 통과하지 못하게 막는다.
+     */
     @Transactional
     public AdminParticipationApplicationResponse completeCorrection(
             Long applicationId, Long adminId, String message) {
-        getEntity(applicationId);
+        ParticipationApplication application =
+                participationApplicationRepository
+                        .findByIdForUpdate(applicationId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
         ApplicationOperationHistory latest =
                 applicationOperationHistoryRepository
-                        .findFirstByApplicationIdOrderByCreatedAtDesc(applicationId)
+                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(applicationId)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.CORRECTION_NOT_REQUESTED));
         if (latest.getActionType() != ApplicationOperationActionType.CORRECTION_REQUESTED) {
@@ -99,7 +110,7 @@ public class AdminParticipationApplicationService {
                         ApplicationOperationActionType.CORRECTION_COMPLETED,
                         message,
                         adminId));
-        return participationApplicationConverter.toAdminResponse(getEntity(applicationId));
+        return participationApplicationConverter.toAdminResponse(application);
     }
 
     /** 관리자 메모 갱신. */
@@ -119,7 +130,7 @@ public class AdminParticipationApplicationService {
     public List<ApplicationOperationHistoryResponse> listHistory(Long applicationId) {
         getEntity(applicationId);
         return applicationOperationHistoryRepository
-                .findAllByApplicationIdOrderByCreatedAtDesc(applicationId)
+                .findAllByApplicationIdOrderByCreatedAtDescIdDesc(applicationId)
                 .stream()
                 .map(applicationOperationHistoryConverter::toResponse)
                 .toList();
