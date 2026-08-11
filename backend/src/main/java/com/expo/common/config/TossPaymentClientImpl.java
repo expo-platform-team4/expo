@@ -1,7 +1,5 @@
 package com.expo.common.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 토스페이먼츠 결제 승인 API 연동 구현.
@@ -32,10 +32,11 @@ public class TossPaymentClientImpl implements TossPaymentClient {
 
     private final RestClient restClient;
     private final TossPaymentProperties properties;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    public TossPaymentClientImpl(TossPaymentProperties properties) {
+    public TossPaymentClientImpl(TossPaymentProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
         JdkClientHttpRequestFactory requestFactory =
                 new JdkClientHttpRequestFactory(
                         HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
@@ -76,7 +77,7 @@ public class TossPaymentClientImpl implements TossPaymentClient {
             TossConfirmApiResponse response;
             try {
                 response = objectMapper.readValue(rawBody, TossConfirmApiResponse.class);
-            } catch (JsonProcessingException e) {
+            } catch (JacksonException e) {
                 throw new TossApiException(
                         "INVALID_RESPONSE", "토스 결제 승인 응답을 해석할 수 없습니다.", rawBody, e);
             }
