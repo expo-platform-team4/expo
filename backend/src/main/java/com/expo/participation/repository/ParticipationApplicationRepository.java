@@ -1,6 +1,7 @@
 package com.expo.participation.repository;
 
 import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,9 @@ public interface ParticipationApplicationRepository
     Optional<ParticipationApplication> findByIdAndClientUserId(Long id, Long clientUserId);
 
     List<ParticipationApplication> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
+
+    List<ParticipationApplication> findAllByRecruitmentNoticeIdAndStatus(
+            Long recruitmentNoticeId, ParticipationApplicationStatus status);
 
     /** 운영 이력을 읽고 그 결과로 분기하는 처리(보완 완료 등) 앞에서 행 잠금을 걸어 동시 처리를 막는다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
