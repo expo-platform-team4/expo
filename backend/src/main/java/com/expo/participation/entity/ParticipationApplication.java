@@ -102,4 +102,15 @@ public class ParticipationApplication extends BaseTimeEntity {
         this.status = ParticipationApplicationStatus.SUBMITTED;
         this.submittedAt = LocalDateTime.now();
     }
+
+    /** 관리자 운영 확인. 승인·반려가 아니라 확인 시각·주체만 기록한다. */
+    public void check(Long adminId) {
+        this.adminCheckedAt = LocalDateTime.now();
+        this.adminCheckedBy = adminId;
+    }
+
+    /** 관리자 메모 갱신. */
+    public void updateMemo(String memo) {
+        this.adminMemo = memo;
+    }
 }
