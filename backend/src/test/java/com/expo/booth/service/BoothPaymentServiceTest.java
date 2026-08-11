@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.booth.client.TossApiException;
@@ -20,6 +21,7 @@ import com.expo.booth.entity.BoothProduct;
 import com.expo.booth.entity.BoothReservation;
 import com.expo.booth.entity.BoothReservationStatus;
 import com.expo.booth.entity.BoothSalesStatus;
+import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothOrderRepository;
 import com.expo.booth.repository.BoothPaymentHistoryRepository;
 import com.expo.booth.repository.BoothPaymentRepository;
@@ -53,6 +55,7 @@ class BoothPaymentServiceTest {
     private BoothProductRepository boothProductRepository;
     private BoothReservationRepository boothReservationRepository;
     private ParticipationApplicationRepository participationApplicationRepository;
+    private BoothAllocationRepository boothAllocationRepository;
     private TossPaymentClient tossPaymentClient;
     private BoothPaymentService service;
 
@@ -64,16 +67,21 @@ class BoothPaymentServiceTest {
         boothProductRepository = mock(BoothProductRepository.class);
         boothReservationRepository = mock(BoothReservationRepository.class);
         participationApplicationRepository = mock(ParticipationApplicationRepository.class);
+        boothAllocationRepository = mock(BoothAllocationRepository.class);
         tossPaymentClient = mock(TossPaymentClient.class);
         when(tossPaymentClient.getClientKey()).thenReturn("test_ck_dummy");
+        BoothOrderCompletionService boothOrderCompletionService =
+                new BoothOrderCompletionService(
+                        boothProductRepository,
+                        boothReservationRepository,
+                        participationApplicationRepository,
+                        boothAllocationRepository);
         service =
                 new BoothPaymentService(
                         boothPaymentRepository,
                         boothPaymentHistoryRepository,
                         boothOrderRepository,
-                        boothProductRepository,
-                        boothReservationRepository,
-                        participationApplicationRepository,
+                        boothOrderCompletionService,
                         tossPaymentClient,
                         new BoothPaymentConverter());
     }
@@ -277,6 +285,7 @@ class BoothPaymentServiceTest {
         assertThat(product.getSalesStatus()).isEqualTo(BoothSalesStatus.SOLD);
         assertThat(reservation.getStatus()).isEqualTo(BoothReservationStatus.CONFIRMED);
         assertThat(application.getStatus().name()).isEqualTo("SUBMITTED");
+        verify(boothAllocationRepository).save(any());
     }
 
     @Test

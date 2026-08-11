@@ -12,18 +12,11 @@ import com.expo.booth.entity.BoothPayment;
 import com.expo.booth.entity.BoothPaymentEventType;
 import com.expo.booth.entity.BoothPaymentHistory;
 import com.expo.booth.entity.BoothPaymentStatus;
-import com.expo.booth.entity.BoothProduct;
-import com.expo.booth.entity.BoothReservation;
-import com.expo.booth.entity.BoothReservationStatus;
 import com.expo.booth.repository.BoothOrderRepository;
 import com.expo.booth.repository.BoothPaymentHistoryRepository;
 import com.expo.booth.repository.BoothPaymentRepository;
-import com.expo.booth.repository.BoothProductRepository;
-import com.expo.booth.repository.BoothReservationRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
-import com.expo.participation.entity.ParticipationApplication;
-import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,9 +33,7 @@ public class BoothPaymentService {
     private final BoothPaymentRepository boothPaymentRepository;
     private final BoothPaymentHistoryRepository boothPaymentHistoryRepository;
     private final BoothOrderRepository boothOrderRepository;
-    private final BoothProductRepository boothProductRepository;
-    private final BoothReservationRepository boothReservationRepository;
-    private final ParticipationApplicationRepository participationApplicationRepository;
+    private final BoothOrderCompletionService boothOrderCompletionService;
     private final TossPaymentClient tossPaymentClient;
     private final BoothPaymentConverter boothPaymentConverter;
 
@@ -50,17 +41,13 @@ public class BoothPaymentService {
             BoothPaymentRepository boothPaymentRepository,
             BoothPaymentHistoryRepository boothPaymentHistoryRepository,
             BoothOrderRepository boothOrderRepository,
-            BoothProductRepository boothProductRepository,
-            BoothReservationRepository boothReservationRepository,
-            ParticipationApplicationRepository participationApplicationRepository,
+            BoothOrderCompletionService boothOrderCompletionService,
             TossPaymentClient tossPaymentClient,
             BoothPaymentConverter boothPaymentConverter) {
         this.boothPaymentRepository = boothPaymentRepository;
         this.boothPaymentHistoryRepository = boothPaymentHistoryRepository;
         this.boothOrderRepository = boothOrderRepository;
-        this.boothProductRepository = boothProductRepository;
-        this.boothReservationRepository = boothReservationRepository;
-        this.participationApplicationRepository = participationApplicationRepository;
+        this.boothOrderCompletionService = boothOrderCompletionService;
         this.tossPaymentClient = tossPaymentClient;
         this.boothPaymentConverter = boothPaymentConverter;
     }
@@ -159,7 +146,7 @@ public class BoothPaymentService {
                             result.totalAmount(),
                             result.paymentKey(),
                             result.rawResponse()));
-            completeOrder(order);
+            boothOrderCompletionService.complete(order);
         } catch (TossApiException e) {
             payment.fail(e.getCode());
             boothPaymentHistoryRepository.save(
@@ -180,20 +167,6 @@ public class BoothPaymentService {
         }
 
         return boothPaymentConverter.toResponse(payment);
-    }
-
-    /** 결제 승인에 따른 주문·부스 상품·예약·신청서 상태 전파. */
-    private void completeOrder(BoothOrder order) {
-        order.markPaid();
-        boothProductRepository
-                .findById(order.getBoothProductId())
-                .ifPresent(BoothProduct::markSold);
-        boothReservationRepository
-                .findFirstByBoothOrderIdAndStatus(order.getId(), BoothReservationStatus.ACTIVE)
-                .ifPresent(BoothReservation::confirm);
-        participationApplicationRepository
-                .findByIdAndClientUserId(order.getApplicationId(), order.getClientUserId())
-                .ifPresent(ParticipationApplication::submit);
     }
 
     /** 주문별 결제 시도 목록 조회 (본인). */
