@@ -64,4 +64,20 @@ public class BoothManagementHistory {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /** 부스 배정·콘텐츠 운영 변경 이력 기록. */
+    public static BoothManagementHistory create(
+            Long boothAllocationId,
+            Long boothContentId,
+            BoothManagementActionType actionType,
+            String reason,
+            Long processedByAdminId) {
+        BoothManagementHistory history = new BoothManagementHistory();
+        history.boothAllocationId = boothAllocationId;
+        history.boothContentId = boothContentId;
+        history.actionType = actionType;
+        history.reason = reason;
+        history.processedByAdminId = processedByAdminId;
+        return history;
+    }
 }
