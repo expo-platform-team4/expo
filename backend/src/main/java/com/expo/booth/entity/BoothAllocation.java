@@ -58,7 +58,7 @@ public class BoothAllocation extends BaseTimeEntity {
         allocation.boothOrderId = boothOrderId;
         allocation.boothProductId = boothProductId;
         allocation.clientUserId = clientUserId;
-        allocation.allocatedAt = LocalDateTime.now();
+        allocation.allocatedAt = Instant.now();
         allocation.status = BoothAllocationStatus.ASSIGNED;
         return allocation;
     }
@@ -66,7 +66,7 @@ public class BoothAllocation extends BaseTimeEntity {
     /** 관리자 배정 취소. 부스 이중 배정 등 운영상 정정이 필요할 때만 쓴다. */
     public void cancel(String reason) {
         this.status = BoothAllocationStatus.CANCELED;
-        this.canceledAt = LocalDateTime.now();
+        this.canceledAt = Instant.now();
         this.cancelReason = reason;
     }
 }

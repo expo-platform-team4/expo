@@ -74,7 +74,7 @@ public class BoothOrder extends BaseTimeEntity {
             String orderNumber,
             BigDecimal unitPrice,
             String idempotencyKey,
-            LocalDateTime expiresAt) {
+            Instant expiresAt) {
         BoothOrder order = new BoothOrder();
         order.applicationId = applicationId;
         order.clientUserId = clientUserId;
@@ -96,6 +96,6 @@ public class BoothOrder extends BaseTimeEntity {
     /** 결제 승인 완료. */
     public void markPaid() {
         this.status = BoothOrderStatus.PAYMENT_COMPLETED;
-        this.paidAt = LocalDateTime.now();
+        this.paidAt = Instant.now();
     }
 }

@@ -22,7 +22,8 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -150,8 +151,8 @@ class BoothOrderServiceTest {
                                 true,
                                 null)
                         .schedule(
-                                LocalDateTime.now().plusDays(1),
-                                LocalDateTime.now().plusDays(2),
+                                Instant.now().plus(Duration.ofDays(1)),
+                                Instant.now().plus(Duration.ofDays(2)),
                                 true);
         when(participationApplicationRepository.findByIdAndClientUserId(
                         APPLICATION_ID, CLIENT_USER_ID))
@@ -205,7 +206,7 @@ class BoothOrderServiceTest {
                 "BO12345",
                 BigDecimal.valueOf(1_100_000),
                 "idem-key",
-                LocalDateTime.now().plusMinutes(15));
+                Instant.now().plus(Duration.ofMinutes(15)));
     }
 
     @Test
@@ -240,8 +241,7 @@ class BoothOrderServiceTest {
         ParticipationApplication application = draftApplication(BOOTH_PRODUCT_ID);
         application.startPayment(ORDER_ID);
         BoothReservation reservation =
-                BoothReservation.create(
-                        BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, LocalDateTime.now());
+                BoothReservation.create(BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, Instant.now());
 
         when(boothOrderRepository.findByIdAndClientUserId(ORDER_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(order));

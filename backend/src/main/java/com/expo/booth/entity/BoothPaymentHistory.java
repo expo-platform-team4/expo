@@ -78,7 +78,7 @@ public class BoothPaymentHistory {
         history.amount = amount;
         history.pgTransactionKey = pgTransactionKey;
         history.responsePayload = responsePayload;
-        history.occurredAt = LocalDateTime.now();
+        history.occurredAt = Instant.now();
         return history;
     }
 }

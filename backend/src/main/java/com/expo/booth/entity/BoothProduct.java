@@ -97,8 +97,7 @@ public class BoothProduct extends BaseTimeEntity {
     }
 
     /** 판매 기간·결제 가능 여부 설정. */
-    public BoothProduct schedule(
-            LocalDateTime salesStartAt, LocalDateTime salesEndAt, boolean paymentEnabled) {
+    public BoothProduct schedule(Instant salesStartAt, Instant salesEndAt, boolean paymentEnabled) {
         this.salesStartAt = salesStartAt;
         this.salesEndAt = salesEndAt;
         this.paymentEnabled = paymentEnabled;

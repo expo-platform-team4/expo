@@ -56,15 +56,12 @@ public class BoothReservation extends BaseTimeEntity {
 
     /** 주문 생성 시 부스 상품 임시 확보. */
     public static BoothReservation create(
-            Long boothProductId,
-            Long boothOrderId,
-            Long reservedByClientId,
-            LocalDateTime expiresAt) {
+            Long boothProductId, Long boothOrderId, Long reservedByClientId, Instant expiresAt) {
         BoothReservation reservation = new BoothReservation();
         reservation.boothProductId = boothProductId;
         reservation.boothOrderId = boothOrderId;
         reservation.reservedByClientId = reservedByClientId;
-        reservation.reservedAt = LocalDateTime.now();
+        reservation.reservedAt = Instant.now();
         reservation.expiresAt = expiresAt;
         reservation.status = BoothReservationStatus.ACTIVE;
         reservation.activeGuard = true;
@@ -74,7 +71,7 @@ public class BoothReservation extends BaseTimeEntity {
     /** 주문 취소·만료로 확보 해제. */
     public void release() {
         this.status = BoothReservationStatus.RELEASED;
-        this.releasedAt = LocalDateTime.now();
+        this.releasedAt = Instant.now();
         this.activeGuard = false;
     }
 

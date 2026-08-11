@@ -100,12 +100,12 @@ public class ParticipationApplication extends BaseTimeEntity {
     /** 결제 승인 완료로 신청 완료. */
     public void submit() {
         this.status = ParticipationApplicationStatus.SUBMITTED;
-        this.submittedAt = LocalDateTime.now();
+        this.submittedAt = Instant.now();
     }
 
     /** 관리자 운영 확인. 승인·반려가 아니라 확인 시각·주체만 기록한다. */
     public void check(Long adminId) {
-        this.adminCheckedAt = LocalDateTime.now();
+        this.adminCheckedAt = Instant.now();
         this.adminCheckedBy = adminId;
     }
 

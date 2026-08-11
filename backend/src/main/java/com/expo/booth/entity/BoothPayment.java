@@ -86,7 +86,7 @@ public class BoothPayment extends BaseTimeEntity {
         this.paymentKey = paymentKey;
         this.method = method;
         this.approvedAmount = approvedAmount;
-        this.approvedAt = LocalDateTime.now();
+        this.approvedAt = Instant.now();
         this.status = BoothPaymentStatus.APPROVED;
     }
 

@@ -18,7 +18,7 @@ import com.expo.common.config.TossPaymentClient;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -211,7 +211,7 @@ public class BoothPaymentService {
         if (order.getStatus() != BoothOrderStatus.PENDING_PAYMENT) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_NOT_PENDING);
         }
-        if (LocalDateTime.now().isAfter(order.getExpiresAt())) {
+        if (Instant.now().isAfter(order.getExpiresAt())) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
         }
     }
