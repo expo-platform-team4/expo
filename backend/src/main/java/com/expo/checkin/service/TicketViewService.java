@@ -3,6 +3,7 @@ package com.expo.checkin.service;
 import com.expo.checkin.dto.TicketAccessTokenRow;
 import com.expo.checkin.dto.TicketViewResponse;
 import com.expo.checkin.dto.TicketViewTicket;
+import com.expo.checkin.entity.IssuedTicketStatus;
 import com.expo.checkin.entity.TicketAccessTokenStatus;
 import com.expo.checkin.repository.TicketViewMapper;
 import com.expo.common.exception.BusinessException;
@@ -105,11 +106,27 @@ public class TicketViewService {
         return token;
     }
 
+    /**
+     * 입장에 쓸 수 없는 티켓에는 QR 을 주지 않는다.
+     *
+     * <p>QR 원문은 티켓 코드로만 정해져서, 환불된 티켓도 계산하면 <b>서명이 유효한 값</b>이 나온다. 그대로 내려보내면 환불된 표를 들고 현장에
+     * 갔다가 거절당하는 흐름이 된다.
+     *
+     * <p>최종 방어선은 스캔 시점이다({@code CheckInResult.CANCELED_TICKET}). 여기서 감추는 것은 그 위에 얹는 2차 방어이고,
+     * 화면에 "이 표는 못 쓴다" 를 분명히 보여주기 위한 것이기도 하다.
+     */
+    private static boolean usable(String ticketStatus) {
+        return IssuedTicketStatus.ISSUED.name().equals(ticketStatus)
+                || IssuedTicketStatus.CHECKED_IN.name().equals(ticketStatus);
+    }
+
     private TicketViewResponse.Ticket toTicket(TicketViewTicket ticket) {
         return new TicketViewResponse.Ticket(
                 ticket.issuedTicketId(),
                 ticket.ticketCode(),
-                qrTokenGenerator.generatePayload(ticket.ticketCode()),
+                usable(ticket.status())
+                        ? qrTokenGenerator.generatePayload(ticket.ticketCode())
+                        : null,
                 ticket.status(),
                 ticket.checkedInAt(),
                 ticket.expoTitle(),
