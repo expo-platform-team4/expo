@@ -65,4 +65,54 @@ public class RecruitmentResult {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    /** 모집 마감 후 결제·배정 완료 기업 집계로 결과 스냅샷 생성. */
+    public static RecruitmentResult create(
+            Long recruitmentNoticeId,
+            Long hostClientId,
+            Integer confirmedCompanyCount,
+            Integer confirmedBoothCount,
+            BigDecimal totalBoothSalesAmount) {
+        RecruitmentResult result = new RecruitmentResult();
+        result.recruitmentNoticeId = recruitmentNoticeId;
+        result.hostClientId = hostClientId;
+        result.confirmedCompanyCount = confirmedCompanyCount;
+        result.confirmedBoothCount = confirmedBoothCount;
+        result.totalBoothSalesAmount = totalBoothSalesAmount;
+        result.status = RecruitmentResultStatus.GENERATED;
+        result.generatedAt = Instant.now();
+        return result;
+    }
+
+    /** 결과 항목 저장 후 집계값 반영. */
+    public void applyAggregate(
+            Integer confirmedCompanyCount,
+            Integer confirmedBoothCount,
+            BigDecimal totalBoothSalesAmount) {
+        this.confirmedCompanyCount = confirmedCompanyCount;
+        this.confirmedBoothCount = confirmedBoothCount;
+        this.totalBoothSalesAmount = totalBoothSalesAmount;
+    }
+
+    /** 주최자에게 결과 전달. */
+    public void deliver() {
+        this.status = RecruitmentResultStatus.DELIVERED;
+        this.deliveredAt = Instant.now();
+    }
+
+    /** 주최자 결과 확인. */
+    public void confirmByHost() {
+        this.status = RecruitmentResultStatus.CONFIRMED;
+        this.confirmedByHostAt = Instant.now();
+    }
+
+    /** 박람회 구성에 결과 반영 완료. */
+    public void markUsedForExpo() {
+        this.status = RecruitmentResultStatus.USED_FOR_EXPO;
+    }
+
+    /** 관리자 직권 취소. */
+    public void cancel() {
+        this.status = RecruitmentResultStatus.CANCELED;
+    }
 }

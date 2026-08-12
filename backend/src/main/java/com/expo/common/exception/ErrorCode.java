@@ -104,6 +104,14 @@ public enum ErrorCode {
     RECRUITMENT_NOTICE_CREATION_NOT_ALLOWED(
             HttpStatus.CONFLICT, "장소 충돌 판정에서 승인(ALLOWED)된 요청만 공고를 생성할 수 있습니다."),
 
+    // --- 모집 결과 ---
+    RECRUITMENT_NOTICE_NOT_CLOSED(HttpStatus.CONFLICT, "마감된 공고만 결과를 생성할 수 있습니다."),
+    DUPLICATE_RECRUITMENT_RESULT(HttpStatus.CONFLICT, "이미 결과가 생성된 공고입니다."),
+    RECRUITMENT_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 모집 결과입니다."),
+    RECRUITMENT_RESULT_NOT_DELIVERABLE(HttpStatus.CONFLICT, "생성된 결과만 주최자에게 전달할 수 있습니다."),
+    RECRUITMENT_RESULT_NOT_CONFIRMABLE(HttpStatus.CONFLICT, "전달된 결과만 확인할 수 있습니다."),
+    RECRUITMENT_RESULT_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 확정되어 박람회 구성에 반영된 결과는 취소할 수 없습니다."),
+
     // --- 참여 신청 ---
     BOOTH_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 상품입니다."),
     PARTICIPATION_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 참여 신청서입니다."),

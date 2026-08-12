@@ -49,4 +49,20 @@ public class RecruitmentResultItem {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    /** 모집 결과에 포함되는 기업별 항목 생성. */
+    public static RecruitmentResultItem create(
+            Long recruitmentResultId,
+            Long applicationId,
+            Long clientUserId,
+            Long boothAllocationId,
+            BigDecimal boothAmount) {
+        RecruitmentResultItem item = new RecruitmentResultItem();
+        item.recruitmentResultId = recruitmentResultId;
+        item.applicationId = applicationId;
+        item.clientUserId = clientUserId;
+        item.boothAllocationId = boothAllocationId;
+        item.boothAmount = boothAmount;
+        return item;
+    }
 }
