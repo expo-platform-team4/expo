@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,16 +37,16 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     private String description;
 
     @Column(name = "application_start_at", nullable = false)
-    private LocalDateTime applicationStartAt;
+    private Instant applicationStartAt;
 
     @Column(name = "application_end_at", nullable = false)
-    private LocalDateTime applicationEndAt;
+    private Instant applicationEndAt;
 
     @Column(name = "event_start_at", nullable = false)
-    private LocalDateTime eventStartAt;
+    private Instant eventStartAt;
 
     @Column(name = "event_end_at", nullable = false)
-    private LocalDateTime eventEndAt;
+    private Instant eventEndAt;
 
     @Column(name = "virtual_venue_id", nullable = false)
     private Long virtualVenueId;
@@ -81,13 +81,13 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     private String conflictGroupKey;
 
     @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
 
     @Column(name = "decided_by_admin_id")
     private Long decidedByAdminId;
 
     @Column(name = "decided_at")
-    private LocalDateTime decidedAt;
+    private Instant decidedAt;
 
     @Column(name = "decision_reason", columnDefinition = "TEXT")
     private String decisionReason;
@@ -97,10 +97,10 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
             Long hostClientId,
             String title,
             String description,
-            LocalDateTime applicationStartAt,
-            LocalDateTime applicationEndAt,
-            LocalDateTime eventStartAt,
-            LocalDateTime eventEndAt,
+            Instant applicationStartAt,
+            Instant applicationEndAt,
+            Instant eventStartAt,
+            Instant eventEndAt,
             Long virtualVenueId) {
         RecruitmentNoticeRequest request = new RecruitmentNoticeRequest();
         request.hostClientId = hostClientId;
@@ -135,7 +135,7 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
         this.venueDecision = decision;
         this.decidedByAdminId = decidedByAdminId;
         this.decisionReason = decisionReason;
-        this.decidedAt = LocalDateTime.now();
+        this.decidedAt = Instant.now();
         this.venueConflictStatus = VenueConflictStatus.RESOLVED;
         this.status =
                 decision == VenueDecision.ALLOWED

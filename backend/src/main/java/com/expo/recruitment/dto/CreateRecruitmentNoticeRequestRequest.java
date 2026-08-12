@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 모집공고 생성 요청 작성. */
 @Schema(description = "모집공고 생성 요청 작성")
@@ -16,13 +16,12 @@ public record CreateRecruitmentNoticeRequestRequest(
                 String title,
         @Schema(description = "설명") @NotBlank(message = "설명은 필수입니다.") String description,
         @Schema(description = "신청 시작 일시") @NotNull(message = "신청 시작 일시는 필수입니다.")
-                LocalDateTime applicationStartAt,
+                Instant applicationStartAt,
         @Schema(description = "신청 종료 일시") @NotNull(message = "신청 종료 일시는 필수입니다.")
-                LocalDateTime applicationEndAt,
+                Instant applicationEndAt,
         @Schema(description = "행사 시작 일시") @NotNull(message = "행사 시작 일시는 필수입니다.")
-                LocalDateTime eventStartAt,
-        @Schema(description = "행사 종료 일시") @NotNull(message = "행사 종료 일시는 필수입니다.")
-                LocalDateTime eventEndAt,
+                Instant eventStartAt,
+        @Schema(description = "행사 종료 일시") @NotNull(message = "행사 종료 일시는 필수입니다.") Instant eventEndAt,
         @Schema(description = "희망 가상 장소 ID") @NotNull(message = "가상 장소는 필수입니다.")
                 Long virtualVenueId,
         @Schema(description = "희망 홀 ID") Long venueHallId,

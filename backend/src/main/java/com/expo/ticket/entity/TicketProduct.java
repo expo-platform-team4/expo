@@ -85,5 +85,9 @@ public class TicketProduct extends BaseTimeEntity {
         this.inventory = inventory;
     }
 
+    public void updatePrice(BigDecimal price) {
+        this.price = price;
+    }
+
     protected TicketProduct() {}
 }

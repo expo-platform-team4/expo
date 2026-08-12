@@ -28,6 +28,8 @@ public enum ErrorCode {
 
     // --- 티켓 ---
     INVALID_SALES_PERIOD(HttpStatus.BAD_REQUEST, "판매 시작 시간은 종료 시간보다 빨라야 합니다."),
+    TICKET_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 티켓 입니다."),
+    TICKET_TOTAL_QUANTITY_TOO_LOW(HttpStatus.BAD_REQUEST, "총 티켓 수량은 현재 예약 및 판매 수량보다 적을 수 없습니다"),
 
     // --- 박람회 ---
     EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),

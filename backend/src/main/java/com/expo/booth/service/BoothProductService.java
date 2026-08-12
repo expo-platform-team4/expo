@@ -10,7 +10,7 @@ import com.expo.booth.repository.BoothRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -103,7 +103,7 @@ public class BoothProductService {
     /** 공고별 구매 가능한 부스 상품 목록 조회 (공개). 결제 가능하고 판매 기간 안에 있는 상품만 반환한다. */
     @Transactional(readOnly = true)
     public List<BoothProductResponse> listAvailable(Long recruitmentNoticeId) {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         return boothProductRepository
                 .findAllByRecruitmentNoticeIdAndSalesStatus(
                         recruitmentNoticeId, BoothSalesStatus.AVAILABLE)

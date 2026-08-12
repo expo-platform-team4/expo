@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,20 +51,20 @@ public class RecruitmentNotice extends BaseTimeEntity {
     private String submissionRequirements;
 
     @Column(name = "application_start_at", nullable = false)
-    private LocalDateTime applicationStartAt;
+    private Instant applicationStartAt;
 
     @Column(name = "application_end_at", nullable = false)
-    private LocalDateTime applicationEndAt;
+    private Instant applicationEndAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RecruitmentNoticeStatus status;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     @Column(name = "closed_at")
-    private LocalDateTime closedAt;
+    private Instant closedAt;
 
     @Column(name = "created_by_admin_id", nullable = false)
     private Long createdByAdminId;
@@ -76,8 +76,8 @@ public class RecruitmentNotice extends BaseTimeEntity {
             Long venueReservationId,
             String title,
             String content,
-            LocalDateTime applicationStartAt,
-            LocalDateTime applicationEndAt,
+            Instant applicationStartAt,
+            Instant applicationEndAt,
             Long createdByAdminId) {
         RecruitmentNotice notice = new RecruitmentNotice();
         notice.requestId = requestId;
@@ -105,8 +105,8 @@ public class RecruitmentNotice extends BaseTimeEntity {
             String content,
             String eligibility,
             String submissionRequirements,
-            LocalDateTime applicationStartAt,
-            LocalDateTime applicationEndAt) {
+            Instant applicationStartAt,
+            Instant applicationEndAt) {
         this.title = title;
         this.content = content;
         this.eligibility = eligibility;
@@ -118,12 +118,12 @@ public class RecruitmentNotice extends BaseTimeEntity {
     /** 공고 게시. */
     public void publish() {
         this.status = RecruitmentNoticeStatus.OPEN;
-        this.publishedAt = LocalDateTime.now();
+        this.publishedAt = Instant.now();
     }
 
     /** 기업 모집 조기 마감. 신규 결제를 차단한다. */
     public void close() {
         this.status = RecruitmentNoticeStatus.CLOSED;
-        this.closedAt = LocalDateTime.now();
+        this.closedAt = Instant.now();
     }
 }

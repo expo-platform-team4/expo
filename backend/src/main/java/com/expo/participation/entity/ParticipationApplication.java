@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,10 +55,10 @@ public class ParticipationApplication extends BaseTimeEntity {
     private ParticipationApplicationStatus status;
 
     @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
 
     @Column(name = "admin_checked_at")
-    private LocalDateTime adminCheckedAt;
+    private Instant adminCheckedAt;
 
     @Column(name = "admin_checked_by")
     private Long adminCheckedBy;
@@ -100,12 +100,12 @@ public class ParticipationApplication extends BaseTimeEntity {
     /** 결제 승인 완료로 신청 완료. */
     public void submit() {
         this.status = ParticipationApplicationStatus.SUBMITTED;
-        this.submittedAt = LocalDateTime.now();
+        this.submittedAt = Instant.now();
     }
 
     /** 관리자 운영 확인. 승인·반려가 아니라 확인 시각·주체만 기록한다. */
     public void check(Long adminId) {
-        this.adminCheckedAt = LocalDateTime.now();
+        this.adminCheckedAt = Instant.now();
         this.adminCheckedBy = adminId;
     }
 

@@ -5,7 +5,7 @@ import com.expo.venue.dto.VenueAvailabilityResponse;
 import com.expo.venue.service.VenueReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +32,8 @@ public class VenueAvailabilityController {
             @PathVariable Long venueId,
             @RequestParam(required = false) Long hallId,
             @RequestParam(required = false) Long zoneId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startAt,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endAt) {
         return ResponseEntity.ok(
                 ApiResponse.ok(
                         venueReservationService.checkAvailability(
