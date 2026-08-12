@@ -25,7 +25,8 @@ import com.expo.recruitment.repository.RecruitmentResultItemRepository;
 import com.expo.recruitment.repository.RecruitmentResultRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,8 +89,8 @@ class AdminRecruitmentResultServiceTest {
                         11L,
                         "제목",
                         "내용",
-                        LocalDateTime.now(),
-                        LocalDateTime.now().plusDays(1),
+                        Instant.now(),
+                        Instant.now().plus(Duration.ofDays(1)),
                         99L);
         notice.publish();
         notice.close();
@@ -115,8 +116,8 @@ class AdminRecruitmentResultServiceTest {
                         11L,
                         "제목",
                         "내용",
-                        LocalDateTime.now(),
-                        LocalDateTime.now().plusDays(1),
+                        Instant.now(),
+                        Instant.now().plus(Duration.ofDays(1)),
                         99L);
         when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(notice));
 
@@ -166,7 +167,7 @@ class AdminRecruitmentResultServiceTest {
                         "ORDER-1",
                         new BigDecimal("100000"),
                         "idem-1",
-                        LocalDateTime.now().plusMinutes(10));
+                        Instant.now().plus(Duration.ofMinutes(10)));
         when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
 
         when(recruitmentResultRepository.save(any()))

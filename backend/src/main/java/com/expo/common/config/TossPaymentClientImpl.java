@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Base64;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -115,7 +115,7 @@ public class TossPaymentClientImpl implements TossPaymentClient {
             String status,
             String method,
             BigDecimal totalAmount,
-            LocalDateTime approvedAt) {}
+            Instant approvedAt) {}
 
     private record TossErrorResponse(String code, String message) {}
 }

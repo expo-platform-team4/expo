@@ -16,7 +16,8 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -77,13 +78,13 @@ public class BoothOrderService {
         if (product.getSalesStatus() != BoothSalesStatus.AVAILABLE) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_AVAILABLE);
         }
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if ((product.getSalesStartAt() != null && now.isBefore(product.getSalesStartAt()))
                 || (product.getSalesEndAt() != null && now.isAfter(product.getSalesEndAt()))) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_SALES_NOT_OPEN);
         }
 
-        LocalDateTime expiresAt = now.plusMinutes(ORDER_EXPIRATION_MINUTES);
+        Instant expiresAt = now.plus(Duration.ofMinutes(ORDER_EXPIRATION_MINUTES));
         BoothOrder order =
                 BoothOrder.create(
                         applicationId,

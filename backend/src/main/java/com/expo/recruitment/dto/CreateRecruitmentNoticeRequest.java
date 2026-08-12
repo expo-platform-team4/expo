@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 기업 모집 공고 초안 생성 요청. */
 @Schema(description = "기업 모집 공고 초안 생성 요청")
@@ -21,6 +21,6 @@ public record CreateRecruitmentNoticeRequest(
         @Schema(description = "참가 자격 요건") String eligibility,
         @Schema(description = "제출 자료 요구사항(JSON 문자열)") String submissionRequirements,
         @Schema(description = "신청 시작 일시") @NotNull(message = "신청 시작 일시는 필수입니다.")
-                LocalDateTime applicationStartAt,
+                Instant applicationStartAt,
         @Schema(description = "신청 종료 일시") @NotNull(message = "신청 종료 일시는 필수입니다.")
-                LocalDateTime applicationEndAt) {}
+                Instant applicationEndAt) {}

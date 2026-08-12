@@ -2,7 +2,7 @@ package com.expo.participation.dto;
 
 import com.expo.participation.entity.ParticipationApplicationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 관리자용 참여 신청서 응답. 운영 확인 정보를 포함한다. */
 @Schema(description = "관리자용 참여 신청서")
@@ -16,9 +16,9 @@ public record AdminParticipationApplicationResponse(
         @Schema(description = "선택한 부스 상품 ID") Long selectedBoothProductId,
         @Schema(description = "부스 주문 ID") Long boothOrderId,
         @Schema(description = "처리 상태") ParticipationApplicationStatus status,
-        @Schema(description = "제출 일시") LocalDateTime submittedAt,
-        @Schema(description = "관리자 확인 일시") LocalDateTime adminCheckedAt,
+        @Schema(description = "제출 일시") Instant submittedAt,
+        @Schema(description = "관리자 확인 일시") Instant adminCheckedAt,
         @Schema(description = "확인한 관리자 ID") Long adminCheckedBy,
         @Schema(description = "관리자 메모") String adminMemo,
-        @Schema(description = "생성 일시") LocalDateTime createdAt,
-        @Schema(description = "수정 일시") LocalDateTime updatedAt) {}
+        @Schema(description = "생성 일시") Instant createdAt,
+        @Schema(description = "수정 일시") Instant updatedAt) {}

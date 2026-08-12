@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,17 +54,17 @@ public class RecruitmentResult {
     private RecruitmentResultStatus status;
 
     @Column(name = "generated_at", nullable = false)
-    private LocalDateTime generatedAt;
+    private Instant generatedAt;
 
     @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
+    private Instant deliveredAt;
 
     @Column(name = "confirmed_by_host_at")
-    private LocalDateTime confirmedByHostAt;
+    private Instant confirmedByHostAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /** 모집 마감 후 결제·배정 완료 기업 집계로 결과 스냅샷 생성. */
     public static RecruitmentResult create(
@@ -80,7 +80,7 @@ public class RecruitmentResult {
         result.confirmedBoothCount = confirmedBoothCount;
         result.totalBoothSalesAmount = totalBoothSalesAmount;
         result.status = RecruitmentResultStatus.GENERATED;
-        result.generatedAt = LocalDateTime.now();
+        result.generatedAt = Instant.now();
         return result;
     }
 
@@ -97,13 +97,13 @@ public class RecruitmentResult {
     /** 주최자에게 결과 전달. */
     public void deliver() {
         this.status = RecruitmentResultStatus.DELIVERED;
-        this.deliveredAt = LocalDateTime.now();
+        this.deliveredAt = Instant.now();
     }
 
     /** 주최자 결과 확인. */
     public void confirmByHost() {
         this.status = RecruitmentResultStatus.CONFIRMED;
-        this.confirmedByHostAt = LocalDateTime.now();
+        this.confirmedByHostAt = Instant.now();
     }
 
     /** 박람회 구성에 결과 반영 완료. */

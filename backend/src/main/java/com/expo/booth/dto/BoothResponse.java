@@ -3,7 +3,7 @@ package com.expo.booth.dto;
 import com.expo.booth.entity.OperationalStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 부스 공간 응답. */
 @Schema(description = "부스 공간")
@@ -22,5 +22,5 @@ public record BoothResponse(
         @Schema(description = "회전 각도") BigDecimal rotationDegree,
         @Schema(description = "정렬 순서") Integer sortOrder,
         @Schema(description = "운영 상태") OperationalStatus operationalStatus,
-        @Schema(description = "생성 일시") LocalDateTime createdAt,
-        @Schema(description = "수정 일시") LocalDateTime updatedAt) {}
+        @Schema(description = "생성 일시") Instant createdAt,
+        @Schema(description = "수정 일시") Instant updatedAt) {}

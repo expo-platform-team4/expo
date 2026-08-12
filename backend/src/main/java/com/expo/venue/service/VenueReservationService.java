@@ -16,7 +16,7 @@ import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -119,8 +119,8 @@ public class VenueReservationService {
             Long virtualVenueId,
             Long venueHallId,
             Long venueZoneId,
-            LocalDateTime useStartAt,
-            LocalDateTime useEndAt) {
+            Instant useStartAt,
+            Instant useEndAt) {
         if (!useEndAt.isAfter(useStartAt)) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
         }

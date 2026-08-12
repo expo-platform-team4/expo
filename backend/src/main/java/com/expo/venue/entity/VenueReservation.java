@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,10 +53,10 @@ public class VenueReservation extends BaseTimeEntity {
     private Long venueZoneId;
 
     @Column(name = "use_start_at", nullable = false)
-    private LocalDateTime useStartAt;
+    private Instant useStartAt;
 
     @Column(name = "use_end_at", nullable = false)
-    private LocalDateTime useEndAt;
+    private Instant useEndAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -66,10 +66,10 @@ public class VenueReservation extends BaseTimeEntity {
     private Long confirmedByAdminId;
 
     @Column(name = "confirmed_at", nullable = false)
-    private LocalDateTime confirmedAt;
+    private Instant confirmedAt;
 
     @Column(name = "released_at")
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
 
     /** 모집공고 생성 요청 경로의 확정 장소 예약 생성. */
     public static VenueReservation confirmForRecruitmentNotice(
@@ -77,8 +77,8 @@ public class VenueReservation extends BaseTimeEntity {
             Long virtualVenueId,
             Long venueHallId,
             Long venueZoneId,
-            LocalDateTime useStartAt,
-            LocalDateTime useEndAt,
+            Instant useStartAt,
+            Instant useEndAt,
             Long confirmedByAdminId) {
         VenueReservation reservation = new VenueReservation();
         reservation.reservationSourceType = ReservationSourceType.RECRUITMENT_NOTICE;
@@ -90,13 +90,13 @@ public class VenueReservation extends BaseTimeEntity {
         reservation.useEndAt = useEndAt;
         reservation.status = VenueReservationStatus.CONFIRMED;
         reservation.confirmedByAdminId = confirmedByAdminId;
-        reservation.confirmedAt = LocalDateTime.now();
+        reservation.confirmedAt = Instant.now();
         return reservation;
     }
 
     /** 박람회 취소 등으로 확정 예약을 해제한다. */
     public void release() {
         this.status = VenueReservationStatus.RELEASED;
-        this.releasedAt = LocalDateTime.now();
+        this.releasedAt = Instant.now();
     }
 }
