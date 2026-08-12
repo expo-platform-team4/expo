@@ -12,6 +12,10 @@ import com.expo.booth.converter.BoothContentFileConverter;
 import com.expo.booth.converter.BoothManagementHistoryConverter;
 import com.expo.booth.converter.ExternalLinkConverter;
 import com.expo.booth.entity.BoothContent;
+import com.expo.booth.entity.BoothContentFile;
+import com.expo.booth.entity.BoothContentFileType;
+import com.expo.booth.entity.ExternalLink;
+import com.expo.booth.entity.ExternalLinkType;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
@@ -23,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 /** {@link AdminBoothContentService} 의 운영 확인·보완 요청·숨김 규칙을 확인한다. */
 class AdminBoothContentServiceTest {
@@ -75,6 +81,32 @@ class AdminBoothContentServiceTest {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Test
+    void listFillsFilesAndLinksViaBatchQuery() {
+        BoothContent content = content();
+        var pageable = PageRequest.of(0, 20);
+        when(boothContentRepository.findAll(pageable))
+                .thenReturn(new PageImpl<>(List.of(content), pageable, 1));
+        BoothContentFile file =
+                BoothContentFile.create(
+                        CONTENT_ID, 10L, BoothContentFileType.GALLERY_IMAGE, "이미지", 0);
+        ExternalLink link =
+                ExternalLink.createForBoothContent(
+                        CONTENT_ID, ExternalLinkType.HOMEPAGE, "홈페이지", "https://example.com", 0);
+        when(boothContentFileRepository.findAllByBoothContentIdInOrderBySortOrderAscIdAsc(
+                        List.of(CONTENT_ID)))
+                .thenReturn(List.of(file));
+        when(externalLinkRepository.findAllByBoothContentIdInOrderBySortOrderAscIdAsc(
+                        List.of(CONTENT_ID)))
+                .thenReturn(List.of(link));
+
+        var page = service.list(pageable);
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).files()).hasSize(1);
+        assertThat(page.getContent().get(0).links()).hasSize(1);
     }
 
     @Test
