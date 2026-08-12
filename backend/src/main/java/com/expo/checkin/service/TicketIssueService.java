@@ -18,6 +18,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -85,7 +86,8 @@ public class TicketIssueService {
      * @param ticketOrderId 결제가 완료된 {@code ticket_orders.id}
      * @return 발급 결과. 접근 토큰 <b>원문</b>이 여기에만 담겨 나온다
      */
-    @Transactional
+    // 격리 수준을 명시하는 이유는 loadPaidOrder 의 주석 참고. 기본값에 기대면 안 되는 전제가 있다.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TicketIssueResult issue(Long ticketOrderId) {
         TicketIssuanceOrder order = loadPaidOrder(ticketOrderId);
         List<TicketIssuanceOrderItem> items = loadItems(ticketOrderId);
@@ -122,6 +124,11 @@ public class TicketIssueService {
      * 돌아온 뒤에 발권 여부를 센다. 중복 발권 방어는 세어 보고 판단하는 check-then-act 인데, 이걸 막아 주는
      * DB 제약이 없어서 잠그지 않으면 두 트랜잭션이 나란히 0 을 보고 양쪽 다 발권한다. 결제 웹훅은 재시도되므로
      * 실무에서 반드시 겪는 경우다.
+     *
+     * <p><b>이 방어는 {@code READ COMMITTED} 를 전제한다.</b> 잠금을 얻은 뒤 개수를 <b>다시 읽어야</b>
+     * 하는데, 격리 수준을 올리면 트랜잭션 시작 시점의 스냅샷을 계속 보게 되어 0 을 읽고 그대로 발권한다.
+     * 직렬화 오류로 걸러지지도 않는다 — 잠근 행 자체는 수정되지 않았기 때문이다. 그래서 메서드에 격리 수준을
+     * 명시해 두었다.
      */
     private TicketIssuanceOrder loadPaidOrder(Long ticketOrderId) {
         TicketIssuanceOrder order = ticketIssuanceMapper.findOrderForIssuance(ticketOrderId);
