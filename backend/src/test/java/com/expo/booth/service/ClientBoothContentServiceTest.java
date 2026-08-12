@@ -328,6 +328,23 @@ class ClientBoothContentServiceTest {
     }
 
     @Test
+    void addLinkRejectsWhenPublished() {
+        BoothContent content = content();
+        content.publish();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        AddExternalLinkRequest request =
+                new AddExternalLinkRequest(
+                        ExternalLinkType.HOMEPAGE, "홈페이지", "https://example.com", 0);
+
+        assertThatThrownBy(() -> service.addLink(CONTENT_ID, request, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+    }
+
+    @Test
     void removeLinkRejectsWhenNotFound() {
         BoothContent content = content();
         withId(content, CONTENT_ID);
