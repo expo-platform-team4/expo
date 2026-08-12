@@ -7,9 +7,12 @@ import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
 import com.expo.recruitment.dto.UpdateRecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNotice;
+import com.expo.recruitment.entity.RecruitmentNoticeActionType;
+import com.expo.recruitment.entity.RecruitmentNoticeHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
@@ -24,16 +27,19 @@ public class RecruitmentNoticeService {
 
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
+    private final RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
     private final VenueReservationRepository venueReservationRepository;
     private final RecruitmentNoticeConverter recruitmentNoticeConverter;
 
     public RecruitmentNoticeService(
             RecruitmentNoticeRepository recruitmentNoticeRepository,
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
+            RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository,
             VenueReservationRepository venueReservationRepository,
             RecruitmentNoticeConverter recruitmentNoticeConverter) {
         this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
+        this.recruitmentNoticeHistoryRepository = recruitmentNoticeHistoryRepository;
         this.venueReservationRepository = venueReservationRepository;
         this.recruitmentNoticeConverter = recruitmentNoticeConverter;
     }
@@ -140,16 +146,29 @@ public class RecruitmentNoticeService {
         return recruitmentNoticeConverter.toResponse(notice);
     }
 
-    /** 모집공고 직권 취소. 결제·신청이 아직 없는 마감 전 공고(초안·예약·게시 중)만 취소할 수 있다. */
+    /**
+     * 모집공고 직권 취소. 결제·신청이 아직 없는 마감 전 공고(초안·예약·게시 중)만 취소할 수 있다.
+     *
+     * <p>권한이 걸린 변경이라 변경 전후 상태를 감사 이력({@code recruitment_notice_histories})에 남긴다.
+     */
     @Transactional
-    public RecruitmentNoticeResponse cancel(Long noticeId) {
+    public RecruitmentNoticeResponse cancel(Long noticeId, Long adminId, String reason) {
         RecruitmentNotice notice = getEntity(noticeId);
-        if (notice.getStatus() != RecruitmentNoticeStatus.DRAFT
-                && notice.getStatus() != RecruitmentNoticeStatus.SCHEDULED
-                && notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
+        RecruitmentNoticeStatus previousStatus = notice.getStatus();
+        if (previousStatus != RecruitmentNoticeStatus.DRAFT
+                && previousStatus != RecruitmentNoticeStatus.SCHEDULED
+                && previousStatus != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
         }
         notice.cancel();
+        recruitmentNoticeHistoryRepository.save(
+                RecruitmentNoticeHistory.create(
+                        notice.getId(),
+                        RecruitmentNoticeActionType.CANCEL,
+                        "{\"status\": \"" + previousStatus + "\"}",
+                        "{\"status\": \"" + notice.getStatus() + "\"}",
+                        reason,
+                        adminId));
         return recruitmentNoticeConverter.toResponse(notice);
     }
 

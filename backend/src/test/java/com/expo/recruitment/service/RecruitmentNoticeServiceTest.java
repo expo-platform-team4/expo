@@ -18,6 +18,7 @@ import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
@@ -41,6 +42,7 @@ class RecruitmentNoticeServiceTest {
 
     private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
+    private RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
     private VenueReservationRepository venueReservationRepository;
     private RecruitmentNoticeService service;
 
@@ -48,11 +50,13 @@ class RecruitmentNoticeServiceTest {
     void setUp() {
         recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
+        recruitmentNoticeHistoryRepository = mock(RecruitmentNoticeHistoryRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
         service =
                 new RecruitmentNoticeService(
                         recruitmentNoticeRepository,
                         recruitmentNoticeRequestRepository,
+                        recruitmentNoticeHistoryRepository,
                         venueReservationRepository,
                         new RecruitmentNoticeConverter());
     }
@@ -265,21 +269,23 @@ class RecruitmentNoticeServiceTest {
         notice.close();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        assertThatThrownBy(() -> service.cancel(1L))
+        assertThatThrownBy(() -> service.cancel(1L, ADMIN_ID, "테스트 취소"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
+        verify(recruitmentNoticeHistoryRepository, never()).save(any());
     }
 
     @Test
-    void cancelSucceedsFromOpen() {
+    void cancelSucceedsFromOpenAndLogsHistory() {
         RecruitmentNotice notice = draftNotice();
         notice.publish();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        RecruitmentNoticeResponse response = service.cancel(1L);
+        RecruitmentNoticeResponse response = service.cancel(1L, ADMIN_ID, "테스트 취소");
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.CANCELED);
+        verify(recruitmentNoticeHistoryRepository).save(any());
     }
 
     @Test

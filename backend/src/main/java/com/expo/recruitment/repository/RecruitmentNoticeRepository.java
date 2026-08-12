@@ -2,6 +2,7 @@ package com.expo.recruitment.repository;
 
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,4 +15,6 @@ public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNo
     List<RecruitmentNotice> findAllByStatus(RecruitmentNoticeStatus status);
 
     Optional<RecruitmentNotice> findByIdAndStatus(Long id, RecruitmentNoticeStatus status);
+
+    boolean existsByIdInAndStatusNot(Collection<Long> ids, RecruitmentNoticeStatus status);
 }

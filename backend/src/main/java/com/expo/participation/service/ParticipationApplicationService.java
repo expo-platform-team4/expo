@@ -13,9 +13,12 @@ import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.util.EnumSet;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class ParticipationApplicationService {
 
@@ -73,8 +76,22 @@ public class ParticipationApplicationService {
                         request.participationPurpose(),
                         request.exhibitDescription(),
                         request.selectedBoothProductId());
-        ParticipationApplication saved = participationApplicationRepository.save(application);
-        return participationApplicationConverter.toResponse(saved);
+        try {
+            ParticipationApplication saved =
+                    participationApplicationRepository.saveAndFlush(application);
+            return participationApplicationConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_participation_applications_active_client")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
+            }
+            log.warn(
+                    "참여 신청서 저장 중 예상하지 못한 무결성 제약 위반. recruitmentNoticeId={}, clientUserId={}",
+                    request.recruitmentNoticeId(),
+                    clientUserId,
+                    e);
+            throw e;
+        }
     }
 
     /** 본인이 작성한 참여 신청서 상세 조회. */
