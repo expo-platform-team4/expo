@@ -21,14 +21,14 @@ public interface TicketViewMapper {
      *
      * <p>원문으로 찾지 않는다 — DB 에 원문이 없다. 서비스가 원문을 해시해서 넘긴다.
      */
-    TicketAccessTokenRow findAccessTokenByHash(String tokenHash);
+    TicketAccessTokenRow findAccessTokenByHash(@Param("tokenHash") String tokenHash);
 
     /**
      * 주문에 발급된 입장권 전부. 발권된 적이 없으면 빈 목록.
      *
      * <p>{@code issued_tickets} 는 주문에 직접 붙지 않고 {@code ticket_order_items} 를 거친다.
      */
-    List<TicketViewTicket> findTicketsByOrderId(Long ticketOrderId);
+    List<TicketViewTicket> findTicketsByOrderId(@Param("ticketOrderId") Long ticketOrderId);
 
     /**
      * 접근 기록을 남긴다. 조회 1회에 1 증가.

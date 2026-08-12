@@ -82,6 +82,10 @@ class TicketViewServiceTest {
     /**
      * <b>이 설계의 핵심 주장이다.</b> DB 에 QR 원문이 없는데도 발권 때와 같은 값이 나와야 한다.
      *
+     * <p>검증에 <b>별도로 만든 제너레이터</b>를 쓴다. 조회가 쓰는 인스턴스로 비교하면 "같은 객체가 같은 값을 준다" 는 당연한 사실만 확인하게 된다.
+     * 실제로 필요한 속성은 <b>시크릿과 티켓 코드가 같으면 인스턴스가 달라도 같은 값</b>이라는 것이다 — 발권과 조회는 서로 다른 요청, 다른 인스턴스에서
+     * 일어나기 때문이다.
+     *
      * <p>여기가 깨지면 화면에 뜬 QR 이 현장 스캔에서 거부된다.
      */
     @Test
@@ -89,12 +93,29 @@ class TicketViewServiceTest {
         givenToken("ACTIVE", future());
         givenTickets(1);
 
-        TicketViewResponse response = service.view(TOKEN);
+        // 발권 쪽이 쓰는 것과 같은 시크릿으로 새로 만든다.
+        QrTokenProperties issuanceSideProperties = new QrTokenProperties();
+        issuanceSideProperties.setTokenSecret("test-qr-secret-value-for-unit-test-only");
+        QrTokenGenerator issuanceSide = new QrTokenGenerator(issuanceSideProperties);
 
-        // 발권 때 저장한 해시를 만든 것과 똑같은 계산이다.
-        assertThat(response.tickets().get(0).qrPayload())
-                .isEqualTo(
-                        qrTokenGenerator.generatePayload(response.tickets().get(0).ticketCode()));
+        TicketViewResponse.Ticket ticket = service.view(TOKEN).tickets().get(0);
+
+        assertThat(ticket.qrPayload()).isEqualTo(issuanceSide.generatePayload(ticket.ticketCode()));
+    }
+
+    /** 시크릿이 다르면 값도 달라야 한다. 위 테스트가 상수를 비교하는 게 아니라는 확인이다. */
+    @Test
+    void qrDependsOnTheSecret() {
+        givenToken("ACTIVE", future());
+        givenTickets(1);
+
+        QrTokenProperties otherProperties = new QrTokenProperties();
+        otherProperties.setTokenSecret("a-completely-different-secret-value-32");
+        QrTokenGenerator other = new QrTokenGenerator(otherProperties);
+
+        TicketViewResponse.Ticket ticket = service.view(TOKEN).tickets().get(0);
+
+        assertThat(ticket.qrPayload()).isNotEqualTo(other.generatePayload(ticket.ticketCode()));
     }
 
     /** 몇 번을 조회해도 같은 QR 이어야 한다. 매번 달라지면 저장하지 않는다는 설계가 성립하지 않는다. */
@@ -167,6 +188,46 @@ class TicketViewServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.TICKET_ACCESS_TOKEN_EXPIRED);
+    }
+
+    /**
+     * 기간은 남았는데 상태가 {@code EXPIRED} 인 경우.
+     *
+     * <p>만료 판정이 {@code status} 와 {@code expiresAt} 둘을 OR 로 묶고 있어, 한쪽만 검증하면 나머지 분기가 비어 있게 된다.
+     */
+    @Test
+    void rejectsTokenWhoseStatusIsExpiredEvenWhenTimeRemains() {
+        givenToken("EXPIRED", future());
+
+        assertThatThrownBy(() -> service.view(TOKEN))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TICKET_ACCESS_TOKEN_EXPIRED);
+    }
+
+    /** 취소·무효 티켓에는 QR 을 주지 않는다. 환불된 표를 들고 현장에 가는 흐름을 막는다. */
+    @Test
+    void hidesQrForUnusableTickets() {
+        givenToken("ACTIVE", future());
+        when(mapper.findTicketsByOrderId(ORDER_ID))
+                .thenReturn(
+                        List.of(
+                                new TicketViewTicket(
+                                        11L, TICKET_CODE, "CANCELED", null, "박람회", null, null),
+                                new TicketViewTicket(
+                                        12L,
+                                        TICKET_CODE + "X",
+                                        "ISSUED",
+                                        null,
+                                        "박람회",
+                                        null,
+                                        null)));
+
+        List<TicketViewResponse.Ticket> tickets = service.view(TOKEN).tickets();
+
+        assertThat(tickets.get(0).qrPayload()).isNull();
+        assertThat(tickets.get(0).ticketCode()).isNotBlank();
+        assertThat(tickets.get(1).qrPayload()).isNotBlank();
     }
 
     /** 폐기는 만료와 <b>다른 코드</b>여야 한다. 만료는 재발급을 안내할 수 있지만 폐기는 안 된다. */
