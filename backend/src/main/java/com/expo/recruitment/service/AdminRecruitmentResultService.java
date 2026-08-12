@@ -23,12 +23,15 @@ import com.expo.recruitment.repository.RecruitmentResultRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 관리자용 모집 결과 생성·조회·전달·직권 취소. */
+@Slf4j
 @Service
 public class AdminRecruitmentResultService {
 
@@ -82,14 +85,25 @@ public class AdminRecruitmentResultService {
                 participationApplicationRepository.findAllByRecruitmentNoticeIdAndStatus(
                         recruitmentNoticeId, ParticipationApplicationStatus.SUBMITTED);
 
-        RecruitmentResult result =
-                recruitmentResultRepository.save(
-                        RecruitmentResult.create(
-                                recruitmentNoticeId,
-                                notice.getHostClientId(),
-                                0,
-                                0,
-                                BigDecimal.ZERO));
+        RecruitmentResult result;
+        try {
+            result =
+                    recruitmentResultRepository.saveAndFlush(
+                            RecruitmentResult.create(
+                                    recruitmentNoticeId,
+                                    notice.getHostClientId(),
+                                    0,
+                                    0,
+                                    BigDecimal.ZERO));
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("recruitment_results_recruitment_notice_id_key")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_RECRUITMENT_RESULT);
+            }
+            log.warn(
+                    "모집 결과 저장 중 예상하지 못한 무결성 제약 위반. recruitmentNoticeId={}", recruitmentNoticeId, e);
+            throw e;
+        }
 
         List<RecruitmentResultItem> items = buildItems(result.getId(), submittedApplications);
         recruitmentResultItemRepository.saveAll(items);
@@ -162,7 +176,7 @@ public class AdminRecruitmentResultService {
     /** 주최자에게 결과 전달. */
     @Transactional
     public RecruitmentResultResponse deliver(Long resultId) {
-        RecruitmentResult result = getEntity(resultId);
+        RecruitmentResult result = getEntityForUpdate(resultId);
         if (result.getStatus() != RecruitmentResultStatus.GENERATED) {
             throw new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_DELIVERABLE);
         }
@@ -173,7 +187,7 @@ public class AdminRecruitmentResultService {
     /** 관리자 직권 취소. 이미 확정·박람회 반영된 결과는 취소할 수 없다. */
     @Transactional
     public RecruitmentResultResponse cancel(Long resultId) {
-        RecruitmentResult result = getEntity(resultId);
+        RecruitmentResult result = getEntityForUpdate(resultId);
         if (result.getStatus() == RecruitmentResultStatus.CONFIRMED
                 || result.getStatus() == RecruitmentResultStatus.USED_FOR_EXPO) {
             throw new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_CANCELABLE);
@@ -189,6 +203,12 @@ public class AdminRecruitmentResultService {
     private RecruitmentResult getEntity(Long resultId) {
         return recruitmentResultRepository
                 .findById(resultId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_FOUND));
+    }
+
+    private RecruitmentResult getEntityForUpdate(Long resultId) {
+        return recruitmentResultRepository
+                .findByIdForUpdate(resultId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_FOUND));
     }
 }

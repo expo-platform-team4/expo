@@ -170,7 +170,7 @@ class AdminRecruitmentResultServiceTest {
                         Instant.now().plus(Duration.ofMinutes(10)));
         when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
 
-        when(recruitmentResultRepository.save(any()))
+        when(recruitmentResultRepository.saveAndFlush(any()))
                 .thenAnswer(
                         inv -> {
                             RecruitmentResult saved = inv.getArgument(0);
@@ -191,7 +191,8 @@ class AdminRecruitmentResultServiceTest {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
         result.deliver();
-        when(recruitmentResultRepository.findById(RESULT_ID)).thenReturn(Optional.of(result));
+        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
+                .thenReturn(Optional.of(result));
         when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
                 .thenReturn(List.of());
 
@@ -205,7 +206,8 @@ class AdminRecruitmentResultServiceTest {
     void deliverSucceeds() {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        when(recruitmentResultRepository.findById(RESULT_ID)).thenReturn(Optional.of(result));
+        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
+                .thenReturn(Optional.of(result));
         when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
                 .thenReturn(List.of());
 
@@ -220,7 +222,8 @@ class AdminRecruitmentResultServiceTest {
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
         result.deliver();
         result.confirmByHost();
-        when(recruitmentResultRepository.findById(RESULT_ID)).thenReturn(Optional.of(result));
+        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
+                .thenReturn(Optional.of(result));
         when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
                 .thenReturn(List.of());
 
@@ -234,7 +237,8 @@ class AdminRecruitmentResultServiceTest {
     void cancelSucceedsWhenGenerated() {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        when(recruitmentResultRepository.findById(RESULT_ID)).thenReturn(Optional.of(result));
+        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
+                .thenReturn(Optional.of(result));
         when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
                 .thenReturn(List.of());
 

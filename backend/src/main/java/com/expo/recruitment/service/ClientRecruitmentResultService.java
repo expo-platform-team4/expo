@@ -37,10 +37,21 @@ public class ClientRecruitmentResultService {
         return recruitmentResultConverter.toResponse(result, getItems(result.getId()));
     }
 
-    /** 모집 결과 확인. 전달(DELIVERED) 상태에서만 확인할 수 있다. */
+    /**
+     * 모집 결과 확인. 전달(DELIVERED) 상태에서만 확인할 수 있다.
+     *
+     * <p>조회와 그 결과로 확인 처리하는 것 사이에 행 잠금을 걸어, 동시에 들어온 두 확인 요청이 같은 전달 상태를 보고 둘 다
+     * 통과하지 못하게 막는다.
+     */
     @Transactional
     public RecruitmentResultResponse confirm(Long resultId, Long hostClientId) {
-        RecruitmentResult result = getOwnedEntity(resultId, hostClientId);
+        RecruitmentResult result =
+                recruitmentResultRepository
+                        .findByIdAndHostClientIdForUpdate(resultId, hostClientId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_RESULT_NOT_FOUND));
         if (result.getStatus() != RecruitmentResultStatus.DELIVERED) {
             throw new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_CONFIRMABLE);
         }

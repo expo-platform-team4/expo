@@ -59,7 +59,8 @@ class ClientRecruitmentResultServiceTest {
     void confirmRejectsWhenNotDelivered() {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        when(recruitmentResultRepository.findByIdAndHostClientId(RESULT_ID, HOST_CLIENT_ID))
+        when(recruitmentResultRepository.findByIdAndHostClientIdForUpdate(
+                        RESULT_ID, HOST_CLIENT_ID))
                 .thenReturn(Optional.of(result));
 
         assertThatThrownBy(() -> service.confirm(RESULT_ID, HOST_CLIENT_ID))
@@ -73,7 +74,8 @@ class ClientRecruitmentResultServiceTest {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
         result.deliver();
-        when(recruitmentResultRepository.findByIdAndHostClientId(RESULT_ID, HOST_CLIENT_ID))
+        when(recruitmentResultRepository.findByIdAndHostClientIdForUpdate(
+                        RESULT_ID, HOST_CLIENT_ID))
                 .thenReturn(Optional.of(result));
 
         var response = service.confirm(RESULT_ID, HOST_CLIENT_ID);
