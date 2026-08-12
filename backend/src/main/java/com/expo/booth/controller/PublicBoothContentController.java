@@ -1,6 +1,6 @@
 package com.expo.booth.controller;
 
-import com.expo.booth.dto.BoothContentResponse;
+import com.expo.booth.dto.PublicBoothContentResponse;
 import com.expo.booth.service.ClientBoothContentService;
 import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +25,7 @@ public class PublicBoothContentController {
 
     @Operation(summary = "부스 확정 배정 ID로 공개 콘텐츠 조회")
     @GetMapping("/by-allocation/{boothAllocationId}")
-    public ResponseEntity<ApiResponse<BoothContentResponse>> getPublished(
+    public ResponseEntity<ApiResponse<PublicBoothContentResponse>> getPublished(
             @PathVariable Long boothAllocationId) {
         return ResponseEntity.ok(
                 ApiResponse.ok(clientBoothContentService.getPublished(boothAllocationId)));

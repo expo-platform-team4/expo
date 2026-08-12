@@ -117,10 +117,12 @@ public class BoothContent extends BaseTimeEntity {
         this.mainImageFileId = mainImageFileId;
     }
 
-    /** 콘텐츠 공개. */
+    /** 콘텐츠 공개. 이전 보완 요청 흔적은 지운다(이력은 {@code BoothManagementHistory} 에 남는다). */
     public void publish() {
         this.status = BoothContentStatus.PUBLISHED;
         this.publishedAt = Instant.now();
+        this.correctionRequestedAt = null;
+        this.correctionMessage = null;
     }
 
     /** 관리자 운영 확인. 상태는 바꾸지 않고 확인 시각·주체만 기록한다. */

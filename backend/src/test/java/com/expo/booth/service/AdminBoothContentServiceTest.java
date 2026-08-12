@@ -115,6 +115,17 @@ class AdminBoothContentServiceTest {
     }
 
     @Test
+    void hideRejectsWhenDraft() {
+        BoothContent content = content();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+
+        assertThatThrownBy(() -> service.hide(CONTENT_ID, ADMIN_ID, "정책 위반"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_HIDABLE);
+    }
+
+    @Test
     void restoreRejectsWhenNotHidden() {
         BoothContent content = content();
         content.publish();
@@ -123,7 +134,7 @@ class AdminBoothContentServiceTest {
         assertThatThrownBy(() -> service.restore(CONTENT_ID, ADMIN_ID, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_RESTORABLE);
     }
 
     @Test

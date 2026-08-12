@@ -6,6 +6,7 @@ import com.expo.booth.dto.AddBoothContentFileRequest;
 import com.expo.booth.dto.BoothContentFileResponse;
 import com.expo.booth.dto.BoothContentResponse;
 import com.expo.booth.dto.CreateBoothContentRequest;
+import com.expo.booth.dto.PublicBoothContentResponse;
 import com.expo.booth.dto.UpdateBoothContentRequest;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothAllocationStatus;
@@ -61,7 +62,7 @@ public class ClientBoothContentService {
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND));
         if (allocation.getStatus() != BoothAllocationStatus.ASSIGNED) {
-            throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
+            throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
         }
         BoothContent content =
                 BoothContent.create(
@@ -95,26 +96,26 @@ public class ClientBoothContentService {
         return toResponseWithFiles(getOwnedEntity(contentId, clientUserId));
     }
 
-    /** 공개된 부스 콘텐츠 조회. 참여를 검토하는 방문자가 배정 ID로 조회한다. */
+    /** 공개된 부스 콘텐츠 조회. 참여를 검토하는 방문자가 배정 ID로 조회한다. 내부 필드는 뺀 응답을 돌려준다. */
     @Transactional(readOnly = true)
-    public BoothContentResponse getPublished(Long boothAllocationId) {
+    public PublicBoothContentResponse getPublished(Long boothAllocationId) {
         BoothContent content =
                 boothContentRepository
                         .findByBoothAllocationId(boothAllocationId)
                         .filter(c -> c.getStatus() == BoothContentStatus.PUBLISHED)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_FOUND));
-        return toResponseWithFiles(content);
+        List<BoothContentFile> files =
+                boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
+                        content.getId());
+        return boothContentConverter.toPublicResponse(content, files);
     }
 
     /** 콘텐츠 본문 수정. 초안·보완 요청 상태에서만 수정할 수 있다. */
     @Transactional
     public BoothContentResponse update(
             Long contentId, UpdateBoothContentRequest request, Long clientUserId) {
-        BoothContent content = getOwnedEntity(contentId, clientUserId);
-        if (!EDITABLE_STATUSES.contains(content.getStatus())) {
-            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
-        }
+        BoothContent content = getEditableOwnedEntity(contentId, clientUserId);
         content.updateContent(
                 request.companyDisplayName(),
                 request.title(),
@@ -141,7 +142,7 @@ public class ClientBoothContentService {
     @Transactional
     public BoothContentFileResponse addFile(
             Long contentId, AddBoothContentFileRequest request, Long clientUserId) {
-        BoothContent content = getOwnedEntity(contentId, clientUserId);
+        BoothContent content = getEditableOwnedEntity(contentId, clientUserId);
         BoothContentFile file =
                 BoothContentFile.create(
                         content.getId(),
@@ -165,7 +166,7 @@ public class ClientBoothContentService {
     /** 첨부 파일 삭제. */
     @Transactional
     public void removeFile(Long contentId, Long fileEntryId, Long clientUserId) {
-        getOwnedEntity(contentId, clientUserId);
+        getEditableOwnedEntity(contentId, clientUserId);
         BoothContentFile file = getOwnedFile(contentId, fileEntryId);
         boothContentFileRepository.delete(file);
     }
@@ -174,7 +175,7 @@ public class ClientBoothContentService {
     @Transactional
     public BoothContentFileResponse reorderFile(
             Long contentId, Long fileEntryId, int sortOrder, Long clientUserId) {
-        getOwnedEntity(contentId, clientUserId);
+        getEditableOwnedEntity(contentId, clientUserId);
         BoothContentFile file = getOwnedFile(contentId, fileEntryId);
         file.changeSortOrder(sortOrder);
         return boothContentFileConverter.toResponse(file);
@@ -184,6 +185,15 @@ public class ClientBoothContentService {
         return boothContentFileRepository
                 .findByIdAndBoothContentId(fileEntryId, contentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_CONTENT_FILE_NOT_FOUND));
+    }
+
+    /** 소유권과 함께 수정 가능 상태(초안·보완 요청)인지 확인한다. */
+    private BoothContent getEditableOwnedEntity(Long contentId, Long clientUserId) {
+        BoothContent content = getOwnedEntity(contentId, clientUserId);
+        if (!EDITABLE_STATUSES.contains(content.getStatus())) {
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+        }
+        return content;
     }
 
     private BoothContentResponse toResponseWithFiles(BoothContent content) {

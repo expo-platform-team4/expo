@@ -80,10 +80,14 @@ public class AdminBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 관리자 직권 숨김. */
+    /** 관리자 직권 숨김. 공개되었거나 보완 요청 상태인 콘텐츠만 숨길 수 있다. */
     @Transactional
     public BoothContentResponse hide(Long contentId, Long adminId, String reason) {
         BoothContent content = getEntity(contentId);
+        if (content.getStatus() != BoothContentStatus.PUBLISHED
+                && content.getStatus() != BoothContentStatus.CORRECTION_REQUESTED) {
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_HIDABLE);
+        }
         content.hide();
         boothManagementHistoryRepository.save(
                 BoothManagementHistory.create(
@@ -100,7 +104,7 @@ public class AdminBoothContentService {
     public BoothContentResponse restore(Long contentId, Long adminId, String reason) {
         BoothContent content = getEntity(contentId);
         if (content.getStatus() != BoothContentStatus.HIDDEN) {
-            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_RESTORABLE);
         }
         content.restore();
         boothManagementHistoryRepository.save(

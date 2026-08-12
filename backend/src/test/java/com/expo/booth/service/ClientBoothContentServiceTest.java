@@ -106,6 +106,22 @@ class ClientBoothContentServiceTest {
     }
 
     @Test
+    void createRejectsWhenAllocationNotAssigned() {
+        BoothAllocation allocation = allocation();
+        allocation.cancel("이중 배정 정정");
+        when(boothAllocationRepository.findByIdAndClientUserId(ALLOCATION_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(allocation));
+        CreateBoothContentRequest request =
+                new CreateBoothContentRequest(
+                        ALLOCATION_ID, "회사", "제목", "회사소개", "부스소개", "제품소개", null, null);
+
+        assertThatThrownBy(() -> service.create(request, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+    }
+
+    @Test
     void updateRejectsWhenPublished() {
         BoothContent content = content();
         content.publish();
@@ -161,6 +177,8 @@ class ClientBoothContentServiceTest {
         var response = service.publish(CONTENT_ID, CLIENT_USER_ID);
 
         assertThat(response.status().name()).isEqualTo("PUBLISHED");
+        assertThat(response.correctionRequestedAt()).isNull();
+        assertThat(response.correctionMessage()).isNull();
     }
 
     @Test
@@ -185,7 +203,7 @@ class ClientBoothContentServiceTest {
 
         var response = service.getPublished(ALLOCATION_ID);
 
-        assertThat(response.status().name()).isEqualTo("PUBLISHED");
+        assertThat(response.companyDisplayName()).isEqualTo("회사");
     }
 
     @Test
@@ -201,6 +219,50 @@ class ClientBoothContentServiceTest {
         var response = service.addFile(CONTENT_ID, request, CLIENT_USER_ID);
 
         assertThat(response.fileId()).isEqualTo(10L);
+    }
+
+    @Test
+    void addFileRejectsWhenPublished() {
+        BoothContent content = content();
+        content.publish();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        AddBoothContentFileRequest request =
+                new AddBoothContentFileRequest(10L, BoothContentFileType.GALLERY_IMAGE, "이미지", 0);
+
+        assertThatThrownBy(() -> service.addFile(CONTENT_ID, request, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+    }
+
+    @Test
+    void removeFileRejectsWhenPublished() {
+        BoothContent content = content();
+        content.publish();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+
+        assertThatThrownBy(() -> service.removeFile(CONTENT_ID, 20L, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
+    }
+
+    @Test
+    void reorderFileRejectsWhenPublished() {
+        BoothContent content = content();
+        content.publish();
+        withId(content, CONTENT_ID);
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+
+        assertThatThrownBy(() -> service.reorderFile(CONTENT_ID, 20L, 3, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
     }
 
     @Test
