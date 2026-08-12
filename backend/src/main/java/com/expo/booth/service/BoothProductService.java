@@ -9,6 +9,7 @@ import com.expo.booth.repository.BoothProductRepository;
 import com.expo.booth.repository.BoothRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.time.Instant;
 import java.util.List;
@@ -62,6 +63,16 @@ public class BoothProductService {
         if (boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(
                 request.recruitmentNoticeId(), request.boothId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
+        }
+        List<Long> otherNoticeIds =
+                boothProductRepository.findOtherRecruitmentNoticeIdsUsingBooth(
+                        request.boothId(),
+                        request.recruitmentNoticeId(),
+                        BoothSalesStatus.CANCELED);
+        if (!otherNoticeIds.isEmpty()
+                && recruitmentNoticeRepository.existsByIdInAndStatusNot(
+                        otherNoticeIds, RecruitmentNoticeStatus.CANCELED)) {
+            throw new BusinessException(ErrorCode.BOOTH_IN_USE_BY_OTHER_NOTICE);
         }
         BoothProduct product =
                 BoothProduct.create(
