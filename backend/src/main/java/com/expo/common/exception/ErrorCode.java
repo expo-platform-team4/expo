@@ -42,10 +42,13 @@ public enum ErrorCode {
     // --- 가상 장소 ---
     DUPLICATE_VIRTUAL_VENUE_NAME(HttpStatus.CONFLICT, "이미 등록된 장소명입니다."),
     VIRTUAL_VENUE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 가상 장소입니다."),
+    VIRTUAL_VENUE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "장소는 1개(킨텍스)까지만 등록할 수 있습니다."),
     DUPLICATE_VENUE_HALL_CODE(HttpStatus.CONFLICT, "이미 등록된 홀 코드입니다."),
     VENUE_HALL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 홀입니다."),
+    VENUE_HALL_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "한 장소에는 전시장(홀)을 2개까지만 등록할 수 있습니다."),
     DUPLICATE_VENUE_ZONE_CODE(HttpStatus.CONFLICT, "이미 등록된 구역 코드입니다."),
     VENUE_ZONE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 구역입니다."),
+    VENUE_ZONE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "한 홀에는 구역을 5개까지만 등록할 수 있습니다."),
     RECRUITMENT_NOTICE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 모집공고 생성 요청입니다."),
     VENUE_RESERVATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "사용 종료 일시는 시작 일시보다 늦어야 합니다."),
     VENUE_RESERVATION_PERIOD_CONFLICT(HttpStatus.CONFLICT, "같은 장소·기간에 이미 확정된 예약이 있습니다."),
