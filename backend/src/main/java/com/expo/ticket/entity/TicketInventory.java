@@ -1,5 +1,7 @@
 package com.expo.ticket.entity;
 
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -49,6 +51,13 @@ public class TicketInventory {
         inventory.reservedQuantity = 0;
         inventory.soldQuantity = 0;
         return inventory;
+    }
+
+    public void updateTotalQuantity(int totalQuantity) {
+        if (totalQuantity < reservedQuantity + soldQuantity) {
+            throw new BusinessException(ErrorCode.TICKET_TOTAL_QUANTITY_TOO_LOW);
+        }
+        this.totalQuantity = totalQuantity;
     }
 
     protected TicketInventory() {}

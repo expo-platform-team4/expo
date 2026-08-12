@@ -11,7 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -58,10 +58,10 @@ public class BoothProduct extends BaseTimeEntity {
     private String includedItems;
 
     @Column(name = "sales_start_at")
-    private LocalDateTime salesStartAt;
+    private Instant salesStartAt;
 
     @Column(name = "sales_end_at")
-    private LocalDateTime salesEndAt;
+    private Instant salesEndAt;
 
     @Column(name = "payment_enabled", nullable = false)
     private boolean paymentEnabled = true;
@@ -97,8 +97,7 @@ public class BoothProduct extends BaseTimeEntity {
     }
 
     /** 판매 기간·결제 가능 여부 설정. */
-    public BoothProduct schedule(
-            LocalDateTime salesStartAt, LocalDateTime salesEndAt, boolean paymentEnabled) {
+    public BoothProduct schedule(Instant salesStartAt, Instant salesEndAt, boolean paymentEnabled) {
         this.salesStartAt = salesStartAt;
         this.salesEndAt = salesEndAt;
         this.paymentEnabled = paymentEnabled;

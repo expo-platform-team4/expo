@@ -3,7 +3,7 @@ package com.expo.booth.dto;
 import com.expo.booth.entity.OperationalStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 부스 템플릿 응답. */
 @Schema(description = "부스 템플릿")
@@ -17,5 +17,5 @@ public record BoothTemplateResponse(
         @Schema(description = "치수 단위") String dimensionUnit,
         @Schema(description = "기본 제공 항목(JSON 문자열)") String defaultIncludedItems,
         @Schema(description = "운영 상태") OperationalStatus operationalStatus,
-        @Schema(description = "생성 일시") LocalDateTime createdAt,
-        @Schema(description = "수정 일시") LocalDateTime updatedAt) {}
+        @Schema(description = "생성 일시") Instant createdAt,
+        @Schema(description = "수정 일시") Instant updatedAt) {}

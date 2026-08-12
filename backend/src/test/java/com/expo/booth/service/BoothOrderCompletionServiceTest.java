@@ -20,7 +20,8 @@ import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,7 +75,7 @@ class BoothOrderCompletionServiceTest {
                         "BO12345",
                         BigDecimal.valueOf(1_100_000),
                         "idem-order",
-                        LocalDateTime.now().plusMinutes(15));
+                        Instant.now().plus(Duration.ofMinutes(15)));
         withId(order, ORDER_ID);
         BoothProduct product =
                 BoothProduct.create(
@@ -87,8 +88,7 @@ class BoothOrderCompletionServiceTest {
                         .schedule(null, null, true);
         product.reserve();
         BoothReservation reservation =
-                BoothReservation.create(
-                        BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, LocalDateTime.now());
+                BoothReservation.create(BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, Instant.now());
         ParticipationApplication application =
                 ParticipationApplication.create(
                         NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, BOOTH_PRODUCT_ID);

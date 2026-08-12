@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -57,10 +57,10 @@ public class BoothContent extends BaseTimeEntity {
     private BoothContentStatus status;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     @Column(name = "correction_requested_at")
-    private LocalDateTime correctionRequestedAt;
+    private Instant correctionRequestedAt;
 
     @Column(name = "correction_message", columnDefinition = "TEXT")
     private String correctionMessage;
@@ -69,7 +69,7 @@ public class BoothContent extends BaseTimeEntity {
     private Long checkedByAdminId;
 
     @Column(name = "checked_at")
-    private LocalDateTime checkedAt;
+    private Instant checkedAt;
 
     /** 확정 배정 기업의 부스 콘텐츠 작성. 상태는 DRAFT 로 고정한다. */
     public static BoothContent create(
@@ -120,19 +120,19 @@ public class BoothContent extends BaseTimeEntity {
     /** 콘텐츠 공개. */
     public void publish() {
         this.status = BoothContentStatus.PUBLISHED;
-        this.publishedAt = LocalDateTime.now();
+        this.publishedAt = Instant.now();
     }
 
     /** 관리자 운영 확인. 상태는 바꾸지 않고 확인 시각·주체만 기록한다. */
     public void check(Long adminId) {
         this.checkedByAdminId = adminId;
-        this.checkedAt = LocalDateTime.now();
+        this.checkedAt = Instant.now();
     }
 
     /** 보완 요청. 공개를 내리고 사유를 남긴다. */
     public void requestCorrection(String message) {
         this.status = BoothContentStatus.CORRECTION_REQUESTED;
-        this.correctionRequestedAt = LocalDateTime.now();
+        this.correctionRequestedAt = Instant.now();
         this.correctionMessage = message;
     }
 

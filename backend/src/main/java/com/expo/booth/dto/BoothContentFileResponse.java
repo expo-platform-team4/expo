@@ -2,7 +2,7 @@ package com.expo.booth.dto;
 
 import com.expo.booth.entity.BoothContentFileType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 부스 콘텐츠 첨부 파일 응답. */
 @Schema(description = "부스 콘텐츠 첨부 파일")
@@ -12,4 +12,4 @@ public record BoothContentFileResponse(
         @Schema(description = "파일 종류") BoothContentFileType fileType,
         @Schema(description = "제목") String title,
         @Schema(description = "노출 순서") Integer sortOrder,
-        @Schema(description = "생성 일시") LocalDateTime createdAt) {}
+        @Schema(description = "생성 일시") Instant createdAt) {}

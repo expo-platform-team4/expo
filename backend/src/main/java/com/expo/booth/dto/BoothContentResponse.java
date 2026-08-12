@@ -2,7 +2,7 @@ package com.expo.booth.dto;
 
 import com.expo.booth.entity.BoothContentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /** 부스 콘텐츠 응답. */
@@ -19,11 +19,11 @@ public record BoothContentResponse(
         @Schema(description = "로고 파일 ID") Long logoFileId,
         @Schema(description = "대표 이미지 파일 ID") Long mainImageFileId,
         @Schema(description = "공개 상태") BoothContentStatus status,
-        @Schema(description = "공개 일시") LocalDateTime publishedAt,
-        @Schema(description = "보완 요청 일시") LocalDateTime correctionRequestedAt,
+        @Schema(description = "공개 일시") Instant publishedAt,
+        @Schema(description = "보완 요청 일시") Instant correctionRequestedAt,
         @Schema(description = "보완 요청 사유") String correctionMessage,
         @Schema(description = "운영 확인 관리자 ID") Long checkedByAdminId,
-        @Schema(description = "운영 확인 일시") LocalDateTime checkedAt,
+        @Schema(description = "운영 확인 일시") Instant checkedAt,
         @Schema(description = "첨부 파일 목록") List<BoothContentFileResponse> files,
-        @Schema(description = "생성 일시") LocalDateTime createdAt,
-        @Schema(description = "수정 일시") LocalDateTime updatedAt) {}
+        @Schema(description = "생성 일시") Instant createdAt,
+        @Schema(description = "수정 일시") Instant updatedAt) {}

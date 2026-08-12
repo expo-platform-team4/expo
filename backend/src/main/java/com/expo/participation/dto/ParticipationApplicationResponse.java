@@ -2,7 +2,7 @@ package com.expo.participation.dto;
 
 import com.expo.participation.entity.ParticipationApplicationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 참여 신청서 응답. */
 @Schema(description = "참여 신청서")
@@ -15,5 +15,5 @@ public record ParticipationApplicationResponse(
         @Schema(description = "선택한 부스 상품 ID") Long selectedBoothProductId,
         @Schema(description = "부스 주문 ID") Long boothOrderId,
         @Schema(description = "처리 상태") ParticipationApplicationStatus status,
-        @Schema(description = "생성 일시") LocalDateTime createdAt,
-        @Schema(description = "수정 일시") LocalDateTime updatedAt) {}
+        @Schema(description = "생성 일시") Instant createdAt,
+        @Schema(description = "수정 일시") Instant updatedAt) {}

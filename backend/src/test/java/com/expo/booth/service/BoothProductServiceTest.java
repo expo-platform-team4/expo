@@ -19,7 +19,8 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,8 +78,8 @@ class BoothProductServiceTest {
 
     @Test
     void createRejectsWhenSalesPeriodInvalid() {
-        LocalDateTime start = LocalDateTime.of(2026, 9, 10, 0, 0);
-        LocalDateTime end = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant start = Instant.parse("2026-09-10T00:00:00Z");
+        Instant end = Instant.parse("2026-09-01T00:00:00Z");
         CreateBoothProductRequest request =
                 new CreateBoothProductRequest(
                         NOTICE_ID, BOOTH_ID, BigDecimal.TEN, null, true, null, start, end, true);
@@ -216,8 +217,8 @@ class BoothProductServiceTest {
                                 true,
                                 null)
                         .schedule(
-                                LocalDateTime.now().plusDays(1),
-                                LocalDateTime.now().plusDays(2),
+                                Instant.now().plus(Duration.ofDays(1)),
+                                Instant.now().plus(Duration.ofDays(2)),
                                 true);
         BoothProduct alreadyEnded =
                 BoothProduct.create(
@@ -228,8 +229,8 @@ class BoothProductServiceTest {
                                 true,
                                 null)
                         .schedule(
-                                LocalDateTime.now().minusDays(2),
-                                LocalDateTime.now().minusDays(1),
+                                Instant.now().minus(Duration.ofDays(2)),
+                                Instant.now().minus(Duration.ofDays(1)),
                                 true);
         when(boothProductRepository.findAllByRecruitmentNoticeIdAndSalesStatus(
                         NOTICE_ID, BoothSalesStatus.AVAILABLE))

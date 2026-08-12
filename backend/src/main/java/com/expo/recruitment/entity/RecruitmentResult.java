@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,15 +54,15 @@ public class RecruitmentResult {
     private RecruitmentResultStatus status;
 
     @Column(name = "generated_at", nullable = false)
-    private LocalDateTime generatedAt;
+    private Instant generatedAt;
 
     @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
+    private Instant deliveredAt;
 
     @Column(name = "confirmed_by_host_at")
-    private LocalDateTime confirmedByHostAt;
+    private Instant confirmedByHostAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

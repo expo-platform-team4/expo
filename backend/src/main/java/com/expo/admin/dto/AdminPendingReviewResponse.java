@@ -1,7 +1,7 @@
 package com.expo.admin.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 심사 대기 목록 통합 응답 ({@code v_admin_pending_reviews} 뷰 기반).
@@ -15,5 +15,5 @@ public record AdminPendingReviewResponse(
         @Schema(description = "제목") String title,
         @Schema(description = "요청한 클라이언트 ID") Long requesterClientId,
         @Schema(description = "처리 상태") String status,
-        @Schema(description = "제출 시각") LocalDateTime submittedAt,
-        @Schema(description = "생성 시각") LocalDateTime createdAt) {}
+        @Schema(description = "제출 시각") Instant submittedAt,
+        @Schema(description = "생성 시각") Instant createdAt) {}

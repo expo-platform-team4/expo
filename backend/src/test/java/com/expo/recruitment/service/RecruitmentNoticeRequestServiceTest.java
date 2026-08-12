@@ -21,7 +21,7 @@ import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,10 +34,10 @@ class RecruitmentNoticeRequestServiceTest {
     private static final Long VENUE_ID = 100L;
     private static final Long HALL_ID = 200L;
     private static final Long ZONE_ID = 300L;
-    private static final LocalDateTime T1 = LocalDateTime.of(2026, 9, 1, 0, 0);
-    private static final LocalDateTime T2 = LocalDateTime.of(2026, 9, 30, 0, 0);
-    private static final LocalDateTime T3 = LocalDateTime.of(2026, 10, 1, 0, 0);
-    private static final LocalDateTime T4 = LocalDateTime.of(2026, 10, 5, 0, 0);
+    private static final Instant T1 = Instant.parse("2026-09-01T00:00:00Z");
+    private static final Instant T2 = Instant.parse("2026-09-30T00:00:00Z");
+    private static final Instant T3 = Instant.parse("2026-10-01T00:00:00Z");
+    private static final Instant T4 = Instant.parse("2026-10-05T00:00:00Z");
 
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private VirtualVenueRepository virtualVenueRepository;

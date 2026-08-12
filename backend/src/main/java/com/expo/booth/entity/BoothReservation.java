@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,13 +39,13 @@ public class BoothReservation extends BaseTimeEntity {
     private Long reservedByClientId;
 
     @Column(name = "reserved_at", nullable = false)
-    private LocalDateTime reservedAt;
+    private Instant reservedAt;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "released_at")
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -56,15 +56,12 @@ public class BoothReservation extends BaseTimeEntity {
 
     /** 주문 생성 시 부스 상품 임시 확보. */
     public static BoothReservation create(
-            Long boothProductId,
-            Long boothOrderId,
-            Long reservedByClientId,
-            LocalDateTime expiresAt) {
+            Long boothProductId, Long boothOrderId, Long reservedByClientId, Instant expiresAt) {
         BoothReservation reservation = new BoothReservation();
         reservation.boothProductId = boothProductId;
         reservation.boothOrderId = boothOrderId;
         reservation.reservedByClientId = reservedByClientId;
-        reservation.reservedAt = LocalDateTime.now();
+        reservation.reservedAt = Instant.now();
         reservation.expiresAt = expiresAt;
         reservation.status = BoothReservationStatus.ACTIVE;
         reservation.activeGuard = true;
@@ -74,7 +71,7 @@ public class BoothReservation extends BaseTimeEntity {
     /** 주문 취소·만료로 확보 해제. */
     public void release() {
         this.status = BoothReservationStatus.RELEASED;
-        this.releasedAt = LocalDateTime.now();
+        this.releasedAt = Instant.now();
         this.activeGuard = false;
     }
 

@@ -33,7 +33,8 @@ import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,7 +95,7 @@ class BoothPaymentServiceTest {
                 "BO12345",
                 BigDecimal.valueOf(1_100_000),
                 "idem-order",
-                LocalDateTime.now().plusMinutes(15));
+                Instant.now().plus(Duration.ofMinutes(15)));
     }
 
     private BoothPayment readyPayment() {
@@ -133,7 +134,7 @@ class BoothPaymentServiceTest {
                         "BO12345",
                         BigDecimal.valueOf(1_100_000),
                         "idem-order",
-                        LocalDateTime.now().minusMinutes(1));
+                        Instant.now().minus(Duration.ofMinutes(1)));
         when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> service.initiate(ORDER_ID, CLIENT_USER_ID))
@@ -249,8 +250,7 @@ class BoothPaymentServiceTest {
                         .schedule(null, null, true);
         product.reserve();
         BoothReservation reservation =
-                BoothReservation.create(
-                        BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, LocalDateTime.now());
+                BoothReservation.create(BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, Instant.now());
         ParticipationApplication application =
                 ParticipationApplication.create(
                         NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, BOOTH_PRODUCT_ID);
@@ -266,7 +266,7 @@ class BoothPaymentServiceTest {
                                 "DONE",
                                 "카드",
                                 BigDecimal.valueOf(1_100_000),
-                                LocalDateTime.now(),
+                                Instant.now(),
                                 "{}"));
         when(boothProductRepository.findById(BOOTH_PRODUCT_ID)).thenReturn(Optional.of(product));
         when(boothReservationRepository.findFirstByBoothOrderIdAndStatus(
