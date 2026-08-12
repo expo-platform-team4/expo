@@ -37,7 +37,11 @@ public class CheckInQueryService {
     /**
      * 체크인 이력. 최신순이다.
      *
-     * @param page 0부터
+     * <p>{@code offset} 을 {@code long} 으로 계산한다. {@code int} 로 곱하면 {@code page} 가 큰 값일 때
+     * 오버플로해 <b>음수 offset</b> 이 되고, PostgreSQL 이 {@code OFFSET must not be negative} 로
+     * 거절해 500 이 나간다. 실제로 {@code page=2147483647, size=100} 이면 곱이 {@code -100} 이 된다.
+     *
+     * @param page 0부터. 음수는 0으로, 데이터 범위를 넘는 값은 빈 목록으로 돌아온다
      * @param size 최대 {@value #MAX_PAGE_SIZE}
      */
     @Transactional(readOnly = true)
@@ -46,11 +50,12 @@ public class CheckInQueryService {
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        long offset = (long) safePage * safeSize;
 
         return new CheckInHistoryPage(
                 checkInQueryMapper.countHistory(expoId),
                 safePage,
                 safeSize,
-                checkInQueryMapper.findHistory(expoId, safeSize, safePage * safeSize));
+                checkInQueryMapper.findHistory(expoId, safeSize, offset));
     }
 }

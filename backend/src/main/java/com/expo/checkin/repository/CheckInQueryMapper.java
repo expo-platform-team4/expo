@@ -22,10 +22,10 @@ public interface CheckInQueryMapper {
      * 체크인 이력을 최신순으로 읽는다.
      *
      * @param limit 한 페이지 크기
-     * @param offset 건너뛸 개수
+     * @param offset 건너뛸 개수. {@code page * size} 가 {@code int} 를 넘길 수 있어 {@code long} 이다
      */
     List<CheckInHistoryRow> findHistory(
-            @Param("expoId") Long expoId, @Param("limit") int limit, @Param("offset") int offset);
+            @Param("expoId") Long expoId, @Param("limit") int limit, @Param("offset") long offset);
 
     /** 이력 전체 건수. 페이지네이션용이다. */
     long countHistory(@Param("expoId") Long expoId);

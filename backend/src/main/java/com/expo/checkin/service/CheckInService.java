@@ -104,8 +104,12 @@ public class CheckInService {
 
         if (found.isEmpty()) {
             // 가리킬 티켓이 없어 check_in_histories 에 남길 수 없다 (issued_ticket_id 가 NOT NULL).
-            // 위조 시도일 수 있으므로 로그로는 반드시 남긴다.
-            log.warn("체크인 실패 (일치하는 티켓 없음) expoId={} method={} ip={}", expoId, method, requestIp);
+            // 위조 시도일 수 있으므로 로그로는 반드시 남긴다. IP 는 마스킹한다 - docs/logging.md 7절.
+            log.warn(
+                    "체크인 실패 (일치하는 티켓 없음) expoId={} method={} ip={}",
+                    expoId,
+                    method,
+                    maskIp(requestIp));
             return reject(CheckInResult.INVALID_TOKEN, null, now);
         }
 
@@ -228,5 +232,33 @@ public class CheckInService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    /**
+     * 로그에 남길 IP 를 마스킹한다.
+     *
+     * <p>IP 는 개인 식별이 가능한 값이라 원문을 로그에 남기지 않는다({@code docs/logging.md} 7절이
+     * 이메일·전화번호에 요구하는 것과 같은 취급이다). 그렇다고 통째로 빼면 위조 시도를 추적할 근거가
+     * 사라지므로, <b>같은 출처에서 반복되는지</b>는 알아볼 수 있는 정도만 남긴다.
+     *
+     * <pre>
+     * 10.20.30.40                → 10.20.30.*
+     * 2001:db8::1                → 2001:db8:*
+     * </pre>
+     *
+     * <p>원문이 필요한 감사에는 {@code check_in_histories.request_ip} 를 쓴다. 거기에는 그대로 저장된다 —
+     * 접근이 통제되는 테이블과, 수집기로 흘러가면 회수할 수 없는 로그는 다르다.
+     */
+    private String maskIp(String ip) {
+        if (isBlank(ip)) {
+            return "unknown";
+        }
+        int lastDot = ip.lastIndexOf('.');
+        if (lastDot > 0) {
+            return ip.substring(0, lastDot + 1) + "*";
+        }
+        // IPv6. 앞 두 그룹만 남긴다.
+        String[] groups = ip.split(":");
+        return groups.length >= 2 ? groups[0] + ":" + groups[1] + ":*" : "*";
     }
 }
