@@ -79,6 +79,17 @@ public enum ErrorCode {
     PAYMENT_APPROVAL_FAILED(HttpStatus.BAD_GATEWAY, "결제 승인에 실패했습니다."),
     BOOTH_ALLOCATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 배정입니다."),
     BOOTH_ALLOCATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 취소된 배정입니다."),
+    BOOTH_ALLOCATION_NOT_ASSIGNED(HttpStatus.CONFLICT, "확정 배정 상태에서만 부스 콘텐츠를 작성할 수 있습니다."),
+
+    // --- 부스 콘텐츠 ---
+    BOOTH_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠입니다."),
+    DUPLICATE_BOOTH_CONTENT(HttpStatus.CONFLICT, "이미 해당 배정에 등록된 부스 콘텐츠입니다."),
+    BOOTH_CONTENT_NOT_EDITABLE(HttpStatus.CONFLICT, "초안 또는 보완 요청 상태의 콘텐츠만 수정할 수 있습니다."),
+    BOOTH_CONTENT_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "초안·보완 요청 상태의 콘텐츠만 공개할 수 있습니다."),
+    BOOTH_CONTENT_NOT_HIDABLE(HttpStatus.CONFLICT, "공개되었거나 보완 요청 상태의 콘텐츠만 숨길 수 있습니다."),
+    BOOTH_CONTENT_NOT_RESTORABLE(HttpStatus.CONFLICT, "숨김 상태의 콘텐츠만 숨김 해제할 수 있습니다."),
+    BOOTH_CONTENT_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠 첨부 파일입니다."),
+    DUPLICATE_BOOTH_CONTENT_FILE(HttpStatus.CONFLICT, "이미 등록된 첨부 파일입니다."),
 
     // --- 모집공고 ---
     DUPLICATE_RECRUITMENT_NOTICE_REQUEST(HttpStatus.CONFLICT, "이미 공고가 생성된 요청입니다."),
