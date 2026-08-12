@@ -9,7 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -59,5 +59,26 @@ public class BoothPaymentHistory {
     private String responsePayload;
 
     @Column(name = "occurred_at", nullable = false)
-    private LocalDateTime occurredAt;
+    private Instant occurredAt;
+
+    /** 결제 이벤트 이력 기록. */
+    public static BoothPaymentHistory record(
+            Long boothPaymentId,
+            BoothPaymentEventType eventType,
+            BoothPaymentStatus fromStatus,
+            BoothPaymentStatus toStatus,
+            BigDecimal amount,
+            String pgTransactionKey,
+            String responsePayload) {
+        BoothPaymentHistory history = new BoothPaymentHistory();
+        history.boothPaymentId = boothPaymentId;
+        history.eventType = eventType;
+        history.fromStatus = fromStatus;
+        history.toStatus = toStatus;
+        history.amount = amount;
+        history.pgTransactionKey = pgTransactionKey;
+        history.responsePayload = responsePayload;
+        history.occurredAt = Instant.now();
+        return history;
+    }
 }

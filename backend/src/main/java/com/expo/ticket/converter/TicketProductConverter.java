@@ -1,8 +1,10 @@
 package com.expo.ticket.converter;
 
+import com.expo.ticket.dto.PurchasableTicketProductResponse;
 import com.expo.ticket.dto.TicketProductCreateRequest;
 import com.expo.ticket.dto.TicketProductCreateResponse;
 import com.expo.ticket.dto.TicketProductSearchResponse;
+import com.expo.ticket.dto.TicketUpdateResponse;
 import com.expo.ticket.entity.TicketInventory;
 import com.expo.ticket.entity.TicketProduct;
 import org.springframework.stereotype.Component;
@@ -39,7 +41,8 @@ public class TicketProductConverter {
                 inventory.getTotalQuantity(),
                 availableQuantity,
                 product.getMaxQuantityPerOrder(),
-                product.getStatus());
+                product.getStatus(),
+                product.getCreatedAt());
     }
 
     public TicketProductSearchResponse toSearchTicketProduct(TicketProduct product) {
@@ -56,5 +59,40 @@ public class TicketProductConverter {
                 inventory.getAvailableQuantity(),
                 product.getMaxQuantityPerOrder(),
                 product.getStatus());
+    }
+
+    public TicketUpdateResponse toUpdateTicket(TicketProduct product) {
+        TicketInventory inventory = product.getInventory();
+
+        int availableQuantity =
+                inventory.getTotalQuantity()
+                        - inventory.getReservedQuantity()
+                        - inventory.getSoldQuantity();
+
+        return new TicketUpdateResponse(
+                product.getId(),
+                product.getPrice(),
+                inventory.getTotalQuantity(),
+                availableQuantity,
+                product.getUpdatedAt());
+    }
+
+    public PurchasableTicketProductResponse toPurchasableTicket(TicketProduct product) {
+        TicketInventory inventory = product.getInventory();
+
+        int availableQuantity =
+                inventory.getTotalQuantity()
+                        - inventory.getReservedQuantity()
+                        - inventory.getSoldQuantity();
+
+        return new PurchasableTicketProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                availableQuantity,
+                product.getMaxQuantityPerOrder(),
+                product.getSalesStartAt(),
+                product.getSalesEndAt());
     }
 }

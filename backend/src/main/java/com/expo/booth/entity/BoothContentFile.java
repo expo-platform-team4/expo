@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,5 +51,26 @@ public class BoothContentFile {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    /** 부스 콘텐츠 첨부 파일 등록. */
+    public static BoothContentFile create(
+            Long boothContentId,
+            Long fileId,
+            BoothContentFileType fileType,
+            String title,
+            Integer sortOrder) {
+        BoothContentFile file = new BoothContentFile();
+        file.boothContentId = boothContentId;
+        file.fileId = fileId;
+        file.fileType = fileType;
+        file.title = title;
+        file.sortOrder = sortOrder != null ? sortOrder : 0;
+        return file;
+    }
+
+    /** 첨부 파일 노출 순서 변경. */
+    public void changeSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 }

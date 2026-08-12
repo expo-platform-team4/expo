@@ -1,7 +1,7 @@
 package com.expo.venue.repository;
 
 import com.expo.venue.entity.VenueReservation;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +26,6 @@ public interface VenueReservationRepository extends JpaRepository<VenueReservati
             @Param("virtualVenueId") Long virtualVenueId,
             @Param("venueHallId") Long venueHallId,
             @Param("venueZoneId") Long venueZoneId,
-            @Param("useStartAt") LocalDateTime useStartAt,
-            @Param("useEndAt") LocalDateTime useEndAt);
+            @Param("useStartAt") Instant useStartAt,
+            @Param("useEndAt") Instant useEndAt);
 }
