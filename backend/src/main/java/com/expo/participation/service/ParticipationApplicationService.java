@@ -7,15 +7,26 @@ import com.expo.participation.converter.ParticipationApplicationConverter;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
+import java.util.EnumSet;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class ParticipationApplicationService {
+
+    private static final EnumSet<ParticipationApplicationStatus> ACTIVE_STATUSES =
+            EnumSet.of(
+                    ParticipationApplicationStatus.DRAFT,
+                    ParticipationApplicationStatus.PAYMENT_PENDING,
+                    ParticipationApplicationStatus.SUBMITTED);
 
     private final ParticipationApplicationRepository participationApplicationRepository;
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
@@ -47,6 +58,11 @@ public class ParticipationApplicationService {
         if (notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
+        if (participationApplicationRepository
+                .existsByRecruitmentNoticeIdAndClientUserIdAndStatusIn(
+                        request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
+        }
         if (request.selectedBoothProductId() != null
                 && !boothProductRepository.existsByIdAndRecruitmentNoticeId(
                         request.selectedBoothProductId(), notice.getId())) {
@@ -60,8 +76,22 @@ public class ParticipationApplicationService {
                         request.participationPurpose(),
                         request.exhibitDescription(),
                         request.selectedBoothProductId());
-        ParticipationApplication saved = participationApplicationRepository.save(application);
-        return participationApplicationConverter.toResponse(saved);
+        try {
+            ParticipationApplication saved =
+                    participationApplicationRepository.saveAndFlush(application);
+            return participationApplicationConverter.toResponse(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_participation_applications_active_client")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
+            }
+            log.warn(
+                    "참여 신청서 저장 중 예상하지 못한 무결성 제약 위반. recruitmentNoticeId={}, clientUserId={}",
+                    request.recruitmentNoticeId(),
+                    clientUserId,
+                    e);
+            throw e;
+        }
     }
 
     /** 본인이 작성한 참여 신청서 상세 조회. */

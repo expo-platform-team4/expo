@@ -61,4 +61,22 @@ public class RecruitmentNoticeHistory {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    /** 모집공고 운영 변경 이력 기록. */
+    public static RecruitmentNoticeHistory create(
+            Long recruitmentNoticeId,
+            RecruitmentNoticeActionType actionType,
+            String beforeData,
+            String afterData,
+            String reason,
+            Long processedByAdminId) {
+        RecruitmentNoticeHistory history = new RecruitmentNoticeHistory();
+        history.recruitmentNoticeId = recruitmentNoticeId;
+        history.actionType = actionType;
+        history.beforeData = beforeData;
+        history.afterData = afterData;
+        history.reason = reason;
+        history.processedByAdminId = processedByAdminId;
+        return history;
+    }
 }

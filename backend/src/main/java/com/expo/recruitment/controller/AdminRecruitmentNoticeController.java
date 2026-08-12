@@ -2,6 +2,7 @@ package com.expo.recruitment.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.recruitment.dto.CancelRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
 import com.expo.recruitment.dto.UpdateRecruitmentNoticeRequest;
@@ -78,5 +79,18 @@ public class AdminRecruitmentNoticeController {
     public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> closeNotice(
             @PathVariable Long noticeId) {
         return ResponseEntity.ok(ApiResponse.ok(recruitmentNoticeService.close(noticeId)));
+    }
+
+    @Operation(summary = "기업 모집 공고 직권 취소")
+    @PostMapping("/{noticeId}/cancel")
+    public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> cancelNotice(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long noticeId,
+            @RequestBody(required = false) CancelRecruitmentNoticeRequest request) {
+        String reason = request != null ? request.reason() : null;
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        recruitmentNoticeService.cancel(
+                                noticeId, principal.getMemberId(), reason)));
     }
 }
