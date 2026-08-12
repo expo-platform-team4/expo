@@ -3,6 +3,7 @@ package com.expo.participation.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -94,6 +95,22 @@ class ParticipationApplicationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
+    }
+
+    @Test
+    void createRejectsWhenDuplicateActiveApplicationExists() {
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
+        when(participationApplicationRepository
+                        .existsByRecruitmentNoticeIdAndClientUserIdAndStatusIn(
+                                eq(NOTICE_ID), eq(CLIENT_USER_ID), any()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(CLIENT_USER_ID, requestWithBoothProduct(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
+        verify(participationApplicationRepository, never()).save(any());
     }
 
     @Test

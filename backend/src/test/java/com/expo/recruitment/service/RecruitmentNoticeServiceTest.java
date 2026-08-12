@@ -259,6 +259,30 @@ class RecruitmentNoticeServiceTest {
     }
 
     @Test
+    void cancelRejectsWhenClosed() {
+        RecruitmentNotice notice = draftNotice();
+        notice.publish();
+        notice.close();
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+
+        assertThatThrownBy(() -> service.cancel(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
+    }
+
+    @Test
+    void cancelSucceedsFromOpen() {
+        RecruitmentNotice notice = draftNotice();
+        notice.publish();
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+
+        RecruitmentNoticeResponse response = service.cancel(1L);
+
+        assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.CANCELED);
+    }
+
+    @Test
     void listPublicReturnsOnlyOpenNotices() {
         RecruitmentNotice published = draftNotice();
         published.publish();

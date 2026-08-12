@@ -140,6 +140,19 @@ public class RecruitmentNoticeService {
         return recruitmentNoticeConverter.toResponse(notice);
     }
 
+    /** 모집공고 직권 취소. 결제·신청이 아직 없는 마감 전 공고(초안·예약·게시 중)만 취소할 수 있다. */
+    @Transactional
+    public RecruitmentNoticeResponse cancel(Long noticeId) {
+        RecruitmentNotice notice = getEntity(noticeId);
+        if (notice.getStatus() != RecruitmentNoticeStatus.DRAFT
+                && notice.getStatus() != RecruitmentNoticeStatus.SCHEDULED
+                && notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
+        }
+        notice.cancel();
+        return recruitmentNoticeConverter.toResponse(notice);
+    }
+
     private RecruitmentNotice getEntity(Long noticeId) {
         return recruitmentNoticeRepository
                 .findById(noticeId)

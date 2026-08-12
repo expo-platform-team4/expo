@@ -63,6 +63,10 @@ public class BoothProductService {
                 request.recruitmentNoticeId(), request.boothId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
         }
+        if (boothProductRepository.existsByBoothIdAndRecruitmentNoticeIdNotAndSalesStatusNot(
+                request.boothId(), request.recruitmentNoticeId(), BoothSalesStatus.CANCELED)) {
+            throw new BusinessException(ErrorCode.BOOTH_IN_USE_BY_OTHER_NOTICE);
+        }
         BoothProduct product =
                 BoothProduct.create(
                                 request.recruitmentNoticeId(),

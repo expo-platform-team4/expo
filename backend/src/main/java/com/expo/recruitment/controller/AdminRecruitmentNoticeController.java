@@ -79,4 +79,11 @@ public class AdminRecruitmentNoticeController {
             @PathVariable Long noticeId) {
         return ResponseEntity.ok(ApiResponse.ok(recruitmentNoticeService.close(noticeId)));
     }
+
+    @Operation(summary = "기업 모집 공고 직권 취소")
+    @PostMapping("/{noticeId}/cancel")
+    public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> cancelNotice(
+            @PathVariable Long noticeId) {
+        return ResponseEntity.ok(ApiResponse.ok(recruitmentNoticeService.cancel(noticeId)));
+    }
 }

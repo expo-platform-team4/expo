@@ -7,15 +7,23 @@ import com.expo.participation.converter.ParticipationApplicationConverter;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
+import java.util.EnumSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ParticipationApplicationService {
+
+    private static final EnumSet<ParticipationApplicationStatus> ACTIVE_STATUSES =
+            EnumSet.of(
+                    ParticipationApplicationStatus.DRAFT,
+                    ParticipationApplicationStatus.PAYMENT_PENDING,
+                    ParticipationApplicationStatus.SUBMITTED);
 
     private final ParticipationApplicationRepository participationApplicationRepository;
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
@@ -46,6 +54,11 @@ public class ParticipationApplicationService {
                                                 ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
         if (notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
+        }
+        if (participationApplicationRepository
+                .existsByRecruitmentNoticeIdAndClientUserIdAndStatusIn(
+                        request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
         }
         if (request.selectedBoothProductId() != null
                 && !boothProductRepository.existsByIdAndRecruitmentNoticeId(

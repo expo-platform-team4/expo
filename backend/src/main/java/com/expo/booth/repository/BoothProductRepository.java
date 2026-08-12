@@ -12,6 +12,10 @@ public interface BoothProductRepository extends JpaRepository<BoothProduct, Long
 
     boolean existsByRecruitmentNoticeIdAndBoothId(Long recruitmentNoticeId, Long boothId);
 
+    /** 다른 공고에서 이미 취소되지 않은 상태로 등록된 같은 부스가 있는지 확인한다. */
+    boolean existsByBoothIdAndRecruitmentNoticeIdNotAndSalesStatusNot(
+            Long boothId, Long recruitmentNoticeId, BoothSalesStatus salesStatus);
+
     List<BoothProduct> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
 
     List<BoothProduct> findAllByRecruitmentNoticeIdAndSalesStatus(

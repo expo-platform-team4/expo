@@ -127,6 +127,23 @@ class BoothProductServiceTest {
     }
 
     @Test
+    void createRejectsWhenBoothInUseByOtherNotice() {
+        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
+                .thenReturn(false);
+        when(boothProductRepository.existsByBoothIdAndRecruitmentNoticeIdNotAndSalesStatusNot(
+                        BOOTH_ID, NOTICE_ID, BoothSalesStatus.CANCELED))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_IN_USE_BY_OTHER_NOTICE);
+        verify(boothProductRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void createSucceedsAndComputesTotalPrice() {
         when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
