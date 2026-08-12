@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.notification.repository.NotificationRecipientMapper">
+
+    <!--
+      수신 번호는 주문자 유형에 따라 출처가 다르다.
+        회원   users.phone_number             (NULL 일 수 있다 - 소셜 로그인 회원)
+        비회원 guest_order_infos.phone_number (NOT NULL)
+      COALESCE 로 둘 중 있는 쪽을 고른다. 둘 다 없으면 NULL 이고, 그 처리는 발송기가 한다.
+
+      발권 매퍼의 같은 조회와 달리 FOR UPDATE 를 붙이지 않는다.
+      알림을 보내려고 주문 행을 잠글 이유가 없고, 잠그면 그 사이 결제·환불이 막힌다.
+    -->
+    <select id="findByTicketOrderId" resultType="com.expo.notification.dto.NotificationRecipient">
+        SELECT o.member_user_id                         AS user_id,
+               COALESCE(u.phone_number, g.phone_number) AS phone_number
+        FROM ticket_orders o
+        LEFT JOIN users             u ON u.id = o.member_user_id
+        LEFT JOIN guest_order_infos g ON g.ticket_order_id = o.id
+        WHERE o.id = #{ticketOrderId}
+    </select>
+
+</mapper>
