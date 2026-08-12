@@ -2,11 +2,13 @@ package com.expo.ticket.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.ticket.dto.PurchasableTicketProductResponse;
 import com.expo.ticket.dto.TicketProductCreateRequest;
 import com.expo.ticket.dto.TicketProductCreateResponse;
 import com.expo.ticket.dto.TicketProductSearchResponse;
 import com.expo.ticket.dto.TicketUpdateRequest;
 import com.expo.ticket.dto.TicketUpdateResponse;
+import com.expo.ticket.service.PurchasableTicketProductService;
 import com.expo.ticket.service.TicketProductCreateService;
 import com.expo.ticket.service.TicketProductUpdateService;
 import com.expo.ticket.service.TicketSearchService;
@@ -36,6 +38,7 @@ public class TicketController {
     private final TicketProductCreateService ticketProductCreateService;
     private final TicketSearchService ticketSearchService;
     private final TicketProductUpdateService ticketProductUpdateService;
+    private final PurchasableTicketProductService purchasableTicketProductService;
 
     @PostMapping("/client/expos/{expoId}/ticket-products")
     public ResponseEntity<ApiResponse<TicketProductCreateResponse>> createTicket(
@@ -50,7 +53,7 @@ public class TicketController {
     }
 
     @GetMapping("/client/expos/{expoId}/ticket-search")
-    public ResponseEntity<ApiResponse<List<TicketProductSearchResponse>>> searchTicket(
+    public ResponseEntity<ApiResponse<List<TicketProductSearchResponse>>> searchTickets(
             @AuthenticationPrincipal AuthPrincipal authPrincipal, @PathVariable Long expoId) {
         List<TicketProductSearchResponse> response =
                 ticketSearchService.ticketProductSearch(authPrincipal.getMemberId(), expoId);
@@ -69,5 +72,14 @@ public class TicketController {
                         authPrincipal.getMemberId(), expoId, ticketProductId, request);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @GetMapping("/expos/{expoId}/ticket-products/purchasable")
+    public ResponseEntity<ApiResponse<List<PurchasableTicketProductResponse>>>
+            searchPurchasableTickets(@PathVariable Long expoId) {
+        List<PurchasableTicketProductResponse> responses =
+                purchasableTicketProductService.purchasableTicket(expoId);
+
+        return ResponseEntity.ok(ApiResponse.ok(responses));
     }
 }

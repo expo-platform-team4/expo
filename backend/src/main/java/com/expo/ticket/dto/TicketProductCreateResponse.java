@@ -15,4 +15,5 @@ public record TicketProductCreateResponse(
         int totalQuantity,
         int availableQuantity,
         int maxQuantityPerOrder,
-        TicketProductStatus status) {}
+        TicketProductStatus status,
+        Instant createAt) {}
