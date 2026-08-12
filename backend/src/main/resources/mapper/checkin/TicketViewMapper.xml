@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.checkin.repository.TicketViewMapper">
+
+    <!--
+      token_hash 는 UNIQUE 라 조회 키가 된다. 원문으로는 찾을 수 없다 - DB 에 없다.
+
+      상태와 만료 시각을 함께 읽어 온다. status 가 ACTIVE 라도 expires_at 이 지났을 수 있다.
+      만료를 EXPIRED 로 바꿔 주는 배치가 없어서, 실제 판단은 두 값을 모두 보고 서비스가 한다.
+    -->
+    <select id="findAccessTokenByHash" resultType="com.expo.checkin.dto.TicketAccessTokenRow">
+        SELECT t.id              AS id,
+               t.ticket_order_id AS ticket_order_id,
+               o.order_number    AS order_number,
+               t.status          AS status,
+               t.expires_at      AS expires_at
+        FROM ticket_access_tokens t
+        JOIN ticket_orders o ON o.id = t.ticket_order_id
+        WHERE t.token_hash = #{tokenHash}
+    </select>
+
+    <!--
+      issued_tickets 는 주문에 직접 붙지 않는다. ticket_order_items 를 거쳐야 한다.
+      박람회 정보는 issued_tickets.expo_id 로 바로 잇는다 - 발권 때 티켓마다 박아 둔 값이라
+      상품·주문을 다시 타고 갈 필요가 없다.
+
+      QR 원문은 여기서 읽지 않는다. 저장돼 있지 않고, ticket_code 로 다시 계산한다.
+      qr_token_hash 도 내보내지 않는다 - 대조용 내부 값이라 응답에 나갈 이유가 없다.
+    -->
+    <select id="findTicketsByOrderId" resultType="com.expo.checkin.dto.TicketViewTicket">
+        SELECT it.id            AS issued_ticket_id,
+               it.ticket_code   AS ticket_code,
+               it.status        AS status,
+               it.checked_in_at AS checked_in_at,
+               e.title          AS expo_title,
+               e.event_start_at AS expo_start_at,
+               e.event_end_at   AS expo_end_at
+        FROM issued_tickets it
+        JOIN ticket_order_items oi ON oi.id = it.ticket_order_item_id
+        JOIN expos              e  ON e.id = it.expo_id
+        WHERE oi.ticket_order_id = #{ticketOrderId}
+        ORDER BY it.id
+    </select>
+
+    <!--
+      access_count 를 애플리케이션에서 읽어 +1 해서 쓰지 않는다. 그러면 동시 조회에 값이 덮인다.
+      DB 에서 증가시키면 잠금 없이도 정확하다.
+    -->
+    <update id="touchAccessToken">
+        UPDATE ticket_access_tokens
+           SET access_count     = access_count + 1,
+               last_accessed_at = #{accessedAt}
+         WHERE id = #{id}
+    </update>
+
+</mapper>
