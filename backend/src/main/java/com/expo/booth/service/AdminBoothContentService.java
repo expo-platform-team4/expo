@@ -9,12 +9,16 @@ import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentStatus;
 import com.expo.booth.entity.BoothManagementActionType;
 import com.expo.booth.entity.BoothManagementHistory;
+import com.expo.booth.entity.ExternalLink;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
+import com.expo.booth.repository.ExternalLinkRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,7 @@ public class AdminBoothContentService {
 
     private final BoothContentRepository boothContentRepository;
     private final BoothContentFileRepository boothContentFileRepository;
+    private final ExternalLinkRepository externalLinkRepository;
     private final BoothManagementHistoryRepository boothManagementHistoryRepository;
     private final BoothContentConverter boothContentConverter;
     private final BoothManagementHistoryConverter boothManagementHistoryConverter;
@@ -33,22 +38,41 @@ public class AdminBoothContentService {
     public AdminBoothContentService(
             BoothContentRepository boothContentRepository,
             BoothContentFileRepository boothContentFileRepository,
+            ExternalLinkRepository externalLinkRepository,
             BoothManagementHistoryRepository boothManagementHistoryRepository,
             BoothContentConverter boothContentConverter,
             BoothManagementHistoryConverter boothManagementHistoryConverter) {
         this.boothContentRepository = boothContentRepository;
         this.boothContentFileRepository = boothContentFileRepository;
+        this.externalLinkRepository = externalLinkRepository;
         this.boothManagementHistoryRepository = boothManagementHistoryRepository;
         this.boothContentConverter = boothContentConverter;
         this.boothManagementHistoryConverter = boothManagementHistoryConverter;
     }
 
-    /** 부스 콘텐츠 목록 조회 (페이지 단위). */
+    /** 부스 콘텐츠 목록 조회 (페이지 단위). N+1을 피하려고 페이지에 담긴 콘텐츠의 파일·링크를 한 번에 모아 조회한다. */
     @Transactional(readOnly = true)
     public Page<BoothContentResponse> list(Pageable pageable) {
-        return boothContentRepository
-                .findAll(pageable)
-                .map(content -> boothContentConverter.toResponse(content, List.of()));
+        Page<BoothContent> page = boothContentRepository.findAll(pageable);
+        List<Long> contentIds = page.map(BoothContent::getId).toList();
+
+        Map<Long, List<BoothContentFile>> filesByContentId =
+                boothContentFileRepository
+                        .findAllByBoothContentIdInOrderBySortOrderAscIdAsc(contentIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(BoothContentFile::getBoothContentId));
+        Map<Long, List<ExternalLink>> linksByContentId =
+                externalLinkRepository
+                        .findAllByBoothContentIdInOrderBySortOrderAscIdAsc(contentIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(ExternalLink::getBoothContentId));
+
+        return page.map(
+                content ->
+                        boothContentConverter.toResponse(
+                                content,
+                                filesByContentId.getOrDefault(content.getId(), List.of()),
+                                linksByContentId.getOrDefault(content.getId(), List.of())));
     }
 
     /** 부스 콘텐츠 상세 조회. */
@@ -132,7 +156,10 @@ public class AdminBoothContentService {
         List<BoothContentFile> files =
                 boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
                         content.getId());
-        return boothContentConverter.toResponse(content, files);
+        List<ExternalLink> links =
+                externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(
+                        content.getId());
+        return boothContentConverter.toResponse(content, files, links);
     }
 
     private BoothContent getEntity(Long contentId) {

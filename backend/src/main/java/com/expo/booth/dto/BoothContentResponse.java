@@ -25,5 +25,6 @@ public record BoothContentResponse(
         @Schema(description = "운영 확인 관리자 ID") Long checkedByAdminId,
         @Schema(description = "운영 확인 일시") Instant checkedAt,
         @Schema(description = "첨부 파일 목록") List<BoothContentFileResponse> files,
+        @Schema(description = "외부 링크 목록") List<ExternalLinkResponse> links,
         @Schema(description = "생성 일시") Instant createdAt,
         @Schema(description = "수정 일시") Instant updatedAt) {}
