@@ -1,5 +1,6 @@
 package com.expo.ticket.converter;
 
+import com.expo.ticket.dto.PurchasableTicketProductResponse;
 import com.expo.ticket.dto.TicketProductCreateRequest;
 import com.expo.ticket.dto.TicketProductCreateResponse;
 import com.expo.ticket.dto.TicketProductSearchResponse;
@@ -40,7 +41,8 @@ public class TicketProductConverter {
                 inventory.getTotalQuantity(),
                 availableQuantity,
                 product.getMaxQuantityPerOrder(),
-                product.getStatus());
+                product.getStatus(),
+                product.getCreatedAt());
     }
 
     public TicketProductSearchResponse toSearchTicketProduct(TicketProduct product) {
@@ -73,5 +75,24 @@ public class TicketProductConverter {
                 inventory.getTotalQuantity(),
                 availableQuantity,
                 product.getUpdatedAt());
+    }
+
+    public PurchasableTicketProductResponse toPurchasableTicket(TicketProduct product) {
+        TicketInventory inventory = product.getInventory();
+
+        int availableQuantity =
+                inventory.getTotalQuantity()
+                        - inventory.getReservedQuantity()
+                        - inventory.getSoldQuantity();
+
+        return new PurchasableTicketProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                availableQuantity,
+                product.getMaxQuantityPerOrder(),
+                product.getSalesStartAt(),
+                product.getSalesEndAt());
     }
 }

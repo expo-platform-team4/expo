@@ -8,6 +8,7 @@ import com.expo.ticket.converter.TicketProductConverter;
 import com.expo.ticket.dto.TicketUpdateRequest;
 import com.expo.ticket.dto.TicketUpdateResponse;
 import com.expo.ticket.entity.TicketProduct;
+import com.expo.ticket.entity.TicketProductStatus;
 import com.expo.ticket.repository.TicketProductRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,8 @@ public class TicketProductUpdateService {
                         .findByIdAndExpoId(ticketProductId, expoId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
 
+        validateUpdatableStatus(product);
+
         product.updatePrice(request.price());
         product.getInventory().updateTotalQuantity(request.totalQuantity());
 
@@ -47,6 +50,12 @@ public class TicketProductUpdateService {
 
         if (!expo.getHostClientId().equals(memberId)) {
             throw new BusinessException(ErrorCode.NOT_EXPO_HOST);
+        }
+    }
+
+    private void validateUpdatableStatus(TicketProduct product) {
+        if (product.getStatus() != TicketProductStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.TICKET_PRODUCT_UPDATE_NOT_ALLOWED);
         }
     }
 }
