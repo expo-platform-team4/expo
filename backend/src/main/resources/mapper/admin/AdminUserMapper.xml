@@ -2,16 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.expo.admin.repository.AdminUserMapper">
 
-    <select id="search" resultType="com.expo.admin.dto.AdminUserSummaryResponse">
-        SELECT user_id,
-               email,
-               nickname,
-               role,
-               account_status,
-               company_name,
-               created_at,
-               last_login_at
-        FROM v_admin_users
+    <sql id="searchFilter">
         <where>
             <if test="keyword != null and keyword != ''">
                 AND (email ILIKE CONCAT('%', #{keyword}, '%')
@@ -25,7 +16,27 @@
                 AND account_status = #{accountStatus}
             </if>
         </where>
+    </sql>
+
+    <select id="search" resultType="com.expo.admin.dto.AdminUserSummaryResponse">
+        SELECT user_id,
+               email,
+               nickname,
+               role,
+               account_status,
+               company_name,
+               created_at,
+               last_login_at
+        FROM v_admin_users
+        <include refid="searchFilter" />
         ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT count(*)
+        FROM v_admin_users
+        <include refid="searchFilter" />
     </select>
 
     <select id="findById" resultType="com.expo.admin.dto.AdminUserDetailResponse">

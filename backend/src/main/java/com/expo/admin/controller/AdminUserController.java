@@ -1,13 +1,12 @@
 package com.expo.admin.controller;
 
 import com.expo.admin.dto.AdminUserDetailResponse;
-import com.expo.admin.dto.AdminUserSummaryResponse;
+import com.expo.admin.dto.AdminUserSearchPage;
 import com.expo.admin.service.AdminUserService;
 import com.expo.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,15 +30,18 @@ public class AdminUserController {
             summary = "회원·클라이언트 계정 검색·목록 조회",
             description = "이메일·닉네임·회사명으로 검색하고, 역할·계정 상태로 필터링합니다. 파라미터를 안 주면 전체 목록을 반환합니다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AdminUserSummaryResponse>>> searchUsers(
+    public ResponseEntity<ApiResponse<AdminUserSearchPage>> searchUsers(
             @Parameter(description = "이메일·닉네임·회사명 검색어") @RequestParam(required = false)
                     String keyword,
             @Parameter(description = "역할 필터 (MEMBER/CLIENT/ADMIN)") @RequestParam(required = false)
                     String role,
             @Parameter(description = "계정 상태 필터") @RequestParam(required = false)
-                    String accountStatus) {
+                    String accountStatus,
+            @Parameter(description = "0부터") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "최대 100") @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(
-                ApiResponse.ok(adminUserService.searchUsers(keyword, role, accountStatus)));
+                ApiResponse.ok(
+                        adminUserService.searchUsers(keyword, role, accountStatus, page, size)));
     }
 
     @Operation(summary = "계정·사업자 프로필·상태 상세 조회")
