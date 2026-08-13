@@ -1,6 +1,7 @@
 package com.expo.notification.service;
 
 import com.expo.notification.dto.MessageSendResult;
+import com.expo.notification.dto.SmsMessage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -39,11 +41,20 @@ import org.springframework.web.client.RestClientResponseException;
  * signature = hex( HMAC-SHA256( API Secret, date + salt ) )
  * </pre>
  *
- * <h2>응답을 파싱하지 않는 이유</h2>
+ * <h2>응답을 DTO 로 매핑하지 않는 이유</h2>
  *
- * 응답 본문을 필드로 매핑하지 않고 <b>원문 문자열 그대로</b> {@code message_histories.response_payload}(JSONB) 에
- * 넣는다. 우리에게 필요한 판단은 "대행사가 접수했나"뿐이고 그건 HTTP 상태로 알 수 있다. 스키마에 의존하지 않으니 대행사가 응답 형식을 바꿔도 깨지지 않고,
- * 나중에 필요해지면 저장해 둔 원문에서 꺼내면 된다.
+ * 응답 본문을 통째로 매핑하지 않고 <b>원문 문자열 그대로</b> {@code message_histories.response_payload}(JSONB) 에
+ * 넣는다. 필요한 몇 필드만 꺼내 쓴다. 스키마에 의존하지 않으니 대행사가 응답 형식을 바꿔도 깨지지 않고, 나중에 필요해지면
+ * 저장해 둔 원문에서 꺼내면 된다.
+ *
+ * <h2>낱건과 대량은 응답 모양이 다르다</h2>
+ *
+ * <pre>
+ * send()      statusCode · messageId 가 <b>건별로</b> 온다
+ * sendMany()  실패한 건만 개별로 온다. 성공한 건은 <b>개수만</b> 온다
+ * </pre>
+ *
+ * 그래서 두 경로를 따로 둔다. 대량 API 로 1건을 보내면 성공했을 때 개별 {@code messageId} 를 잃는다.
  */
 @Slf4j
 @Component
@@ -51,6 +62,7 @@ import org.springframework.web.client.RestClientResponseException;
 public class SolapiSmsSender implements SmsSender {
 
     private static final String SEND_PATH = "/messages/v4/send";
+    private static final String SEND_MANY_PATH = "/messages/v4/send-many/detail";
     private static final String SIGNATURE_ALGORITHM = "HmacSHA256";
     private static final int SALT_BYTES = 16;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
@@ -62,8 +74,11 @@ public class SolapiSmsSender implements SmsSender {
     private final String senderNumber;
     private final SecureRandom secureRandom = new SecureRandom();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final SolapiBulkResponseMapper bulkResponseMapper;
 
-    public SolapiSmsSender(SolapiProperties properties) {
+    public SolapiSmsSender(
+            SolapiProperties properties, SolapiBulkResponseMapper bulkResponseMapper) {
+        this.bulkResponseMapper = bulkResponseMapper;
         this.apiKey = required(properties.getApiKey(), "SOLAPI_SMS_API_PUBLIC_KEY");
         this.apiSecret = required(properties.getApiSecret(), "SOLAPI_SMS_API_SECRET_KEY");
         this.senderNumber = required(properties.getSenderNumber(), "SOLAPI_SENDER_NUMBER");
@@ -163,6 +178,84 @@ public class SolapiSmsSender implements SmsSender {
             log.warn("Solapi 응답을 파싱하지 못했습니다. 원문은 이력에 그대로 남습니다.");
             return null;
         }
+    }
+
+    /**
+     * 여러 통을 한 요청으로 보낸다.
+     *
+     * <h2>성공과 실패의 응답 방식이 다르다</h2>
+     *
+     * 대행사는 <b>실패한 건만</b> 개별로 알려 준다. 성공한 건은 개수만 온다.
+     *
+     * <pre>
+     * {
+     *   "groupInfo": { "_id": "G4V...", "count": { "registeredSuccess": 999, "registeredFailed": 1 } },
+     *   "failedMessageList": [ { "to": "010...", "messageId": "M4V...", "statusCode": "1026", ... } ]
+     * }
+     * </pre>
+     *
+     * <p>그래서 <b>실패 목록에 없으면 성공</b>으로 본다. 성공 건의 {@code providerMessageId} 에는 개별
+     * 값이 없어 <b>그룹 ID</b> 를 넣는다 — 대행사 콘솔에서 그룹을 열면 개별 메시지를 볼 수 있다.
+     *
+     * <p>매핑 키는 <b>수신번호</b>다. 같은 번호가 목록에 두 번 있으면 어느 쪽이 실패인지 가릴 수 없으므로,
+     * 중복 제거는 호출부가 끝내고 넘겨야 한다({@link SmsSender#sendMany} 참고).
+     */
+    @Override
+    public List<MessageSendResult> sendMany(List<SmsMessage> messages) {
+        if (messages.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Object> body =
+                Map.of(
+                        "messages",
+                        messages.stream()
+                                .map(
+                                        m ->
+                                                Map.<String, Object>of(
+                                                        "to", m.to(),
+                                                        "from", senderNumber,
+                                                        "text", m.text()))
+                                .toList());
+        String requestPayload = toJsonForRecord(messages);
+
+        try {
+            ResponseEntity<String> response =
+                    restClient
+                            .post()
+                            .uri(SEND_MANY_PATH)
+                            .header("Authorization", authorizationHeader())
+                            .body(body)
+                            .retrieve()
+                            .toEntity(String.class);
+
+            return bulkResponseMapper.map(messages, response.getBody(), requestPayload);
+
+        } catch (RestClientResponseException e) {
+            // 요청 자체가 거부됐다. 전부 실패로 본다.
+            log.warn("대량 SMS 발송 거부 status={} count={}", e.getStatusCode().value(), messages.size());
+            return allFailed(
+                    messages,
+                    "HTTP_" + e.getStatusCode().value(),
+                    requestPayload,
+                    e.getResponseBodyAsString());
+
+        } catch (RestClientException e) {
+            log.warn("대량 SMS 발송 실패 (응답 없음) count={}", messages.size(), e);
+            return allFailed(messages, "TRANSPORT_ERROR", requestPayload, null);
+        }
+    }
+
+    private List<MessageSendResult> allFailed(
+            List<SmsMessage> messages, String errorCode, String requestPayload, String response) {
+        return messages.stream()
+                .map(m -> MessageSendResult.failed(errorCode, requestPayload, response))
+                .toList();
+    }
+
+    /** 대량 요청 이력용 JSON. 수신번호를 전부 나열하지 않고 건수만 남긴다. */
+    private String toJsonForRecord(List<SmsMessage> messages) {
+        return "{\"from\":\"%s\",\"count\":%d}".formatted(senderNumber, messages.size());
     }
 
     /** 요청 이력용 JSON. 본문은 길고 링크 토큰이 들어 있어 길이만 남긴다. */

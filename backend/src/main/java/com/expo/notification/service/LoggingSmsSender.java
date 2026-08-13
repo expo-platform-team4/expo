@@ -1,7 +1,9 @@
 package com.expo.notification.service;
 
 import com.expo.notification.dto.MessageSendResult;
+import com.expo.notification.dto.SmsMessage;
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,21 @@ public class LoggingSmsSender implements SmsSender {
         log.info("[SMS 미발송] to={} textLength={}", mask(to), text.length());
         log.debug("[SMS 미발송] 본문\n{}", text);
         return MessageSendResult.accepted(null, null, null);
+    }
+
+    /**
+     * 대량 발송도 로그만 남긴다.
+     *
+     * <p>수신번호를 하나하나 찍지 않는다. 1,000건이면 로그가 1,000줄 늘어나 정작 봐야 할 것이 묻힌다.
+     * 본문은 <b>첫 건만</b> DEBUG 로 남긴다 — 대량 발송은 문구가 같으므로 하나만 보면 된다.
+     */
+    @Override
+    public List<MessageSendResult> sendMany(List<SmsMessage> messages) {
+        log.info("[SMS 미발송] 대량 {}건", messages.size());
+        if (!messages.isEmpty()) {
+            log.debug("[SMS 미발송] 대량 본문 (첫 건)\n{}", messages.get(0).text());
+        }
+        return messages.stream().map(m -> MessageSendResult.accepted(null, null, null)).toList();
     }
 
     /** {@code 01012345678} → {@code 010****5678}. 전화번호는 개인정보라 원문을 남기지 않는다. */
