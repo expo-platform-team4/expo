@@ -28,7 +28,9 @@ public class AdminUserController {
 
     @Operation(
             summary = "회원·클라이언트 계정 검색·목록 조회",
-            description = "이메일·닉네임·회사명으로 검색하고, 역할·계정 상태로 필터링합니다. 파라미터를 안 주면 전체 목록을 반환합니다.")
+            description =
+                    "이메일·닉네임·회사명으로 검색하고, 역할·계정 상태로 필터링합니다. "
+                            + "page·size를 안 주면 첫 페이지(0번, 20건)만 반환합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<AdminUserSearchPage>> searchUsers(
             @Parameter(description = "이메일·닉네임·회사명 검색어") @RequestParam(required = false)
