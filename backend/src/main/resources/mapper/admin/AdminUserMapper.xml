@@ -29,7 +29,7 @@
                last_login_at
         FROM v_admin_users
         <include refid="searchFilter" />
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, user_id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
