@@ -2,7 +2,9 @@ package com.expo.ticket.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.ticket.dto.MemberTicketOrderCreateRequest;
+import com.expo.ticket.dto.GuestTicketOrderReponse;
+import com.expo.ticket.dto.GuestTicketOrderRequest;
+import com.expo.ticket.dto.MemberTicketOrderRequest;
 import com.expo.ticket.dto.TicketOrderResponse;
 import com.expo.ticket.service.TicketOrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,9 +28,17 @@ public class TicketOrderController {
     @PostMapping("/member")
     public ResponseEntity<ApiResponse<TicketOrderResponse>> memberTicketOrder(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
-            @Valid @RequestBody MemberTicketOrderCreateRequest request) {
+            @Valid @RequestBody MemberTicketOrderRequest request) {
         TicketOrderResponse response =
                 ticketOrderService.memberCreateOrder(authPrincipal.getMemberId(), request);
+
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PostMapping("/guest")
+    public ResponseEntity<ApiResponse<GuestTicketOrderReponse>> guestTicketOrder(
+            @Valid @RequestBody GuestTicketOrderRequest request) {
+        GuestTicketOrderReponse response = ticketOrderService.guestCreateOrder(request);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
