@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -44,14 +45,12 @@ public class TicketOrderItem extends BaseTimeEntity {
     private BigDecimal itemSubtotalAmount;
 
     /** 주문 시점의 단가와 수량으로 주문 항목을 생성한다. */
-    public static TicketOrderItem create(
-            TicketProduct ticketProduct, int quantity, BigDecimal unitPrice) {
-        TicketOrderItem item = new TicketOrderItem();
-        item.ticketProduct = ticketProduct;
-        item.quantity = quantity;
-        item.unitPrice = unitPrice;
-        item.itemSubtotalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
-        return item;
+    @Builder
+    private TicketOrderItem(TicketProduct ticketProduct, int quantity, BigDecimal unitPrice) {
+        this.ticketProduct = ticketProduct;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.itemSubtotalAmount = unitPrice.multiply(BigDecimal.valueOf(quantity));
     }
 
     void assignOrder(TicketOrder ticketOrder) {

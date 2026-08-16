@@ -2,7 +2,7 @@ package com.expo.ticket.dto;
 
 import java.util.List;
 
-public record GuestTickerOrderRequest(
+public record GuestTicketOrderRequest(
         List<TicketOrderItemRequest> items,
         String name,
         int phoneNumber,

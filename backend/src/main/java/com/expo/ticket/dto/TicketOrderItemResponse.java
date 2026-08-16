@@ -1,4 +1,10 @@
 package com.expo.ticket.dto;
 
-public record TicketOrderResponse() {
-}
+import java.math.BigDecimal;
+
+public record TicketOrderItemResponse(
+        Long ticketProductId,
+        String ticketName,
+        BigDecimal unitPrice,
+        int quantity,
+        BigDecimal itemSubtotalAmount) {}

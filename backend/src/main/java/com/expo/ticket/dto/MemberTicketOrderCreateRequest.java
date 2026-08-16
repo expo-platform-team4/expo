@@ -1,4 +1,6 @@
 package com.expo.ticket.dto;
 
-public record MemberTicketOrderCreateRequest() {
-}
+import jakarta.validation.Valid;
+import java.util.List;
+
+public record MemberTicketOrderCreateRequest(@Valid List<TicketOrderItemRequest> items) {}
