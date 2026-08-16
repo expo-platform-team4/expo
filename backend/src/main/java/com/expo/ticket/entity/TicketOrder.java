@@ -89,6 +89,27 @@ public class TicketOrder extends BaseTimeEntity {
         return order;
     }
 
+    public static TicketOrder creatGuestOrder(
+            String orderNumber,
+            BigDecimal ticketSubtotalAmount,
+            BigDecimal bookingFeeRate,
+            BigDecimal bookingFeeAmount,
+            BigDecimal totalAmount,
+            int totalQuantity) {
+        TicketOrder order = new TicketOrder();
+        order.orderNumber = orderNumber;
+        order.memberUserId = null;
+        order.ticketSubtotalAmount = ticketSubtotalAmount;
+        order.bookingFeeRate = bookingFeeRate;
+        order.bookingFeeAmount = bookingFeeAmount;
+        order.ordererType = TicketOrdererType.GUEST;
+        order.totalAmount = totalAmount;
+        order.status = TicketOrderStatus.PENDING;
+        order.totalQuantity = totalQuantity;
+
+        return order;
+    }
+
     /** 주문 항목을 추가하고 항목이 이 주문을 참조하도록 연결한다. */
     public void addItem(TicketOrderItem item) {
         items.add(item);
