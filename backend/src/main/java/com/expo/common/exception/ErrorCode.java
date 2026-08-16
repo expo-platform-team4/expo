@@ -69,6 +69,7 @@ public enum ErrorCode {
     VENUE_HALL_ZONE_MISMATCH(HttpStatus.BAD_REQUEST, "홀·구역이 지정한 장소·홀 소속이 아닙니다."),
     RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED(
             HttpStatus.CONFLICT, "장소 충돌 판정에서 승인(ALLOWED)된 요청만 장소를 예약할 수 있습니다."),
+    RECRUITMENT_NOTICE_REQUEST_ZONES_EMPTY(HttpStatus.CONFLICT, "이 요청에 고른 구역이 없어 장소를 예약할 수 없습니다."),
 
     // --- 부스 ---
     DUPLICATE_BOOTH_TEMPLATE_SHAPE_CODE(HttpStatus.CONFLICT, "이미 등록된 형태 코드입니다."),

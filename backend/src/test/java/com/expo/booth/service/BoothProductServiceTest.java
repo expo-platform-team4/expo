@@ -19,6 +19,8 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
+import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueZoneRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +40,8 @@ class BoothProductServiceTest {
 
     private BoothProductRepository boothProductRepository;
     private BoothRepository boothRepository;
+    private VenueZoneRepository venueZoneRepository;
+    private VenueHallRepository venueHallRepository;
     private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private BoothProductService service;
 
@@ -45,11 +49,15 @@ class BoothProductServiceTest {
     void setUp() {
         boothProductRepository = mock(BoothProductRepository.class);
         boothRepository = mock(BoothRepository.class);
+        venueZoneRepository = mock(VenueZoneRepository.class);
+        venueHallRepository = mock(VenueHallRepository.class);
         recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         service =
                 new BoothProductService(
                         boothProductRepository,
                         boothRepository,
+                        venueZoneRepository,
+                        venueHallRepository,
                         recruitmentNoticeRepository,
                         new BoothProductConverter());
     }

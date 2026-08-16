@@ -11,8 +11,6 @@ import java.time.Instant;
 public record CreateRecruitmentNoticeRequest(
         @Schema(description = "근거가 되는 모집공고 생성 요청 ID") @NotNull(message = "모집공고 생성 요청은 필수입니다.")
                 Long requestId,
-        @Schema(description = "확정 장소 예약 ID") @NotNull(message = "장소 예약은 필수입니다.")
-                Long venueReservationId,
         @Schema(description = "공고 제목", example = "2026 서울 테크 박람회 참가기업 모집")
                 @NotBlank(message = "제목은 필수입니다.")
                 @Size(max = 255, message = "제목은 255자 이하여야 합니다.")

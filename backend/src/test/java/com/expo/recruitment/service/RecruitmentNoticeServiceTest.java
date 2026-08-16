@@ -22,8 +22,10 @@ import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,8 +35,9 @@ class RecruitmentNoticeServiceTest {
 
     private static final Long ADMIN_ID = 1L;
     private static final Long REQUEST_ID = 10L;
-    private static final Long RESERVATION_ID = 20L;
     private static final Long HOST_CLIENT_ID = 30L;
+    private static final Long HALL_ID = 40L;
+    private static final Long ZONE_ID = 50L;
     private static final Instant T1 = Instant.parse("2026-09-01T00:00:00Z");
     private static final Instant T2 = Instant.parse("2026-09-30T00:00:00Z");
     private static final Instant T3 = Instant.parse("2026-10-01T00:00:00Z");
@@ -62,8 +65,7 @@ class RecruitmentNoticeServiceTest {
     }
 
     private CreateRecruitmentNoticeRequest createRequest() {
-        return new CreateRecruitmentNoticeRequest(
-                REQUEST_ID, RESERVATION_ID, "공고 제목", "공고 내용", null, null, T1, T2);
+        return new CreateRecruitmentNoticeRequest(REQUEST_ID, "공고 제목", "공고 내용", null, null, T1, T2);
     }
 
     private RecruitmentNoticeRequest allowedNoticeRequest() {
@@ -75,14 +77,13 @@ class RecruitmentNoticeServiceTest {
 
     private VenueReservation confirmedReservation(Long noticeRequestId) {
         return VenueReservation.confirmForRecruitmentNotice(
-                noticeRequestId, 1L, null, null, T3, T4, ADMIN_ID);
+                noticeRequestId, 1L, HALL_ID, ZONE_ID, T3, T4, ADMIN_ID);
     }
 
     @Test
     void createRejectsWhenApplicationPeriodInvalid() {
         CreateRecruitmentNoticeRequest request =
-                new CreateRecruitmentNoticeRequest(
-                        REQUEST_ID, RESERVATION_ID, "제목", "내용", null, null, T2, T1);
+                new CreateRecruitmentNoticeRequest(REQUEST_ID, "제목", "내용", null, null, T2, T1);
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, request))
                 .isInstanceOf(BusinessException.class)
@@ -126,12 +127,13 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.DUPLICATE_RECRUITMENT_NOTICE_REQUEST);
     }
 
+    /** 홀 확정 단계(장소 예약)가 아직 안 끝난 요청은 공고를 만들 수 없어야 한다. */
     @Test
-    void createRejectsWhenReservationNotFound() {
+    void createRejectsWhenNoReservationsExist() {
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.empty());
+        when(venueReservationRepository.findAllByNoticeRequestId(REQUEST_ID)).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -139,30 +141,17 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
     }
 
-    /** 다른 요청의 확정 예약 ID를 잘못 지정한 경우를 거부해야 한다. */
+    /** 딸린 예약 중 하나라도 이미 해제됐다면 공고를 만들 수 없어야 한다. */
     @Test
-    void createRejectsWhenReservationBelongsToAnotherRequest() {
-        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
-                .thenReturn(Optional.of(allowedNoticeRequest()));
-        when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.findById(RESERVATION_ID))
-                .thenReturn(Optional.of(confirmedReservation(REQUEST_ID + 1)));
-
-        assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
-    }
-
-    /** 이미 해제된 예약을 연결하려는 경우를 거부해야 한다. */
-    @Test
-    void createRejectsWhenReservationAlreadyReleased() {
+    void createRejectsWhenAnyReservationAlreadyReleased() {
+        VenueReservation confirmed = confirmedReservation(REQUEST_ID);
         VenueReservation released = confirmedReservation(REQUEST_ID);
         released.release();
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.findById(RESERVATION_ID)).thenReturn(Optional.of(released));
+        when(venueReservationRepository.findAllByNoticeRequestId(REQUEST_ID))
+                .thenReturn(List.of(confirmed, released));
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -171,24 +160,40 @@ class RecruitmentNoticeServiceTest {
     }
 
     @Test
-    void createSucceedsAsDraft() {
+    void createSucceedsAsDraftAndLinksAllReservations() throws ReflectiveOperationException {
+        VenueReservation reservation = confirmedReservation(REQUEST_ID);
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
-        when(venueReservationRepository.findById(RESERVATION_ID))
-                .thenReturn(Optional.of(confirmedReservation(REQUEST_ID)));
+        when(venueReservationRepository.findAllByNoticeRequestId(REQUEST_ID))
+                .thenReturn(List.of(reservation));
         when(recruitmentNoticeRepository.save(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(
+                        invocation -> {
+                            RecruitmentNotice notice = invocation.getArgument(0);
+                            withId(notice, 99L);
+                            return notice;
+                        });
 
         RecruitmentNoticeResponse response = service.create(ADMIN_ID, createRequest());
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.DRAFT);
         assertThat(response.hostClientId()).isEqualTo(HOST_CLIENT_ID);
+        assertThat(response.venueHallId()).isEqualTo(HALL_ID);
+        assertThat(response.venueZoneIds()).containsExactly(ZONE_ID);
+        assertThat(reservation.getRecruitmentNoticeId())
+                .as("공고 생성 후 딸린 예약이 이 공고에 연결돼야 한다")
+                .isEqualTo(99L);
+    }
+
+    private static void withId(Object entity, Long id) throws ReflectiveOperationException {
+        java.lang.reflect.Field field = entity.getClass().getDeclaredField("id");
+        field.setAccessible(true);
+        field.set(entity, id);
     }
 
     private RecruitmentNotice draftNotice() {
-        return RecruitmentNotice.create(
-                REQUEST_ID, HOST_CLIENT_ID, RESERVATION_ID, "제목", "내용", T1, T2, ADMIN_ID);
+        return RecruitmentNotice.create(REQUEST_ID, HOST_CLIENT_ID, "제목", "내용", T1, T2, ADMIN_ID);
     }
 
     @Test
@@ -277,15 +282,21 @@ class RecruitmentNoticeServiceTest {
     }
 
     @Test
-    void cancelSucceedsFromOpenAndLogsHistory() {
+    void cancelSucceedsFromOpenAndLogsHistoryAndReleasesReservations() {
         RecruitmentNotice notice = draftNotice();
         notice.publish();
+        VenueReservation reservation = confirmedReservation(REQUEST_ID);
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
+                .thenReturn(List.of(reservation));
 
         RecruitmentNoticeResponse response = service.cancel(1L, ADMIN_ID, "테스트 취소");
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.CANCELED);
         verify(recruitmentNoticeHistoryRepository).save(any());
+        assertThat(reservation.getStatus())
+                .as("공고 취소 시 딸린 예약도 같이 해제돼야 한다")
+                .isEqualTo(VenueReservationStatus.RELEASED);
     }
 
     @Test
@@ -293,7 +304,7 @@ class RecruitmentNoticeServiceTest {
         RecruitmentNotice published = draftNotice();
         published.publish();
         when(recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN))
-                .thenReturn(java.util.List.of(published));
+                .thenReturn(List.of(published));
 
         assertThat(service.listPublic()).hasSize(1);
         assertThat(service.listPublic().get(0).status()).isEqualTo(RecruitmentNoticeStatus.OPEN);

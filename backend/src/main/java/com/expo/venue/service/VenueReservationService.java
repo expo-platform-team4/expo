@@ -5,6 +5,7 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
+import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
 import com.expo.venue.dto.VenueAvailabilityResponse;
@@ -17,6 +18,7 @@ import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.time.Instant;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ public class VenueReservationService {
 
     private final VenueReservationRepository venueReservationRepository;
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
+    private final RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
     private final VirtualVenueRepository virtualVenueRepository;
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
@@ -36,12 +39,14 @@ public class VenueReservationService {
     public VenueReservationService(
             VenueReservationRepository venueReservationRepository,
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
+            RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
             VirtualVenueRepository virtualVenueRepository,
             VenueHallRepository venueHallRepository,
             VenueZoneRepository venueZoneRepository,
             VenueReservationConverter venueReservationConverter) {
         this.venueReservationRepository = venueReservationRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
+        this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
         this.virtualVenueRepository = virtualVenueRepository;
         this.venueHallRepository = venueHallRepository;
         this.venueZoneRepository = venueZoneRepository;
@@ -49,7 +54,8 @@ public class VenueReservationService {
     }
 
     /**
-     * 모집공고 생성 요청 경로의 확정 장소 예약 생성.
+     * 모집공고 생성 요청 경로의 확정 장소 예약 생성. 그 요청이 고른 구역 개수만큼 예약을 한 번에 확정한다 - 하나라도 겹쳐서
+     * 실패하면 전체가 롤백된다(전부 성공 아니면 전부 실패).
      *
      * <p>같은 (장소, 홀, 구역) 계층의 기간 중복은 DB의 EXCLUDE 제약({@code ex_venue_reservations_period})이,
      * 홀 전체 예약과 그 아래 구역 단위 예약이 겹치는 계층 간 충돌은 트리거({@code
@@ -57,7 +63,7 @@ public class VenueReservationService {
      * 검증한다.
      */
     @Transactional
-    public VenueReservationResponse create(
+    public List<VenueReservationResponse> create(
             Long confirmedByAdminId, CreateVenueReservationRequest request) {
         if (!request.useEndAt().isAfter(request.useStartAt())) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
@@ -72,21 +78,30 @@ public class VenueReservationService {
         if (noticeRequest.getVenueDecision() != VenueDecision.ALLOWED) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED);
         }
-        Long effectiveHallId =
-                validateHierarchy(
-                        request.virtualVenueId(), request.venueHallId(), request.venueZoneId());
-        VenueReservation reservation =
-                VenueReservation.confirmForRecruitmentNotice(
-                        request.noticeRequestId(),
-                        request.virtualVenueId(),
-                        effectiveHallId,
-                        request.venueZoneId(),
-                        request.useStartAt(),
-                        request.useEndAt(),
-                        confirmedByAdminId);
+        List<Long> venueZoneIds =
+                recruitmentNoticeRequestZoneRepository.findVenueZoneIdsByRequestId(
+                        request.noticeRequestId());
+        if (venueZoneIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_REQUEST_ZONES_EMPTY);
+        }
         try {
-            VenueReservation saved = venueReservationRepository.saveAndFlush(reservation);
-            return venueReservationConverter.toResponse(saved);
+            return venueZoneIds.stream()
+                    .map(
+                            zoneId -> {
+                                VenueReservation reservation =
+                                        VenueReservation.confirmForRecruitmentNotice(
+                                                request.noticeRequestId(),
+                                                noticeRequest.getVirtualVenueId(),
+                                                noticeRequest.getVenueHallId(),
+                                                zoneId,
+                                                request.useStartAt(),
+                                                request.useEndAt(),
+                                                confirmedByAdminId);
+                                VenueReservation saved =
+                                        venueReservationRepository.saveAndFlush(reservation);
+                                return venueReservationConverter.toResponse(saved);
+                            })
+                    .toList();
         } catch (DataIntegrityViolationException e) {
             String cause = e.getMostSpecificCause().getMessage();
             if (cause != null

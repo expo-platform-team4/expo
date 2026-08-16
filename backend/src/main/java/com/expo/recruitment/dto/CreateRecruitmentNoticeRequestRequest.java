@@ -3,9 +3,11 @@ package com.expo.recruitment.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.util.List;
 
 /** 모집공고 생성 요청 작성. */
 @Schema(description = "모집공고 생성 요청 작성")
@@ -24,8 +26,10 @@ public record CreateRecruitmentNoticeRequestRequest(
         @Schema(description = "행사 종료 일시") @NotNull(message = "행사 종료 일시는 필수입니다.") Instant eventEndAt,
         @Schema(description = "희망 가상 장소 ID") @NotNull(message = "가상 장소는 필수입니다.")
                 Long virtualVenueId,
-        @Schema(description = "희망 홀 ID") Long venueHallId,
-        @Schema(description = "희망 구역 ID") Long venueZoneId,
+        @Schema(description = "희망 전시관(홀) ID") @NotNull(message = "전시관은 필수입니다.") Long venueHallId,
+        @Schema(description = "희망 구역(홀) ID 목록 - 같은 전시관 안에서 하나 이상 선택")
+                @NotEmpty(message = "구역은 하나 이상 선택해야 합니다.")
+                List<Long> venueZoneIds,
         @Schema(description = "목표 참가 기업 수") @Min(value = 1, message = "목표 참가 기업 수는 1 이상이어야 합니다.")
                 Integer targetCompanyCount,
         @Schema(description = "희망 부스 구성(JSON 문자열)") String requestedBoothConfig) {}

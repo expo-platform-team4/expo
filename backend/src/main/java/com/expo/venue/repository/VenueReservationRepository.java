@@ -2,12 +2,19 @@ package com.expo.venue.repository;
 
 import com.expo.venue.entity.VenueReservation;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** 장소 예약 영속성 접근 인터페이스. */
 public interface VenueReservationRepository extends JpaRepository<VenueReservation, Long> {
+
+    /** 모집공고 생성 요청이 승인된 뒤 확정한 예약 목록 (구역마다 한 건씩). */
+    List<VenueReservation> findAllByNoticeRequestId(Long noticeRequestId);
+
+    /** 특정 모집공고에 딸린 예약 목록. 취소 시 일괄 해제할 때 쓴다. */
+    List<VenueReservation> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
 
     /**
      * 같은 장소·홀·구역에 기간이 겹치는 확정 예약이 있는지 확인한다.

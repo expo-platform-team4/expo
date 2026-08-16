@@ -99,4 +99,9 @@ public class VenueReservation extends BaseTimeEntity {
         this.status = VenueReservationStatus.RELEASED;
         this.releasedAt = Instant.now();
     }
+
+    /** 모집공고 생성 완료 후, 그 공고에 이 예약을 연결한다. */
+    public void linkToNotice(Long recruitmentNoticeId) {
+        this.recruitmentNoticeId = recruitmentNoticeId;
+    }
 }
