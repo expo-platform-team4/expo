@@ -126,4 +126,9 @@ public class RecruitmentNotice extends BaseTimeEntity {
         this.status = RecruitmentNoticeStatus.CLOSED;
         this.closedAt = Instant.now();
     }
+
+    /** 관리자 직권 취소. 마감(정상 종료)과 달리 공고 자체를 무효화한다. */
+    public void cancel() {
+        this.status = RecruitmentNoticeStatus.CANCELED;
+    }
 }

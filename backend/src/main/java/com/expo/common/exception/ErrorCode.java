@@ -46,6 +46,9 @@ public enum ErrorCode {
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),
     DUPLICATE_CATEGORY_NAME(HttpStatus.CONFLICT, "이미 사용 중인 카테고리명입니다."),
 
+    // --- 관리자 · 계정 조회 ---
+    ADMIN_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 계정입니다."),
+
     // --- 가상 장소 ---
     DUPLICATE_VIRTUAL_VENUE_NAME(HttpStatus.CONFLICT, "이미 등록된 장소명입니다."),
     VIRTUAL_VENUE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 가상 장소입니다."),
@@ -68,6 +71,7 @@ public enum ErrorCode {
     DUPLICATE_BOOTH_NUMBER(HttpStatus.CONFLICT, "이미 등록된 부스 번호입니다."),
     BOOTH_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스입니다."),
     DUPLICATE_BOOTH_PRODUCT(HttpStatus.CONFLICT, "이미 해당 공고에 등록된 부스 상품입니다."),
+    BOOTH_IN_USE_BY_OTHER_NOTICE(HttpStatus.CONFLICT, "이미 다른 모집공고에서 사용 중인 부스입니다."),
     BOOTH_SALES_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "판매 종료 일시는 시작 일시보다 늦어야 합니다."),
     BOOTH_PRODUCT_NOT_EDITABLE(HttpStatus.CONFLICT, "예약·판매 완료된 부스 상품의 상태는 관리자가 직접 바꿀 수 없습니다."),
     BOOTH_ORDER_NOT_ALLOWED(HttpStatus.CONFLICT, "초안 상태의 신청서만 부스 상품을 주문할 수 있습니다."),
@@ -105,6 +109,7 @@ public enum ErrorCode {
     RECRUITMENT_NOTICE_NOT_EDITABLE(HttpStatus.CONFLICT, "초안 상태에서만 공고를 수정할 수 있습니다."),
     RECRUITMENT_NOTICE_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "초안 상태에서만 공고를 게시할 수 있습니다."),
     RECRUITMENT_NOTICE_NOT_CLOSABLE(HttpStatus.CONFLICT, "게시 중인 공고만 마감할 수 있습니다."),
+    RECRUITMENT_NOTICE_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 마감되었거나 취소된 공고는 취소할 수 없습니다."),
     VENUE_DECISION_INVALID(HttpStatus.BAD_REQUEST, "장소 결정은 ALLOWED 또는 CANCELED 만 가능합니다."),
     VENUE_DECISION_ALREADY_MADE(HttpStatus.CONFLICT, "이미 장소 결정이 완료된 요청입니다."),
     APPLICATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "신청 종료 일시는 시작 일시보다 늦어야 합니다."),
@@ -124,13 +129,24 @@ public enum ErrorCode {
     BOOTH_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 상품입니다."),
     PARTICIPATION_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 참여 신청서입니다."),
     RECRUITMENT_NOTICE_NOT_OPEN(HttpStatus.CONFLICT, "게시 중인 모집공고에만 참여 신청할 수 있습니다."),
+    DUPLICATE_PARTICIPATION_APPLICATION(HttpStatus.CONFLICT, "이미 해당 공고에 유효한 참여 신청서가 있습니다."),
     CORRECTION_NOT_REQUESTED(HttpStatus.CONFLICT, "보완 요청이 없는 신청서는 보완 완료 처리할 수 없습니다."),
 
     // --- 발권 · QR ---
     TICKET_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
     TICKET_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제가 완료된 주문만 발권할 수 있습니다."),
     TICKET_ORDER_HAS_NO_ITEM(HttpStatus.CONFLICT, "발권할 항목이 없는 주문입니다."),
-    TICKET_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발권된 주문입니다.");
+    TICKET_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발권된 주문입니다."),
+
+    // --- 티켓 조회 링크 ---
+    // 셋을 나눈 이유는 받는 사람이 할 수 있는 일이 다르기 때문이다.
+    // 만료는 재발급을 안내할 수 있지만, 폐기는 안내하면 안 된다.
+    TICKET_ACCESS_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다."),
+    TICKET_ACCESS_TOKEN_EXPIRED(HttpStatus.GONE, "링크 유효기간이 지났습니다."),
+    TICKET_ACCESS_TOKEN_REVOKED(HttpStatus.FORBIDDEN, "사용할 수 없는 링크입니다."),
+
+    // --- 클라이언트 마이페이지 ---
+    CLIENT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "클라이언트 프로필을 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

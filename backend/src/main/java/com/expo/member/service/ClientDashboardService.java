@@ -1,5 +1,7 @@
 package com.expo.member.service;
 
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import com.expo.member.dto.ClientDashboardProfileResponse;
 import com.expo.member.repository.ClientDashboardProfileMapper;
 import org.springframework.stereotype.Service;
@@ -19,13 +21,14 @@ public class ClientDashboardService {
     /**
      * 로그인한 클라이언트 본인의 마이페이지 요약(프로필)을 조회한다.
      *
-     * @throws IllegalStateException 클라이언트 프로필이 없는 경우 (정상 흐름에서는 발생하지 않아야 함)
+     * @throws BusinessException 클라이언트 프로필이 없는 경우 (정상 흐름에서는 발생하지 않아야 함, {@code
+     *     CLIENT_PROFILE_NOT_FOUND})
      */
     public ClientDashboardProfileResponse getDashboardSummary(Long clientUserId) {
         ClientDashboardProfileResponse response =
                 clientDashboardProfileMapper.findByClientUserId(clientUserId);
         if (response == null) {
-            throw new IllegalStateException("클라이언트 프로필을 찾을 수 없습니다. clientUserId=" + clientUserId);
+            throw new BusinessException(ErrorCode.CLIENT_PROFILE_NOT_FOUND);
         }
         return response;
     }

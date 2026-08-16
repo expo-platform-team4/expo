@@ -17,6 +17,7 @@ import com.expo.booth.repository.BoothProductRepository;
 import com.expo.booth.repository.BoothRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -33,6 +34,7 @@ class BoothProductServiceTest {
     private static final Long NOTICE_ID = 1L;
     private static final Long BOOTH_ID = 2L;
     private static final Long PRODUCT_ID = 3L;
+    private static final Long OTHER_NOTICE_ID = 4L;
 
     private BoothProductRepository boothProductRepository;
     private BoothRepository boothRepository;
@@ -124,6 +126,47 @@ class BoothProductServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
         verify(boothProductRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createRejectsWhenBoothInUseByOtherActiveNotice() {
+        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
+                .thenReturn(false);
+        when(boothProductRepository.findOtherRecruitmentNoticeIdsUsingBooth(
+                        BOOTH_ID, NOTICE_ID, BoothSalesStatus.CANCELED))
+                .thenReturn(List.of(OTHER_NOTICE_ID));
+        when(recruitmentNoticeRepository.existsByIdInAndStatusNot(
+                        List.of(OTHER_NOTICE_ID), RecruitmentNoticeStatus.CANCELED))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_IN_USE_BY_OTHER_NOTICE);
+        verify(boothProductRepository, never()).saveAndFlush(any());
+    }
+
+    /** 다른 공고가 이미 취소됐다면, 그 공고의 부스 상품이 취소되지 않은 채 남아있어도 재사용을 막지 않는다. */
+    @Test
+    void createAllowsBoothWhenOtherNoticeIsCanceled() {
+        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
+                .thenReturn(false);
+        when(boothProductRepository.findOtherRecruitmentNoticeIdsUsingBooth(
+                        BOOTH_ID, NOTICE_ID, BoothSalesStatus.CANCELED))
+                .thenReturn(List.of(OTHER_NOTICE_ID));
+        when(recruitmentNoticeRepository.existsByIdInAndStatusNot(
+                        List.of(OTHER_NOTICE_ID), RecruitmentNoticeStatus.CANCELED))
+                .thenReturn(false);
+        when(boothProductRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        BoothProductResponse response = service.create(request());
+
+        assertThat(response.recruitmentNoticeId()).isEqualTo(NOTICE_ID);
     }
 
     @Test
