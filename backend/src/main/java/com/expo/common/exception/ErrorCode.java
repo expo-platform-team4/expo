@@ -34,7 +34,7 @@ public enum ErrorCode {
     TICKET_INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다"),
     DUPLICATE_TICKET_PRODUCT_IN_ORDER(HttpStatus.BAD_REQUEST, "동일한 티켓 상품을 중복 주문할 수 없습니다"),
     TICKET_PRODUCT_NOT_ON_SALE(HttpStatus.BAD_REQUEST, "판매 중인 티켓만 주문할 수 있습니다."),
-    TICKET_PRODUCT_NOT_ON_SALE_PERIOD(HttpStatus.BAD_REQUEST, "판매가 종료된 티켓입니다."),
+    TICKET_PRODUCT_NOT_ON_SALE_PERIOD(HttpStatus.BAD_REQUEST, "티켓 판매 기간이 아닙니다."),
     TICKET_QUANTITY_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "티켓 상품별 최대 주문 수량을 초과했습니다."),
     TICKET_TOTAL_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "티켓 최대 주문 수량을 초과 했습니다."),
 
