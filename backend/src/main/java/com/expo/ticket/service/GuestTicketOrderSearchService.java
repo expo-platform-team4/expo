@@ -26,7 +26,8 @@ public class GuestTicketOrderSearchService {
         TicketOrder order =
                 ticketOrderRepository
                         .findByOrderNumber(request.orderNumber())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED));
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED));
 
         GuestOrder guestOrder =
                 guestOrderInfoRepository
