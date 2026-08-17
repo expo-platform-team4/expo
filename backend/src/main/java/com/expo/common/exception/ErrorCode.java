@@ -37,6 +37,8 @@ public enum ErrorCode {
     TICKET_PRODUCT_NOT_ON_SALE_PERIOD(HttpStatus.BAD_REQUEST, "티켓 판매 기간이 아닙니다."),
     TICKET_QUANTITY_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "티켓 상품별 최대 주문 수량을 초과했습니다."),
     TICKET_TOTAL_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "티켓 최대 주문 수량을 초과 했습니다."),
+    NOT_FOUND_ORDER_NUMBER(HttpStatus.BAD_REQUEST, "주문 번호를 확인할 수 없습니다"),
+    GUEST_ORDER_LOOKUP_FAILED(HttpStatus.BAD_REQUEST, "주문 정보가 일치하지 않습니다."),
 
     // --- 박람회 ---
     EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
