@@ -2,7 +2,9 @@ package com.expo.notification.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.notification.dto.NotificationHistoryPage;
+import com.expo.notification.dto.NotificationRetryResult;
 import com.expo.notification.service.NotificationHistoryService;
+import com.expo.notification.service.NotificationRetryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +12,8 @@ import java.time.Instant;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,9 +39,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminNotificationController {
 
     private final NotificationHistoryService notificationHistoryService;
+    private final NotificationRetryService notificationRetryService;
 
-    public AdminNotificationController(NotificationHistoryService notificationHistoryService) {
+    public AdminNotificationController(
+            NotificationHistoryService notificationHistoryService,
+            NotificationRetryService notificationRetryService) {
         this.notificationHistoryService = notificationHistoryService;
+        this.notificationRetryService = notificationRetryService;
     }
 
     @Operation(
@@ -78,5 +86,20 @@ public class AdminNotificationController {
                                 endAt,
                                 page,
                                 size)));
+    }
+
+    @Operation(
+            summary = "실패 알림 재발송",
+            description =
+                    "발송에 실패한 알림 한 건을 다시 보냅니다. 목록의 retryable 이 true 인 것만 됩니다. "
+                            + "보낸 본문은 저장하지 않으므로 payload 로 다시 만들어 보냅니다. "
+                            + "발권 알림은 링크의 접근 토큰 원문을 되찾을 수 없어 새 토큰을 발급하고 "
+                            + "이전 링크는 폐기합니다. "
+                            + "대행사가 거절해도 200 이며, 그때는 success 가 false 입니다.")
+    @PostMapping("/{notificationId}/retry")
+    public ResponseEntity<ApiResponse<NotificationRetryResult>> retryNotification(
+            @Parameter(description = "목록의 notificationId", required = true) @PathVariable
+                    Long notificationId) {
+        return ResponseEntity.ok(ApiResponse.ok(notificationRetryService.retry(notificationId)));
     }
 }
