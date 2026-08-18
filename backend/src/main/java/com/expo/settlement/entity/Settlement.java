@@ -143,4 +143,38 @@ public class Settlement {
         settlement.remittanceDueAmount = BigDecimal.ZERO;
         return settlement;
     }
+
+    /**
+     * 계산 결과를 반영하고 {@code CALCULATED} 로 넘긴다.
+     *
+     * <p>몇 번이든 다시 부를 수 있다. 환불이 뒤늦게 완료되거나 조정이 추가되면 금액이 달라지므로,
+     * 재계산은 <b>덮어쓰기</b>지 누적이 아니다.
+     */
+    public void applyCalculation(SettlementAmounts amounts) {
+        this.grossTicketSalesAmount = amounts.grossTicketSalesAmount();
+        this.ticketRefundAmount = amounts.ticketRefundAmount();
+        this.netTicketSalesAmount = amounts.netTicketSalesAmount();
+        this.bookingFeeGrossAmount = amounts.bookingFeeGrossAmount();
+        this.bookingFeeRefundAmount = amounts.bookingFeeRefundAmount();
+        this.bookingFeeNetAmount = amounts.bookingFeeNetAmount();
+        this.grossBoothSalesAmount = amounts.grossBoothSalesAmount();
+        this.pgFeeReferenceAmount = amounts.pgFeeReferenceAmount();
+        this.adjustmentAmount = amounts.adjustmentAmount();
+        this.remittanceDueAmount = amounts.remittanceDueAmount();
+        this.status = SettlementStatus.CALCULATED;
+    }
+
+    /**
+     * 재계산할 수 있는 상태인가.
+     *
+     * <p>확정({@code CONFIRMED}) 이후로는 막는다. 확정은 "이 금액으로 송금한다" 는 선언이고, 그 뒤에
+     * 금액이 조용히 바뀌면 <b>송금한 금액과 기록이 어긋난다.</b> 금액을 고쳐야 한다면 조정
+     * ({@code settlement_adjustments})으로 남겨야 추적된다.
+     */
+    public boolean recalculable() {
+        return status == SettlementStatus.WAITING
+                || status == SettlementStatus.CALCULATED
+                || status == SettlementStatus.UNDER_REVIEW
+                || status == SettlementStatus.ON_HOLD;
+    }
 }

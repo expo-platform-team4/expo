@@ -161,6 +161,10 @@ public enum ErrorCode {
     NOTIFICATION_RECIPIENT_UNREACHABLE(HttpStatus.CONFLICT, "수신 가능한 휴대폰 번호가 없어 재발송할 수 없습니다."),
     NOTIFICATION_TEMPLATE_NOT_REBUILDABLE(HttpStatus.CONFLICT, "본문을 다시 만들 수 없는 알림입니다."),
 
+    // --- 정산 ---
+    SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 정산입니다."),
+    SETTLEMENT_NOT_RECALCULABLE(HttpStatus.CONFLICT, "확정된 정산은 다시 계산할 수 없습니다."),
+
     // --- 클라이언트 마이페이지 ---
     CLIENT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "클라이언트 프로필을 찾을 수 없습니다.");
 
