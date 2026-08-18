@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.expo.booth.converter.BoothProductConverter;
 import com.expo.booth.dto.BoothProductResponse;
 import com.expo.booth.dto.CreateBoothProductRequest;
+import com.expo.booth.entity.Booth;
 import com.expo.booth.entity.BoothProduct;
 import com.expo.booth.entity.BoothSalesStatus;
 import com.expo.booth.repository.BoothProductRepository;
@@ -19,6 +20,10 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
+import com.expo.venue.entity.VenueHall;
+import com.expo.venue.entity.VenueZone;
+import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueZoneRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +43,8 @@ class BoothProductServiceTest {
 
     private BoothProductRepository boothProductRepository;
     private BoothRepository boothRepository;
+    private VenueZoneRepository venueZoneRepository;
+    private VenueHallRepository venueHallRepository;
     private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private BoothProductService service;
 
@@ -45,11 +52,15 @@ class BoothProductServiceTest {
     void setUp() {
         boothProductRepository = mock(BoothProductRepository.class);
         boothRepository = mock(BoothRepository.class);
+        venueZoneRepository = mock(VenueZoneRepository.class);
+        venueHallRepository = mock(VenueHallRepository.class);
         recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         service =
                 new BoothProductService(
                         boothProductRepository,
                         boothRepository,
+                        venueZoneRepository,
+                        venueHallRepository,
                         recruitmentNoticeRepository,
                         new BoothProductConverter());
     }
@@ -167,6 +178,54 @@ class BoothProductServiceTest {
         BoothProductResponse response = service.create(request());
 
         assertThat(response.recruitmentNoticeId()).isEqualTo(NOTICE_ID);
+    }
+
+    /** 응답에 부스·구역·홀 위치 정보가 배치 조회 결과에서 정확히 매핑돼야 한다. */
+    @Test
+    void createReturnsLocationInfoFromBoothZoneHall() throws ReflectiveOperationException {
+        Long zoneId = 500L;
+        Long hallId = 700L;
+        Booth booth =
+                withId(
+                        Booth.create(
+                                zoneId,
+                                null,
+                                "A-01",
+                                "SQUARE",
+                                BigDecimal.TEN,
+                                null,
+                                BigDecimal.TEN,
+                                "M"),
+                        BOOTH_ID);
+        VenueZone zone =
+                withId(VenueZone.create(hallId, "ZONE-1", "1구역", 10, null, null, null), zoneId);
+        VenueHall hall = withId(VenueHall.create(1L, "HALL-A", "A홀", null, null, null), hallId);
+
+        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
+                .thenReturn(false);
+        when(boothProductRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(boothRepository.findAllById(any())).thenReturn(List.of(booth));
+        when(venueZoneRepository.findAllById(any())).thenReturn(List.of(zone));
+        when(venueHallRepository.findAllById(any())).thenReturn(List.of(hall));
+
+        BoothProductResponse response = service.create(request());
+
+        assertThat(response.boothNumber()).isEqualTo("A-01");
+        assertThat(response.venueZoneId()).isEqualTo(zoneId);
+        assertThat(response.venueZoneName()).isEqualTo("1구역");
+        assertThat(response.venueHallId()).isEqualTo(hallId);
+        assertThat(response.venueHallName()).isEqualTo("A홀");
+    }
+
+    /** id 는 {@code @GeneratedValue} 라 팩토리로 못 채워서, 조회된 것처럼 리플렉션으로 세팅한다. */
+    private static <T> T withId(T entity, Long id) throws ReflectiveOperationException {
+        java.lang.reflect.Field field = entity.getClass().getDeclaredField("id");
+        field.setAccessible(true);
+        field.set(entity, id);
+        return entity;
     }
 
     @Test

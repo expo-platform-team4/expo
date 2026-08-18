@@ -86,7 +86,6 @@ class AdminRecruitmentResultServiceTest {
                 RecruitmentNotice.create(
                         10L,
                         HOST_CLIENT_ID,
-                        11L,
                         "제목",
                         "내용",
                         Instant.now(),
@@ -113,7 +112,6 @@ class AdminRecruitmentResultServiceTest {
                 RecruitmentNotice.create(
                         10L,
                         HOST_CLIENT_ID,
-                        11L,
                         "제목",
                         "내용",
                         Instant.now(),

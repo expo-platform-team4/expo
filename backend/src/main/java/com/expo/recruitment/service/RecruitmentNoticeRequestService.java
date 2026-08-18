@@ -7,11 +7,14 @@ import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
 import com.expo.recruitment.dto.DecideVenueRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeRequestResponse;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.RecruitmentNoticeRequestZone;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
+import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecruitmentNoticeRequestService {
 
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
+    private final RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
     private final VirtualVenueRepository virtualVenueRepository;
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
@@ -27,18 +31,26 @@ public class RecruitmentNoticeRequestService {
 
     public RecruitmentNoticeRequestService(
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
+            RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
             VirtualVenueRepository virtualVenueRepository,
             VenueHallRepository venueHallRepository,
             VenueZoneRepository venueZoneRepository,
             RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter) {
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
+        this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
         this.virtualVenueRepository = virtualVenueRepository;
         this.venueHallRepository = venueHallRepository;
         this.venueZoneRepository = venueZoneRepository;
         this.recruitmentNoticeRequestConverter = recruitmentNoticeRequestConverter;
     }
 
-    /** 모집공고 생성 요청 작성. 희망 장소가 실제로 존재하는지, 기간 순서가 올바른지 검증한다. */
+    /**
+     * 모집공고 생성 요청 작성. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가 올바른지
+     * 검증한다.
+     *
+     * <p>고른 구역이 전시관 소속인지는 서비스에서도 먼저 확인하지만, DB의 복합 FK({@code
+     * fk_notice_request_zones_zone_in_hall})가 최종 방어선이다.
+     */
     @Transactional
     public RecruitmentNoticeRequestResponse create(
             Long hostClientId, CreateRecruitmentNoticeRequestRequest request) {
@@ -51,21 +63,16 @@ public class RecruitmentNoticeRequestService {
         if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
         }
-        if (request.venueHallId() != null) {
-            if (!venueHallRepository.existsById(request.venueHallId())) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
-            }
-            if (!venueHallRepository.existsByIdAndVenueId(
-                    request.venueHallId(), request.virtualVenueId())) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
-            }
+        if (!venueHallRepository.existsById(request.venueHallId())) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
         }
-        if (request.venueZoneId() != null) {
-            if (!venueZoneRepository.existsById(request.venueZoneId())) {
-                throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
-            }
-            if (!venueZoneRepository.existsByIdAndHallId(
-                    request.venueZoneId(), request.venueHallId())) {
+        if (!venueHallRepository.existsByIdAndVenueId(
+                request.venueHallId(), request.virtualVenueId())) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
+        }
+        List<Long> venueZoneIds = List.copyOf(new LinkedHashSet<>(request.venueZoneIds()));
+        for (Long zoneId : venueZoneIds) {
+            if (!venueZoneRepository.existsByIdAndHallId(zoneId, request.venueHallId())) {
                 throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
             }
         }
@@ -81,18 +88,22 @@ public class RecruitmentNoticeRequestService {
                                 request.virtualVenueId())
                         .withVenueDetails(
                                 request.venueHallId(),
-                                request.venueZoneId(),
                                 request.targetCompanyCount(),
                                 request.requestedBoothConfig());
         RecruitmentNoticeRequest saved = recruitmentNoticeRequestRepository.save(entity);
-        return recruitmentNoticeRequestConverter.toResponse(saved);
+        for (Long zoneId : venueZoneIds) {
+            recruitmentNoticeRequestZoneRepository.save(
+                    RecruitmentNoticeRequestZone.create(
+                            saved.getId(), request.venueHallId(), zoneId));
+        }
+        return recruitmentNoticeRequestConverter.toResponse(saved, venueZoneIds);
     }
 
     /** 주최 클라이언트 본인이 작성한 모집공고 생성 요청 목록 조회. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeRequestResponse> listMine(Long hostClientId) {
         return recruitmentNoticeRequestRepository.findAllByHostClientId(hostClientId).stream()
-                .map(recruitmentNoticeRequestConverter::toResponse)
+                .map(this::toResponseWithZones)
                 .toList();
     }
 
@@ -106,14 +117,14 @@ public class RecruitmentNoticeRequestService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
-        return recruitmentNoticeRequestConverter.toResponse(request);
+        return toResponseWithZones(request);
     }
 
     /** 관리자용 모집공고 생성 요청 목록 조회. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeRequestResponse> listForAdmin() {
         return recruitmentNoticeRequestRepository.findAll().stream()
-                .map(recruitmentNoticeRequestConverter::toResponse)
+                .map(this::toResponseWithZones)
                 .toList();
     }
 
@@ -127,7 +138,7 @@ public class RecruitmentNoticeRequestService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_REQUEST_NOT_FOUND));
-        return recruitmentNoticeRequestConverter.toResponse(request);
+        return toResponseWithZones(request);
     }
 
     /** 장소 충돌 판정. ALLOWED 또는 CANCELED 만 허용하며, 이미 결정된 요청은 다시 판정할 수 없다. */
@@ -149,6 +160,12 @@ public class RecruitmentNoticeRequestService {
             throw new BusinessException(ErrorCode.VENUE_DECISION_ALREADY_MADE);
         }
         entity.decideVenue(request.decision(), adminId, request.reason());
-        return recruitmentNoticeRequestConverter.toResponse(entity);
+        return toResponseWithZones(entity);
+    }
+
+    private RecruitmentNoticeRequestResponse toResponseWithZones(RecruitmentNoticeRequest request) {
+        List<Long> venueZoneIds =
+                recruitmentNoticeRequestZoneRepository.findVenueZoneIdsByRequestId(request.getId());
+        return recruitmentNoticeRequestConverter.toResponse(request, venueZoneIds);
     }
 }

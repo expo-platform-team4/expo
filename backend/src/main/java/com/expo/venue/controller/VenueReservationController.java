@@ -8,6 +8,7 @@ import com.expo.venue.service.VenueReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,9 +31,9 @@ public class VenueReservationController {
         this.venueReservationService = venueReservationService;
     }
 
-    @Operation(summary = "확정 장소 예약 생성")
+    @Operation(summary = "확정 장소 예약 생성 (고른 구역 개수만큼 한 번에 확정)")
     @PostMapping
-    public ResponseEntity<ApiResponse<VenueReservationResponse>> create(
+    public ResponseEntity<ApiResponse<List<VenueReservationResponse>>> create(
             @AuthenticationPrincipal AuthPrincipal principal,
             @Valid @RequestBody CreateVenueReservationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)

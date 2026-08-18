@@ -44,7 +44,12 @@ public class RecruitmentNoticeService {
         this.recruitmentNoticeConverter = recruitmentNoticeConverter;
     }
 
-    /** 기업 모집 공고 초안 생성. 근거 요청의 주최 클라이언트를 그대로 연결한다. */
+    /**
+     * 기업 모집 공고 초안 생성. 근거 요청의 주최 클라이언트를 그대로 연결한다.
+     *
+     * <p>이 요청이 승인된 뒤 확정한 장소 예약(구역마다 한 건씩)을 전부 찾아 이 공고에 연결한다. 예약은 홀 확정
+     * 단계({@code VenueReservationService.create()})에서 이미 만들어져 있어야 한다.
+     */
     @Transactional
     public RecruitmentNoticeResponse create(
             Long createdByAdminId, CreateRecruitmentNoticeRequest request) {
@@ -64,22 +69,21 @@ public class RecruitmentNoticeService {
         if (recruitmentNoticeRepository.existsByRequestId(request.requestId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_RECRUITMENT_NOTICE_REQUEST);
         }
-        VenueReservation reservation =
-                venueReservationRepository
-                        .findById(request.venueReservationId())
-                        .orElseThrow(
-                                () -> new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND));
-        if (!request.requestId().equals(reservation.getNoticeRequestId())) {
+        List<VenueReservation> reservations =
+                venueReservationRepository.findAllByNoticeRequestId(request.requestId());
+        if (reservations.isEmpty()) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
         }
-        if (reservation.getStatus() != VenueReservationStatus.CONFIRMED) {
+        boolean anyNotConfirmed =
+                reservations.stream()
+                        .anyMatch(r -> r.getStatus() != VenueReservationStatus.CONFIRMED);
+        if (anyNotConfirmed) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
         RecruitmentNotice notice =
                 RecruitmentNotice.create(
                                 request.requestId(),
                                 noticeRequest.getHostClientId(),
-                                request.venueReservationId(),
                                 request.title(),
                                 request.content(),
                                 request.applicationStartAt(),
@@ -87,21 +91,22 @@ public class RecruitmentNoticeService {
                                 createdByAdminId)
                         .withDetails(request.eligibility(), request.submissionRequirements());
         RecruitmentNotice saved = recruitmentNoticeRepository.save(notice);
-        return recruitmentNoticeConverter.toResponse(saved);
+        reservations.forEach(r -> r.linkToNotice(saved.getId()));
+        return toResponseWithVenue(saved, reservations);
     }
 
     /** 관리자용 기업 모집 공고 목록 조회. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> list() {
         return recruitmentNoticeRepository.findAll().stream()
-                .map(recruitmentNoticeConverter::toResponse)
+                .map(this::toResponseWithVenue)
                 .toList();
     }
 
     /** 관리자용 기업 모집 공고 상세 조회. */
     @Transactional(readOnly = true)
     public RecruitmentNoticeResponse get(Long noticeId) {
-        return recruitmentNoticeConverter.toResponse(getEntity(noticeId));
+        return toResponseWithVenue(getEntity(noticeId));
     }
 
     /** 공고 내용·조건 수정. 초안 상태에서만 가능하다. */
@@ -121,7 +126,7 @@ public class RecruitmentNoticeService {
                 request.submissionRequirements(),
                 request.applicationStartAt(),
                 request.applicationEndAt());
-        return recruitmentNoticeConverter.toResponse(notice);
+        return toResponseWithVenue(notice);
     }
 
     /** 공고 게시. 초안 상태에서만 가능하다. */
@@ -132,7 +137,7 @@ public class RecruitmentNoticeService {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_PUBLISHABLE);
         }
         notice.publish();
-        return recruitmentNoticeConverter.toResponse(notice);
+        return toResponseWithVenue(notice);
     }
 
     /** 기업 모집 조기 마감. 게시 중인 공고만 마감할 수 있다. */
@@ -143,13 +148,14 @@ public class RecruitmentNoticeService {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_CLOSABLE);
         }
         notice.close();
-        return recruitmentNoticeConverter.toResponse(notice);
+        return toResponseWithVenue(notice);
     }
 
     /**
      * 모집공고 직권 취소. 결제·신청이 아직 없는 마감 전 공고(초안·예약·게시 중)만 취소할 수 있다.
      *
-     * <p>권한이 걸린 변경이라 변경 전후 상태를 감사 이력({@code recruitment_notice_histories})에 남긴다.
+     * <p>권한이 걸린 변경이라 변경 전후 상태를 감사 이력({@code recruitment_notice_histories})에 남긴다. 이 공고에
+     * 딸린 장소 예약도 전부 같이 해제한다 - 안 풀면 같은 기간에 그 홀들을 다시 못 쓴다.
      */
     @Transactional
     public RecruitmentNoticeResponse cancel(Long noticeId, Long adminId, String reason) {
@@ -169,7 +175,12 @@ public class RecruitmentNoticeService {
                         "{\"status\": \"" + notice.getStatus() + "\"}",
                         reason,
                         adminId));
-        return recruitmentNoticeConverter.toResponse(notice);
+        List<VenueReservation> reservations =
+                venueReservationRepository.findAllByRecruitmentNoticeId(noticeId);
+        reservations.stream()
+                .filter(r -> r.getStatus() == VenueReservationStatus.CONFIRMED)
+                .forEach(VenueReservation::release);
+        return toResponseWithVenue(notice, reservations);
     }
 
     private RecruitmentNotice getEntity(Long noticeId) {
@@ -182,7 +193,7 @@ public class RecruitmentNoticeService {
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> listPublic() {
         return recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN).stream()
-                .map(recruitmentNoticeConverter::toResponse)
+                .map(this::toResponseWithVenue)
                 .toList();
     }
 
@@ -196,6 +207,24 @@ public class RecruitmentNoticeService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
-        return recruitmentNoticeConverter.toResponse(notice);
+        return toResponseWithVenue(notice);
+    }
+
+    private RecruitmentNoticeResponse toResponseWithVenue(RecruitmentNotice notice) {
+        return toResponseWithVenue(
+                notice, venueReservationRepository.findAllByRecruitmentNoticeId(notice.getId()));
+    }
+
+    /** 확정된(취소된 것 제외) 예약들에서 전시관(홀)·구역 목록을 뽑아 응답에 채운다. */
+    private RecruitmentNoticeResponse toResponseWithVenue(
+            RecruitmentNotice notice, List<VenueReservation> reservations) {
+        List<VenueReservation> confirmed =
+                reservations.stream()
+                        .filter(r -> r.getStatus() == VenueReservationStatus.CONFIRMED)
+                        .toList();
+        Long venueHallId =
+                confirmed.stream().map(VenueReservation::getVenueHallId).findFirst().orElse(null);
+        List<Long> venueZoneIds = confirmed.stream().map(VenueReservation::getVenueZoneId).toList();
+        return recruitmentNoticeConverter.toResponse(notice, venueHallId, venueZoneIds);
     }
 }
