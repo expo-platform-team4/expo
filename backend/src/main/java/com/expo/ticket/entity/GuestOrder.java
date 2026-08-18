@@ -11,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-
 import java.time.Duration;
 import java.time.Instant;
 import lombok.AccessLevel;
@@ -68,8 +67,8 @@ public class GuestOrder extends BaseTimeEntity {
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final Duration LOCK_DURATION = Duration.ofMinutes(10);
 
-    public void validateNotLocked(){
-        if (lockedUntil != null && Instant.now().isBefore(lockedUntil)){
+    public void validateNotLocked() {
+        if (lockedUntil != null && Instant.now().isBefore(lockedUntil)) {
             throw new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_LOCKED);
         }
     }
