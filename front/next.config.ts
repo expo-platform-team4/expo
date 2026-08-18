@@ -17,9 +17,12 @@ const nextConfig: NextConfig = {
     return [
       // 브라우저가 /api/* 로 요청하면 Next 서버가 Spring 으로 넘긴다.
       // 브라우저 입장에서는 same-origin 이라 CORS 설정이 필요 없다.
+      //
+      // destination 에도 /api 가 있어야 한다. 스프링 컨트롤러가 전부 /api/... 로 매핑돼 있고
+      // context-path 설정도 없어서, 접두어를 떼고 넘기면 전부 404 가 된다.
       {
         source: '/api/:slug*',
-        destination: `${BACKEND_ORIGIN}/:slug*`,
+        destination: `${BACKEND_ORIGIN}/api/:slug*`,
       },
       // OAuth2 로그인은 브라우저가 백엔드로 직접 리다이렉트되어야 하므로
       // 스프링이 쓰는 경로를 그대로 넘긴다.

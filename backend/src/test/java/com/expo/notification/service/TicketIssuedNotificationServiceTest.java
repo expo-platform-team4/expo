@@ -43,9 +43,8 @@ class TicketIssuedNotificationServiceTest {
     void setUp() {
         service =
                 new TicketIssuedNotificationService(
-                        notificationRepository,
-                        messageHistoryRepository,
-                        smsSender,
+                        new NotificationDispatcher(
+                                notificationRepository, messageHistoryRepository, smsSender),
                         new TicketIssuedMessageComposer("http://localhost:3000"));
 
         // save 는 받은 엔티티를 그대로 돌려준다. ID 는 DB 가 채우므로 여기서는 null 이다.
