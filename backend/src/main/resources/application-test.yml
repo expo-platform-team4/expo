@@ -32,10 +32,20 @@ spring:
       s3:
         enabled: false
 
+# 테스트 전용 더미 시크릿. 운영 값과 무관하며 커밋되어도 안전하다.
+#
+# application.yml 이 기본값 없이 요구하는 환경변수는 둘이다 — JWT_SECRET, QR_TOKEN_SECRET.
+# 로컬에서는 backend/.env 가 채워 주지만 CI 에는 .env 가 없다. 여기서 채워야 한다.
+#
+# 특히 QR 키는 미치환 플레이스홀더를 @Pattern 으로 막고 있어서(QrTokenProperties),
+# 안 주면 문자열 "${QR_TOKEN_SECRET}" 이 그대로 바인딩돼 기동이 실패한다.
+# 그 방어가 없었다면 저장소만 보면 누구나 아는 값으로 QR 이 서명됐을 것이다.
 app:
-  # 테스트 전용 더미 시크릿. 운영 값과 무관하며 커밋되어도 안전하다.
   jwt:
     secret: dGVzdC1vbmx5LXNlY3JldC1kby1ub3QtdXNlLWluLXByb2R1Y3Rpb24=
+  qr:
+    # HMAC-SHA256 키라 32자 이상이어야 한다 (@Size).
+    token-secret: dGVzdC1vbmx5LXFyLXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24tdXNl
 
 logging:
   level:
