@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.notification.repository.NotificationHistoryMapper">
+
+    <!--
+      알림 이력 조회 (D-API-009).
+
+      두 테이블을 함께 본다.
+        notifications      "이 사람에게 이걸 보내야 한다" 는 작업. 알림당 1행
+        message_histories  "몇 번째 시도가 어떻게 됐다" 는 결과. 시도당 1행
+
+      목록에는 알림 1행씩 나오고, 시도는 개수와 마지막 한 건만 요약해 붙인다.
+      전부 펼치면 대량 발송 하나가 목록을 통째로 덮는다 - 1,000명 취소 안내가 그렇다.
+    -->
+    <sql id="searchFilter">
+        <where>
+            <if test="status != null and status != ''">
+                AND n.status = #{status}
+            </if>
+            <if test="templateCode != null and templateCode != ''">
+                AND n.template_code = #{templateCode}
+            </if>
+            <if test="referenceType != null and referenceType != ''">
+                AND n.reference_type = #{referenceType}
+            </if>
+            <if test="referenceId != null">
+                AND n.reference_id = #{referenceId}
+            </if>
+            <if test="startAt != null">
+                AND n.created_at &gt;= #{startAt}
+            </if>
+            <if test="endAt != null">
+                AND n.created_at &lt;= #{endAt}
+            </if>
+        </where>
+    </sql>
+
+    <!--
+      LATERAL 로 마지막 시도 한 건만 끌어온다.
+
+      집계(MAX/COUNT)로 묶으면 "마지막 시도의 오류 코드" 를 함께 가져올 수 없다.
+      attempt_no 가 가장 큰 행 전체가 필요해서 LATERAL 을 쓴다.
+      (notification_id, attempt_no) 에 UNIQUE 가 있어 이 정렬은 인덱스를 탄다.
+    -->
+    <select id="search" resultType="com.expo.notification.dto.NotificationHistoryRow">
+        SELECT n.id                    AS notification_id,
+               n.recipient_user_id     AS recipient_user_id,
+               n.recipient_phone_number AS recipient_phone_number,
+               n.channel               AS channel,
+               n.template_code         AS template_code,
+               n.reference_type        AS reference_type,
+               n.reference_id          AS reference_id,
+               n.status                AS status,
+               n.retry_count           AS retry_count,
+               n.last_error            AS last_error,
+               n.sent_at               AS sent_at,
+               n.created_at            AS created_at,
+               COALESCE(a.attempt_count, 0) AS attempt_count,
+               last_try.attempt_no     AS last_attempt_no,
+               last_try.status         AS last_attempt_status,
+               last_try.error_code     AS last_attempt_error_code,
+               last_try.requested_at   AS last_attempt_at
+        FROM notifications n
+        LEFT JOIN LATERAL (
+            SELECT count(*) AS attempt_count
+            FROM message_histories h
+            WHERE h.notification_id = n.id
+        ) a ON true
+        LEFT JOIN LATERAL (
+            SELECT h.attempt_no, h.status, h.error_code, h.requested_at
+            FROM message_histories h
+            WHERE h.notification_id = n.id
+            ORDER BY h.attempt_no DESC
+            LIMIT 1
+        ) last_try ON true
+        <include refid="searchFilter"/>
+        ORDER BY n.id DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT count(*)
+        FROM notifications n
+        <include refid="searchFilter"/>
+    </select>
+
+    <!--
+      재발송(D-API-010) 이 쓴다. 알림 행을 잠근 뒤 상태를 다시 읽기 위한 것이다.
+
+      "실패했나 확인 -> 다시 보낸다" 는 check-then-act 라, 잠그지 않으면 관리자 둘이
+      동시에 눌렀을 때 양쪽 다 "실패 상태" 를 보고 문자가 두 번 나간다.
+
+      여기서는 발권.체크인.박람회취소와 달리 DB 제약도 함께 받쳐 준다 -
+      uq_message_histories_attempt (notification_id, attempt_no) 가 같은 시도 번호를 두 번
+      넣지 못하게 막는다. 잠금이 뚫려도 두 번째 INSERT 가 실패한다.
+    -->
+    <select id="lockNotification" resultType="java.lang.String">
+        SELECT status FROM notifications WHERE id = #{notificationId} FOR UPDATE
+    </select>
+
+    <!-- 다음 시도 번호. 이력이 없으면 1 이다. -->
+    <select id="nextAttemptNo" resultType="int">
+        SELECT COALESCE(MAX(attempt_no), 0) + 1
+        FROM message_histories
+        WHERE notification_id = #{notificationId}
+    </select>
+
+</mapper>
