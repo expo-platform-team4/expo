@@ -4,8 +4,11 @@ import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
 import com.expo.ticket.dto.GuestTicketOrderReponse;
 import com.expo.ticket.dto.GuestTicketOrderRequest;
+import com.expo.ticket.dto.GuestTicketSearchRequest;
+import com.expo.ticket.dto.GuestTicketSearchResponse;
 import com.expo.ticket.dto.MemberTicketOrderRequest;
 import com.expo.ticket.dto.TicketOrderResponse;
+import com.expo.ticket.service.GuestTicketOrderSearchService;
 import com.expo.ticket.service.TicketOrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TicketOrderController {
 
     private final TicketOrderService ticketOrderService;
+    private final GuestTicketOrderSearchService guestTicketOrderSearchService;
 
     @PostMapping("/member")
     public ResponseEntity<ApiResponse<TicketOrderResponse>> memberTicketOrder(
@@ -39,6 +43,15 @@ public class TicketOrderController {
     public ResponseEntity<ApiResponse<GuestTicketOrderReponse>> guestTicketOrder(
             @Valid @RequestBody GuestTicketOrderRequest request) {
         GuestTicketOrderReponse response = ticketOrderService.guestCreateOrder(request);
+
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PostMapping("/search/guest")
+    public ResponseEntity<ApiResponse<GuestTicketSearchResponse>> guestTicketSearch(
+            @Valid @RequestBody GuestTicketSearchRequest request) {
+        GuestTicketSearchResponse response =
+                guestTicketOrderSearchService.guestTicketSearch(request);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

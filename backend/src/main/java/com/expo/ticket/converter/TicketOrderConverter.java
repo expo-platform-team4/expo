@@ -1,6 +1,7 @@
 package com.expo.ticket.converter;
 
 import com.expo.ticket.dto.GuestTicketOrderReponse;
+import com.expo.ticket.dto.GuestTicketSearchResponse;
 import com.expo.ticket.dto.TicketOrderResponse;
 import com.expo.ticket.entity.GuestOrder;
 import com.expo.ticket.entity.TicketOrder;
@@ -34,5 +35,18 @@ public class TicketOrderConverter {
         TicketOrderResponse base = toTicketOrderResponse(order, expiresAt);
 
         return new GuestTicketOrderReponse(base, guestOrder.getGuestName(), guestOrder.getAge());
+    }
+
+    public GuestTicketSearchResponse toGuestTicketSearchResponse(TicketOrder order) {
+
+        return new GuestTicketSearchResponse(
+                order.getOrderNumber(),
+                order.getStatus(),
+                order.getItems().stream()
+                        .map(ticketOrderItemConverter::toTicketOrderItemResponse)
+                        .toList(),
+                order.getTicketSubtotalAmount(),
+                order.getBookingFeeAmount(),
+                order.getTotalAmount());
     }
 }
