@@ -153,6 +153,14 @@ public enum ErrorCode {
     TICKET_ACCESS_TOKEN_EXPIRED(HttpStatus.GONE, "링크 유효기간이 지났습니다."),
     TICKET_ACCESS_TOKEN_REVOKED(HttpStatus.FORBIDDEN, "사용할 수 없는 링크입니다."),
 
+    // --- 알림 재발송 ---
+    // 넷을 나눈 이유는 관리자가 다음에 할 일이 다르기 때문이다.
+    // 못 보내는 이유가 상태 탓인지, 번호 탓인지, 템플릿 탓인지에 따라 조치가 갈린다.
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 알림입니다."),
+    NOTIFICATION_NOT_RETRYABLE(HttpStatus.CONFLICT, "발송에 실패한 알림만 재발송할 수 있습니다."),
+    NOTIFICATION_RECIPIENT_UNREACHABLE(HttpStatus.CONFLICT, "수신 가능한 휴대폰 번호가 없어 재발송할 수 없습니다."),
+    NOTIFICATION_TEMPLATE_NOT_REBUILDABLE(HttpStatus.CONFLICT, "본문을 다시 만들 수 없는 알림입니다."),
+
     // --- 클라이언트 마이페이지 ---
     CLIENT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "클라이언트 프로필을 찾을 수 없습니다.");
 

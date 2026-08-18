@@ -96,4 +96,21 @@ public class TicketAccessToken {
         return new TicketAccessToken(
                 ticketOrderId, null, tokenHash, TicketAccessTokenScope.ORDER_VIEW, expiresAt);
     }
+
+    /**
+     * 이 링크를 끊는다. 알림을 재발송하면서 새 토큰을 발급할 때 이전 것을 여기로 넘긴다.
+     *
+     * <p>지우지 않고 상태만 바꾸는 이유는 <b>조회 화면이 셋을 구분해야 하기 때문</b>이다. 지워 버리면
+     * "없는 링크"(404)가 되어, 만료(410)·폐기(403)를 나눠 둔 의미가 사라진다. 폐기된 링크를 연 사람에게는
+     * 재발급을 안내하면 안 된다.
+     *
+     * <p>이미 폐기됐으면 아무것도 하지 않는다 — 재발송을 두 번 눌러도 {@code revokedAt} 이 흔들리지 않게 한다.
+     */
+    public void revoke(Instant revokedAt) {
+        if (this.status == TicketAccessTokenStatus.REVOKED) {
+            return;
+        }
+        this.status = TicketAccessTokenStatus.REVOKED;
+        this.revokedAt = revokedAt;
+    }
 }

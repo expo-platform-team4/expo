@@ -21,6 +21,12 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.sms.provider", havingValue = "logging", matchIfMissing = true)
 public class LoggingSmsSender implements SmsSender {
 
+    private final PhoneNumberMasker phoneNumberMasker;
+
+    public LoggingSmsSender(PhoneNumberMasker phoneNumberMasker) {
+        this.phoneNumberMasker = phoneNumberMasker;
+    }
+
     @PostConstruct
     void warnNotRealSender() {
         log.warn("SMS 발송기가 logging 이다. 실제 문자는 발송되지 않는다. 운영이라면 app.sms.provider=solapi 로 바꿔야 한다.");
@@ -28,7 +34,7 @@ public class LoggingSmsSender implements SmsSender {
 
     @Override
     public MessageSendResult send(String to, String text) {
-        log.info("[SMS 미발송] to={} textLength={}", mask(to), text.length());
+        log.info("[SMS 미발송] to={} textLength={}", phoneNumberMasker.mask(to), text.length());
         log.debug("[SMS 미발송] 본문\n{}", text);
         return MessageSendResult.accepted(null, null, null);
     }
@@ -46,15 +52,5 @@ public class LoggingSmsSender implements SmsSender {
             log.debug("[SMS 미발송] 대량 본문 (첫 건)\n{}", messages.get(0).text());
         }
         return messages.stream().map(m -> MessageSendResult.accepted(null, null, null)).toList();
-    }
-
-    /** {@code 01012345678} → {@code 010****5678}. 전화번호는 개인정보라 원문을 남기지 않는다. */
-    private String mask(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.length() < 7) {
-            return "***";
-        }
-        return phoneNumber.substring(0, 3)
-                + "****"
-                + phoneNumber.substring(phoneNumber.length() - 4);
     }
 }

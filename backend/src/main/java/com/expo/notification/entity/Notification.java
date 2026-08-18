@@ -167,4 +167,17 @@ public class Notification extends BaseTimeEntity {
         this.status = NotificationStatus.FAILED;
         this.lastError = errorMessage;
     }
+
+    /**
+     * 다시 보내려고 집어 들었다. {@code retry_count} 를 올린다.
+     *
+     * <p>상태는 여기서 바꾸지 않는다. 결과가 나온 뒤 {@link #markSent}/{@link #markFailed} 가 정한다 —
+     * 미리 바꿔 두면 발송 도중에 죽었을 때 "보내는 중" 인지 "실패" 인지 알 수 없게 된다.
+     *
+     * <p>세는 것은 <b>재발송 횟수</b>이지 시도 횟수가 아니다. 최초 발송은 재발송이 아니므로 0 에서 시작하고,
+     * {@code message_histories} 의 시도 번호와는 항상 1 만큼 차이가 난다.
+     */
+    public void markRetried() {
+        this.retryCount++;
+    }
 }
