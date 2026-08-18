@@ -89,10 +89,32 @@ public class AdminBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 보완 요청. 공개 상태를 내리고 사유를 이력으로 남긴다. */
+    /** 검수 승인. 검수 요청 상태에서만 승인할 수 있고, 승인해야 비로소 공개된다. */
+    @Transactional
+    public BoothContentResponse approve(Long contentId, Long adminId) {
+        BoothContent content = getEntity(contentId);
+        if (content.getStatus() != BoothContentStatus.UNDER_REVIEW) {
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_APPROVABLE);
+        }
+        content.approve(adminId);
+        boothManagementHistoryRepository.save(
+                BoothManagementHistory.create(
+                        content.getBoothAllocationId(),
+                        content.getId(),
+                        BoothManagementActionType.CONTENT_APPROVED,
+                        null,
+                        adminId));
+        return toResponseWithFiles(content);
+    }
+
+    /** 보완 요청. 검수 중이거나 이미 공개된 콘텐츠만 보완을 요청할 수 있다. 공개 상태였다면 공개를 내린다. */
     @Transactional
     public BoothContentResponse requestCorrection(Long contentId, Long adminId, String message) {
         BoothContent content = getEntity(contentId);
+        if (content.getStatus() != BoothContentStatus.UNDER_REVIEW
+                && content.getStatus() != BoothContentStatus.PUBLISHED) {
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_CORRECTION_REQUESTABLE);
+        }
         content.requestCorrection(message);
         boothManagementHistoryRepository.save(
                 BoothManagementHistory.create(
