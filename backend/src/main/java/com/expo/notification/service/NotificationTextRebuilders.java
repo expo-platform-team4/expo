@@ -35,6 +35,16 @@ public class NotificationTextRebuilders {
     }
 
     /**
+     * 그 템플릿을 맡는 재구성기가 있는가. <b>부수효과가 없다.</b>
+     *
+     * <p>목록 조회(D-API-009)가 {@code retryable} 을 계산할 때 쓴다. {@link #rebuild} 를 불러 볼 수는
+     * 없다 — 발권 알림은 그 안에서 토큰을 재발급하므로, 판단만 하려다 링크를 끊어 버린다.
+     */
+    public boolean supports(String templateCode) {
+        return byTemplateCode.containsKey(templateCode);
+    }
+
+    /**
      * 본문을 다시 만든다.
      *
      * @throws BusinessException 그 템플릿을 맡는 재구성기가 없을 때. 새 템플릿을 추가하고 재구성기를 안 만든 경우가

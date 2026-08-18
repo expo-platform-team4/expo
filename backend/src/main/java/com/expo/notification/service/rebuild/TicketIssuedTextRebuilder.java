@@ -41,8 +41,12 @@ import tools.jackson.databind.ObjectMapper;
  * <h2>만료 시각은 이전 토큰에서 물려받는다</h2>
  *
  * 새로 계산하지 않는다. 만료는 <b>박람회 종료</b>에 매인 값이지 발송 시각에 매인 값이 아니다.
- * 재발송했다고 링크가 더 오래 살아 있을 이유가 없다. 물려받을 토큰이 없으면 만료를 정할 근거가
- * 없으므로 재발송을 막는다 — 임의로 잡으면 행사 뒤에도 열리는 링크가 생긴다.
+ * 재발송했다고 링크가 더 오래 살아 있을 이유가 없다.
+ *
+ * <p>물려받는 대상은 <b>아직 안 지난 만료</b>여야 한다. {@code status} 가 {@code ACTIVE} 라도
+ * {@code expires_at} 이 지난 행은 남아 있다 — 만료는 시각으로 판정되지 상태 컬럼이 저절로 바뀌지
+ * 않는다. 지난 값을 물려받으면 <b>받는 순간 이미 죽어 있는 링크</b>를 보내고 알림은 {@code SENT} 로
+ * 남는다. 승계할 만료가 없으면 재발송을 막는다.
  */
 @Slf4j
 @Component
@@ -85,10 +89,10 @@ public class TicketIssuedTextRebuilder implements NotificationTextRebuilder {
         return messageComposer.smsText(
                 new TicketIssueResult(
                         orderId,
-                        text(payload, "orderNumber"),
+                        requiredOrderNumber(payload),
                         notification.getRecipientUserId(),
                         // 매수만 쓰이므로 ID 목록은 개수만 맞춘 빈 값이면 된다.
-                        Collections.nCopies(ticketCount(payload), 0L),
+                        Collections.nCopies(requiredTicketCount(payload), 0L),
                         newTokenValue,
                         notification.getRecipientPhoneNumber()));
     }
@@ -108,8 +112,24 @@ public class TicketIssuedTextRebuilder implements NotificationTextRebuilder {
             throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
         }
 
-        Instant expiresAt = alive.get(0).getExpiresAt();
         Instant now = Instant.now();
+
+        // 물려받을 만료는 <b>아직 살아 있는</b> 토큰의 것이어야 한다.
+        // status 가 ACTIVE 라도 expires_at 이 지난 행이 남아 있을 수 있다 — 만료는 시각으로
+        // 판정되지 상태 컬럼이 자동으로 바뀌지 않는다. 그걸 그대로 승계하면 이미 죽은 링크를
+        // 새 토큰으로 발급해 보내고, 알림은 SENT 로 남는다. 받는 사람만 안 열린다.
+        Instant expiresAt =
+                alive.stream()
+                        .map(TicketAccessToken::getExpiresAt)
+                        .filter(now::isBefore)
+                        .max(Instant::compareTo)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE));
+
+        // 폐기는 만료 여부와 무관하게 전부 한다. 만료된 것을 또 끊어도 손해가 없고,
+        // 남겨 두면 "살아 있는 링크는 하나" 규칙이 흐려진다.
         alive.forEach(token -> token.revoke(now));
 
         String tokenValue = accessTokenGenerator.generate();
@@ -134,8 +154,27 @@ public class TicketIssuedTextRebuilder implements NotificationTextRebuilder {
         return value == null || value.isNull() ? null : value.asString();
     }
 
-    private int ticketCount(JsonNode payload) {
+    /** 없으면 본문을 만들 수 없는 값. */
+    private String requiredOrderNumber(JsonNode payload) {
+        String value = text(payload, "orderNumber");
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
+        }
+        return value;
+    }
+
+    /**
+     * 발권 매수. <b>0 이면 보내지 않는다.</b>
+     *
+     * <p>"(0매)" 라고 적힌 발권 완료 문자는 받는 사람에게 아무 의미가 없고, 링크를 열면 티켓이 있다.
+     * payload 가 깨졌다는 신호이므로 막는다.
+     */
+    private int requiredTicketCount(JsonNode payload) {
         JsonNode value = payload.get("ticketCount");
-        return value == null || value.isNull() ? 0 : value.asInt();
+        int count = value == null || value.isNull() ? 0 : value.asInt();
+        if (count <= 0) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
+        }
+        return count;
     }
 }

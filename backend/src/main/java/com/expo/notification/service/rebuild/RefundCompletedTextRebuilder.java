@@ -43,9 +43,29 @@ public class RefundCompletedTextRebuilder implements NotificationTextRebuilder {
         return messageComposer.smsText(
                 new RefundCompletedEvent(
                         notification.getReferenceId(),
-                        text(payload, "orderNumber"),
-                        amount(payload),
+                        // 주문번호와 금액이 이 문자의 전부다. 하나라도 없으면 보낼 이유가 없다.
+                        required(payload, "orderNumber"),
+                        requiredAmount(payload),
+                        // 사유는 원래 없을 수 있다.
                         text(payload, "reason")));
+    }
+
+    /** 없으면 본문을 만들 수 없는 값. */
+    private String required(JsonNode payload, String field) {
+        String value = text(payload, field);
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
+        }
+        return value;
+    }
+
+    /** 금액이 없으면 "환불금액 0원" 이 나간다. 받는 사람을 혼란시키느니 막는다. */
+    private BigDecimal requiredAmount(JsonNode payload) {
+        BigDecimal value = amount(payload);
+        if (value == null) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
+        }
+        return value;
     }
 
     private JsonNode parse(Notification notification) {

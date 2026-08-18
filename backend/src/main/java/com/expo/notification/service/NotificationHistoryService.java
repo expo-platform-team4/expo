@@ -25,11 +25,15 @@ public class NotificationHistoryService {
 
     private final NotificationHistoryMapper historyMapper;
     private final PhoneNumberMasker phoneNumberMasker;
+    private final NotificationTextRebuilders textRebuilders;
 
     public NotificationHistoryService(
-            NotificationHistoryMapper historyMapper, PhoneNumberMasker phoneNumberMasker) {
+            NotificationHistoryMapper historyMapper,
+            PhoneNumberMasker phoneNumberMasker,
+            NotificationTextRebuilders textRebuilders) {
         this.historyMapper = historyMapper;
         this.phoneNumberMasker = phoneNumberMasker;
+        this.textRebuilders = textRebuilders;
     }
 
     /**
@@ -107,10 +111,22 @@ public class NotificationHistoryService {
      * </ul>
      *
      * <p>번호가 없으면 {@code FAILED} 라도 못 보낸다. 상태만 보고 판단하면 화면에 눌러도 안 되는 버튼이 생긴다.
+     *
+     * <p>본문을 다시 만들 수 있는 템플릿인지도 본다. 재구성기가 없는 템플릿은 재발송 API 가 409 로
+     * 거절하므로, 목록에서 미리 걸러야 눌러도 안 되는 버튼이 안 생긴다.
+     *
+     * <h2>여기서 걸러지지 않는 실패가 하나 남는다</h2>
+     *
+     * 발권 알림은 <b>살아 있는 접근 토큰이 있어야</b> 재발송된다(만료를 물려받아야 하므로). 그 확인은
+     * 알림마다 토큰을 한 번씩 조회해야 해서, 100건짜리 목록이 쿼리 100번이 된다. 목록에서는 하지
+     * 않고 재발송 시점에 판단한다.
+     *
+     * <p>그래서 {@code retryable} 은 <b>"재발송을 시도할 수 있다"</b>는 뜻이지 "성공한다" 는 뜻이 아니다.
      */
     private boolean retryable(NotificationHistoryRow row) {
         return NotificationStatus.FAILED.name().equals(row.status())
                 && row.recipientPhoneNumber() != null
-                && !row.recipientPhoneNumber().isBlank();
+                && !row.recipientPhoneNumber().isBlank()
+                && textRebuilders.supports(row.templateCode());
     }
 }

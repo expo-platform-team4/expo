@@ -27,12 +27,17 @@ class NotificationHistoryServiceTest {
 
     private final NotificationHistoryMapper historyMapper =
             Mockito.mock(NotificationHistoryMapper.class);
+    private final NotificationTextRebuilders textRebuilders =
+            Mockito.mock(NotificationTextRebuilders.class);
 
     private NotificationHistoryService service;
 
     @BeforeEach
     void setUp() {
-        service = new NotificationHistoryService(historyMapper, new PhoneNumberMasker());
+        service =
+                new NotificationHistoryService(
+                        historyMapper, new PhoneNumberMasker(), textRebuilders);
+        when(textRebuilders.supports("EXPO_CANCELED")).thenReturn(true);
         when(historyMapper.countSearch(any(), any(), any(), any(), any(), any())).thenReturn(1L);
     }
 
@@ -126,6 +131,33 @@ class NotificationHistoryServiceTest {
 
         verify(historyMapper)
                 .search(any(), any(), any(), any(), any(), any(), eq(100), eq(214748364700L));
+    }
+
+    /**
+     * 7자리 번호는 <b>통째로</b> 가린다.
+     *
+     * <p>앞 3 + 뒤 4 로 가리면 {@code 0101234} → {@code 010****1234} 가 되는데, 별표만 끼었을 뿐
+     * 원본 숫자가 하나도 안 가려진다. 가린 척하고 원문을 내보내는 쪽이 더 나쁘다.
+     */
+    @Test
+    void fullyMasksShortPhoneNumber() {
+        given(row("FAILED", "0101234"));
+
+        assertThat(search().items().get(0).recipientPhoneNumber()).isEqualTo("***");
+    }
+
+    /**
+     * 본문을 다시 만들 수 없는 템플릿은 재발송할 수 없다.
+     *
+     * <p>여기서 안 걸러 내면 목록은 {@code retryable=true} 인데 재발송 API 가 409 를 낸다 —
+     * 눌러도 안 되는 버튼이다.
+     */
+    @Test
+    void unknownTemplateIsNotRetryable() {
+        when(textRebuilders.supports("EXPO_CANCELED")).thenReturn(false);
+        given(row("FAILED", "01045770340"));
+
+        assertThat(search().items().get(0).retryable()).isFalse();
     }
 
     /** 페이지 크기는 상한을 넘지 못하고, 음수 페이지는 0 으로 접힌다. */

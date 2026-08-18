@@ -14,13 +14,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class PhoneNumberMasker {
 
-    /** 앞 3 + 뒤 4 를 남기려면 최소 7자리가 필요하다. */
-    private static final int MIN_LENGTH = 7;
+    /**
+     * 앞 3 + 뒤 4 를 가리고도 <b>실제로 가려지는 자리가 남으려면</b> 8자리 이상이어야 한다.
+     *
+     * <p>7자리를 가리면 {@code 0101234} → {@code 010****1234} 가 되는데, 별표만 끼었을 뿐 <b>원본
+     * 숫자가 하나도 안 가려진다.</b> 가린 척하고 원문을 그대로 내보내는 셈이라 더 나쁘다. 그래서 7자리
+     * 이하는 통째로 가린다.
+     */
+    private static final int MIN_MASKABLE_LENGTH = 8;
 
     private static final String FULLY_MASKED = "***";
 
     public String mask(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.length() < MIN_LENGTH) {
+        if (phoneNumber == null || phoneNumber.length() < MIN_MASKABLE_LENGTH) {
             return phoneNumber == null ? null : FULLY_MASKED;
         }
         return phoneNumber.substring(0, 3)

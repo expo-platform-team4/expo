@@ -40,8 +40,20 @@ public class ExpoCanceledTextRebuilder implements NotificationTextRebuilder {
         return messageComposer.smsText(
                 new ExpoCanceledEvent(
                         notification.getReferenceId(),
-                        text(payload, "expoTitle"),
+                        // 박람회명이 없으면 "[expo] 박람회가 취소되었습니다. (빈 줄)" 이 나간다.
+                        // 어느 박람회인지 없는 안내는 안 보내는 편이 낫다.
+                        required(payload, "expoTitle"),
+                        // 사유는 원래 없을 수 있다. 본문에서 생략된다.
                         text(payload, "reason")));
+    }
+
+    /** 없으면 본문을 만들 수 없는 값. 빈 자리를 채워 보내는 것보다 막는 편이 낫다. */
+    private String required(JsonNode payload, String field) {
+        String value = text(payload, field);
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_REBUILDABLE);
+        }
+        return value;
     }
 
     private JsonNode parse(Notification notification) {
