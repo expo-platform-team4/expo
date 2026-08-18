@@ -14,6 +14,13 @@ BEGIN
         RETURN NEW;
     END IF;
 
+    -- 같은 홀을 대상으로 하는 확정 시도를 직렬화한다. 잠금 없이 EXISTS 만 확인하면, 홀 전체
+    -- 예약과 그 안의 구역 예약이 동시에 들어올 때 서로의 미확정(커밋 전) 행을 보지 못해 계층
+    -- 충돌 검사를 둘 다 통과해버릴 수 있다(고전적인 TOCTOU 경쟁 상태).
+    IF NEW.venue_hall_id IS NOT NULL THEN
+        PERFORM 1 FROM venue_halls WHERE id = NEW.venue_hall_id FOR UPDATE;
+    END IF;
+
     IF NEW.venue_hall_id IS NOT NULL AND NEW.venue_zone_id IS NULL THEN
         -- 홀 전체 예약: 같은 홀의 구역 단위 예약과 겹치면 안 된다.
         IF EXISTS (
