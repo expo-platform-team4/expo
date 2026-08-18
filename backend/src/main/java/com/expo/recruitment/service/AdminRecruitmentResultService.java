@@ -30,7 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 관리자용 모집 결과 생성·조회·전달·직권 취소. */
+/** 관리자용 모집 결과 생성·조회·직권 취소. 결과는 생성과 동시에 주최자에게 전달된다. */
 @Slf4j
 @Service
 public class AdminRecruitmentResultService {
@@ -63,7 +63,7 @@ public class AdminRecruitmentResultService {
     /**
      * 모집 결과 생성. 마감된 공고의 결제 완료(SUBMITTED) 신청서 중 배정이 살아있는(ASSIGNED) 건만 집계한다.
      *
-     * <p>공고당 결과는 하나만 생성할 수 있다.
+     * <p>공고당 결과는 하나만 생성할 수 있다. 생성 즉시 주최자에게 전달(DELIVERED)된다.
      */
     @Transactional
     public RecruitmentResultResponse generate(Long recruitmentNoticeId) {
@@ -113,6 +113,7 @@ public class AdminRecruitmentResultService {
                         .map(RecruitmentResultItem::getBoothAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
         result.applyAggregate(items.size(), items.size(), totalAmount);
+        result.deliver();
 
         return recruitmentResultConverter.toResponse(result, items);
     }
@@ -171,17 +172,6 @@ public class AdminRecruitmentResultService {
                         result ->
                                 recruitmentResultConverter.toResponse(
                                         result, getItems(result.getId())));
-    }
-
-    /** 주최자에게 결과 전달. */
-    @Transactional
-    public RecruitmentResultResponse deliver(Long resultId) {
-        RecruitmentResult result = getEntityForUpdate(resultId);
-        if (result.getStatus() != RecruitmentResultStatus.GENERATED) {
-            throw new BusinessException(ErrorCode.RECRUITMENT_RESULT_NOT_DELIVERABLE);
-        }
-        result.deliver();
-        return recruitmentResultConverter.toResponse(result, getItems(result.getId()));
     }
 
     /** 관리자 직권 취소. 이미 확정·박람회 반영된 결과는 취소할 수 없다. */

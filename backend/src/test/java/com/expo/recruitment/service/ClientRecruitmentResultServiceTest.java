@@ -46,7 +46,8 @@ class ClientRecruitmentResultServiceTest {
 
     @Test
     void getMineRejectsWhenNotOwned() {
-        when(recruitmentResultRepository.findByIdAndHostClientId(RESULT_ID, HOST_CLIENT_ID))
+        when(recruitmentResultRepository.findByIdAndHostClientIdForUpdate(
+                        RESULT_ID, HOST_CLIENT_ID))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getMine(RESULT_ID, HOST_CLIENT_ID))
@@ -56,21 +57,7 @@ class ClientRecruitmentResultServiceTest {
     }
 
     @Test
-    void confirmRejectsWhenNotDelivered() {
-        RecruitmentResult result =
-                RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        when(recruitmentResultRepository.findByIdAndHostClientIdForUpdate(
-                        RESULT_ID, HOST_CLIENT_ID))
-                .thenReturn(Optional.of(result));
-
-        assertThatThrownBy(() -> service.confirm(RESULT_ID, HOST_CLIENT_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.RECRUITMENT_RESULT_NOT_CONFIRMABLE);
-    }
-
-    @Test
-    void confirmSucceedsWhenDelivered() {
+    void getMineAutoConfirmsWhenDelivered() {
         RecruitmentResult result =
                 RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
         result.deliver();
@@ -78,8 +65,24 @@ class ClientRecruitmentResultServiceTest {
                         RESULT_ID, HOST_CLIENT_ID))
                 .thenReturn(Optional.of(result));
 
-        var response = service.confirm(RESULT_ID, HOST_CLIENT_ID);
+        var response = service.getMine(RESULT_ID, HOST_CLIENT_ID);
 
         assertThat(response.status()).isEqualTo(RecruitmentResultStatus.CONFIRMED);
+    }
+
+    @Test
+    void getMineDoesNotChangeStatusWhenNotDelivered() {
+        RecruitmentResult result =
+                RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
+        result.deliver();
+        result.confirmByHost();
+        result.markUsedForExpo();
+        when(recruitmentResultRepository.findByIdAndHostClientIdForUpdate(
+                        RESULT_ID, HOST_CLIENT_ID))
+                .thenReturn(Optional.of(result));
+
+        var response = service.getMine(RESULT_ID, HOST_CLIENT_ID);
+
+        assertThat(response.status()).isEqualTo(RecruitmentResultStatus.USED_FOR_EXPO);
     }
 }
