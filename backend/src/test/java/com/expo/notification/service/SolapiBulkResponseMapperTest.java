@@ -6,6 +6,7 @@ import com.expo.notification.dto.MessageSendResult;
 import com.expo.notification.dto.SmsMessage;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 대량 발송 응답 매핑을 못박는다.
@@ -42,7 +43,8 @@ class SolapiBulkResponseMapperTest {
 
     private static final String GROUP_ID = "G4V20260813185432L0UOCCFAV9BAHIX";
 
-    private final SolapiBulkResponseMapper mapper = new SolapiBulkResponseMapper();
+    private final SolapiBulkResponseMapper mapper =
+            new SolapiBulkResponseMapper(new ObjectMapper());
 
     private SmsMessage message(String to) {
         return new SmsMessage(to, "본문");
@@ -146,5 +148,26 @@ class SolapiBulkResponseMapperTest {
 
         assertThat(results.get(0).responsePayload()).contains("groupInfo");
         assertThat(results.get(0).requestPayload()).isEqualTo("{\"count\":1}");
+    }
+
+    /**
+     * 대행사가 센 실패 건수와 우리가 짝지은 건수가 다를 수 있다.
+     *
+     * <p>짝짓기 키가 <b>수신번호 문자열</b>이라, 대행사가 번호를 정규화해 돌려주면 우리 쪽 키와 어긋난다.
+     * 하이픈이 섞인 번호를 그대로 보냈을 때가 그렇다. 그러면 실패한 건이 조용히 성공으로 기록된다.
+     *
+     * <p>결과를 바꾸지는 않는다 — 응답만 보고는 어느 쪽이 맞는지 정할 수 없어서다. 대신 검산이 어긋난
+     * 사실을 남긴다. 여기서 확인하는 것은 <b>그 상황에서도 터지지 않고 길이를 지킨다</b>는 것이다.
+     */
+    @Test
+    void survivesWhenRecipientKeyDoesNotMatchReportedCount() {
+        // 하이픈을 넣어 보냈는데 대행사는 하이픈 없이 돌려준 상황
+        List<MessageSendResult> results =
+                mapper.map(List.of(message("010-4577-0340")), REAL_RESPONSE, "{}");
+
+        assertThat(results).hasSize(1);
+        // 짝을 못 찾았으므로 성공으로 본다. 이것이 현재 계약이다
+        assertThat(results.get(0).success()).isTrue();
+        assertThat(results.get(0).providerMessageId()).isEqualTo(GROUP_ID);
     }
 }

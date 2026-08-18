@@ -2,9 +2,6 @@ package com.expo.notification.service;
 
 import com.expo.notification.dto.MessageSendResult;
 import com.expo.notification.dto.SmsMessage;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -27,6 +24,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Solapi 로 실제 SMS 를 보낸다. {@code app.sms.provider=solapi} 일 때만 빈으로 만들어진다.
@@ -73,12 +74,15 @@ public class SolapiSmsSender implements SmsSender {
     private final String apiSecret;
     private final String senderNumber;
     private final SecureRandom secureRandom = new SecureRandom();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final SolapiBulkResponseMapper bulkResponseMapper;
 
     public SolapiSmsSender(
-            SolapiProperties properties, SolapiBulkResponseMapper bulkResponseMapper) {
+            SolapiProperties properties,
+            SolapiBulkResponseMapper bulkResponseMapper,
+            ObjectMapper objectMapper) {
         this.bulkResponseMapper = bulkResponseMapper;
+        this.objectMapper = objectMapper;
         this.apiKey = required(properties.getApiKey(), "SOLAPI_SMS_API_PUBLIC_KEY");
         this.apiSecret = required(properties.getApiSecret(), "SOLAPI_SMS_API_SECRET_KEY");
         this.senderNumber = required(properties.getSenderNumber(), "SOLAPI_SENDER_NUMBER");
@@ -174,8 +178,8 @@ public class SolapiSmsSender implements SmsSender {
         try {
             JsonNode field = objectMapper.readTree(responseBody).get(fieldName);
             return field == null || field.isNull() ? null : field.asText();
-        } catch (JsonProcessingException e) {
-            log.warn("Solapi 응답을 파싱하지 못했습니다. 원문은 이력에 그대로 남습니다.");
+        } catch (JacksonException e) {
+            log.warn("Solapi 응답을 파싱하지 못했습니다. 원문은 이력에 그대로 남습니다.", e);
             return null;
         }
     }
@@ -255,18 +259,25 @@ public class SolapiSmsSender implements SmsSender {
 
     /** 대량 요청 이력용 JSON. 수신번호를 전부 나열하지 않고 건수만 남긴다. */
     private String toJsonForRecord(List<SmsMessage> messages) {
-        return "{\"from\":\"%s\",\"count\":%d}".formatted(senderNumber, messages.size());
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("from", senderNumber);
+        node.put("count", messages.size());
+        return node.toString();
     }
 
-    /** 요청 이력용 JSON. 본문은 길고 링크 토큰이 들어 있어 길이만 남긴다. */
+    /**
+     * 요청 이력용 JSON. 본문은 길고 링크 토큰이 들어 있어 길이만 남긴다.
+     *
+     * <p><b>문자열을 이어 붙이지 않는다.</b> 이 값이 들어가는 {@code message_histories.request_payload}
+     * 는 JSONB 라, 수신번호에 따옴표가 하나만 섞여도 INSERT 가 깨지고 트랜잭션이 통째로 롤백된다.
+     * 수신번호 형식 검증이 {@code @NotBlank @Size} 뿐이라 막아 주지 않는다.
+     */
     private String toJsonForRecord(String to, String text) {
-        return "{\"to\":\""
-                + to
-                + "\",\"from\":\""
-                + senderNumber
-                + "\",\"textLength\":"
-                + text.length()
-                + "}";
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("to", to);
+        node.put("from", senderNumber);
+        node.put("textLength", text.length());
+        return node.toString();
     }
 
     private String authorizationHeader() {

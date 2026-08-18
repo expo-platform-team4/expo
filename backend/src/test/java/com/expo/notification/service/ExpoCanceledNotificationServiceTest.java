@@ -11,12 +11,12 @@ import com.expo.expo.event.ExpoCanceledEvent;
 import com.expo.notification.dto.ExpoCancelTarget;
 import com.expo.notification.dto.NotificationRequest;
 import com.expo.notification.repository.NotificationRecipientMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 박람회 취소 안내를 못박는다.
@@ -42,7 +42,10 @@ class ExpoCanceledNotificationServiceTest {
     void setUp() {
         service =
                 new ExpoCanceledNotificationService(
-                        guard, recipientMapper, dispatcher, new ExpoCanceledMessageComposer());
+                        guard,
+                        recipientMapper,
+                        dispatcher,
+                        new ExpoCanceledMessageComposer(new ObjectMapper()));
         when(guard.claim(anyLong(), any(), any())).thenReturn(true);
     }
 

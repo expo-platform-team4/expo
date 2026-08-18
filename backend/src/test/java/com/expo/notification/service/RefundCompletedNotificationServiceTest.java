@@ -14,13 +14,13 @@ import com.expo.notification.repository.MessageHistoryRepository;
 import com.expo.notification.repository.NotificationRecipientMapper;
 import com.expo.notification.repository.NotificationRepository;
 import com.expo.refund.event.RefundCompletedEvent;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 환불 알림 규칙을 못박는다.
@@ -51,7 +51,7 @@ class RefundCompletedNotificationServiceTest {
                         new NotificationDispatcher(
                                 notificationRepository, messageHistoryRepository, smsSender),
                         new NotificationRecipientReader(recipientMapper),
-                        new RefundCompletedMessageComposer());
+                        new RefundCompletedMessageComposer(new ObjectMapper()));
 
         when(notificationRepository.save(any()))
                 .thenAnswer(call -> call.<Notification>getArgument(0));

@@ -59,7 +59,12 @@ public class OneShotNotificationGuard {
      */
     public boolean claim(Long expoId, String templateCode, String referenceType) {
         // ① 먼저 잠근다. 두 번째 요청은 여기서 기다렸다가 ②에서 걸린다.
-        recipientMapper.lockExpo(expoId);
+        Integer locked = recipientMapper.lockExpo(expoId);
+        if (locked == null) {
+            // 잠글 행이 없었다는 뜻이라 ②가 무방비다. 대상도 0명이라 실해는 없지만,
+            // 있어야 할 박람회가 없는 상황이므로 조용히 넘기지 않는다.
+            log.warn("잠글 박람회 행이 없다. 중복 방어 없이 진행한다 expoId={}", expoId);
+        }
 
         // ② 잠금을 얻은 뒤에 읽어야 앞선 요청의 결과가 보인다 (READ COMMITTED 전제).
         boolean alreadySent =

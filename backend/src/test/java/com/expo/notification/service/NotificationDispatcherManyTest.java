@@ -1,7 +1,6 @@
 package com.expo.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -188,21 +187,25 @@ class NotificationDispatcherManyTest {
     }
 
     /**
-     * 발송기가 계약을 어겨 길이가 다르면 <b>멈춘다.</b>
+     * 발송기가 계약을 어겨 길이가 다르면 <b>멈추지 않는다.</b>
      *
-     * <p>조용히 넘어가면 짝이 밀린 채로 기록되고, 나중에 "왜 이 사람이 실패로 남았지" 를 추적할 수 없다.
+     * <p>원래는 {@code IllegalStateException} 을 던졌다. 그런데 여기 도달했다는 건 <b>문자가 이미
+     * 나갔다</b>는 뜻이다. 예외를 던지면 트랜잭션이 롤백되면서 알림 행까지 전부 사라진다 — 나간 문자의
+     * 기록이 하나도 안 남는 쪽이 더 나쁘다.
+     *
+     * <p>짝이 맞는 데까지 반영하고, 결과를 못 받은 몫은 실패로 남긴다.
      */
     @Test
-    void failsLoudlyWhenResultCountDiffers() {
+    void keepsRecordsWhenResultCountDiffers() {
         givenSendResults(ok()); // 2건 보냈는데 1건만 돌아옴
 
-        assertThatThrownBy(
-                        () ->
-                                dispatcher.dispatchMany(
-                                        List.of(request("01011112222"), request("01033334444"))))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("요청=2")
-                .hasMessageContaining("결과=1");
+        dispatcher.dispatchMany(List.of(request("01011112222"), request("01033334444")));
+
+        List<Notification> saved = savedNotifications();
+        assertThat(saved).hasSize(2);
+        assertThat(saved.get(0).getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(saved.get(1).getStatus()).isEqualTo(NotificationStatus.FAILED);
+        assertThat(saved.get(1).getLastError()).contains("RESULT_MISSING");
     }
 
     private MessageSendResult ok() {

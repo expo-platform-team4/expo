@@ -2,6 +2,8 @@ package com.expo.notification.service;
 
 import com.expo.expo.event.ExpoCanceledEvent;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * 박람회 취소 안내 SMS 의 본문과 저장용 payload 를 만든다.
@@ -14,6 +16,12 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ExpoCanceledMessageComposer {
+
+    private final ObjectMapper objectMapper;
+
+    public ExpoCanceledMessageComposer(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * SMS 본문.
@@ -35,22 +43,20 @@ public class ExpoCanceledMessageComposer {
     /**
      * {@code notifications.payload} 에 저장할 템플릿 변수.
      *
-     * <p>박람회명과 사유는 사람이 입력한 값이라 <b>따옴표·개행을 이스케이프</b>해야 한다. 안 하면 JSONB
-     * 컬럼에 넣는 순간 파싱이 깨지고, <b>알림이 통째로 사라진다.</b> 환불 알림에서 같은 문제를 다뤘다.
+     * <p>박람회명과 사유는 사람이 입력한 값이라 <b>직렬화를 손으로 하지 않는다.</b> JSONB 컬럼이라 깨진
+     * JSON 은 INSERT 를 실패시키고 알림이 통째로 사라진다. 치환 목록을 손으로 채우면 탭·캐리지리턴 같은
+     * 제어문자가 빠진다 — 실제로 빠져 있었다. Jackson 에 맡긴다.
      */
     public String payloadJson(ExpoCanceledEvent event) {
-        return "{\"expoId\":%d,\"expoTitle\":\"%s\",\"reason\":%s}"
-                .formatted(
-                        event.expoId(),
-                        escape(event.expoTitle()),
-                        isBlank(event.reason()) ? "null" : "\"" + escape(event.reason()) + "\"");
-    }
-
-    /** JSON 문자열 안에서 의미를 갖는 문자만 최소로 처리한다. */
-    private String escape(String value) {
-        return value == null
-                ? ""
-                : value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("expoId", event.expoId());
+        node.put("expoTitle", nullToEmpty(event.expoTitle()));
+        if (isBlank(event.reason())) {
+            node.putNull("reason");
+        } else {
+            node.put("reason", event.reason());
+        }
+        return node.toString();
     }
 
     private String nullToEmpty(String value) {
