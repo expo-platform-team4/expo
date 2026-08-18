@@ -37,4 +37,21 @@ public interface NotificationRecipientMapper {
      * 사라진다. 그 판단은 발송기가 하고 {@code CANCELED} 로 남긴다.
      */
     List<ExpoCancelTarget> findExpoCancelTargets(@Param("expoId") Long expoId);
+
+    /**
+     * 박람회 행을 잠근다. <b>취소 안내를 한 번만 보내기 위한 것</b>이다.
+     *
+     * <p>"이미 보냈나" 를 세어 보고 판단하는 check-then-act 라, 잠그지 않으면 두 요청이 나란히 "아직
+     * 안 보냄" 을 보고 양쪽 다 보낸다. 발권·체크인에서 같은 구조를 이미 두 번 겪었다.
+     *
+     * <p>여기서만 <b>DB 제약으로 대신할 수 없다.</b> 취소 안내는 수신자마다 1행이라
+     * {@code (template, type, expoId)} 가 N행 있는 것이 정상이고, 그래서 UNIQUE 를 걸 수 없다.
+     * 잠금이 유일한 수단이다.
+     *
+     * <p><b>호출자의 트랜잭션 안에서 불러야 한다.</b> 잠금은 트랜잭션이 끝나면 풀리므로, 별도 트랜잭션에서
+     * 잠그면 돌아오는 순간 이미 풀려 있다.
+     *
+     * @return 박람회가 있으면 {@code 1}, 없으면 {@code null}
+     */
+    Integer lockExpo(@Param("expoId") Long expoId);
 }

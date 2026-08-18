@@ -54,4 +54,17 @@
         ORDER BY COALESCE(u.phone_number, g.phone_number, 'ORDER:' || o.id), o.id
     </select>
 
+    <!--
+      취소 안내를 한 번만 보내기 위해 박람회 행을 잠근다.
+
+      "이미 보냈나" 검사와 알림 저장 사이를 직렬화하는 것이 목적이다. 발권에서 주문 행을 잠근 것과
+      같은 이유이고, 잠금을 얻은 뒤 다시 읽어야 하므로 READ COMMITTED 를 전제한다.
+
+      expos 는 남의 도메인 테이블이지만 읽기만 한다. 잠금 대상으로 이 행을 고른 이유는
+      "박람회 취소" 라는 사건의 단위가 곧 박람회이기 때문이다.
+    -->
+    <select id="lockExpo" resultType="java.lang.Integer">
+        SELECT 1 FROM expos WHERE id = #{expoId} FOR UPDATE
+    </select>
+
 </mapper>
