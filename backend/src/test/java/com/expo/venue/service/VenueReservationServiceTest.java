@@ -235,6 +235,26 @@ class VenueReservationServiceTest {
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
     }
 
+    /**
+     * 홀 전체 예약과 그 아래 구역 단위 예약이 겹칠 때 DB 트리거({@code
+     * trg_venue_reservation_hierarchy_conflict})가 던지는 위반도 기간 중복 오류로 변환돼야 한다.
+     */
+    @Test
+    void createTranslatesHierarchyConflictToPeriodConflict() {
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueReservationRepository.saveAndFlush(any()))
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "ERROR: venue_reservation_hierarchy_conflict"));
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, requestWith(null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
+    }
+
     /** 기간 중복이 아닌 다른 무결성 위반은 그대로 다시 던져야 한다 (원인이 가려지면 안 된다). */
     @Test
     void createRethrowsUnrelatedConstraintViolation() {

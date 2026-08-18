@@ -9,4 +9,6 @@ public interface VenueZoneRepository extends JpaRepository<VenueZone, Long> {
     boolean existsByHallIdAndZoneCode(Long hallId, String zoneCode);
 
     boolean existsByIdAndHallId(Long id, Long hallId);
+
+    long countByHallId(Long hallId);
 }

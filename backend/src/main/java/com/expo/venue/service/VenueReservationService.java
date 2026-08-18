@@ -51,8 +51,10 @@ public class VenueReservationService {
     /**
      * 모집공고 생성 요청 경로의 확정 장소 예약 생성.
      *
-     * <p>같은 장소·기간 중복은 DB의 EXCLUDE 제약({@code ex_venue_reservations_period})이 최종적으로 막는다. 여기서는 빠른
-     * 실패를 위해 기간 유효성만 먼저 검증한다.
+     * <p>같은 (장소, 홀, 구역) 계층의 기간 중복은 DB의 EXCLUDE 제약({@code ex_venue_reservations_period})이,
+     * 홀 전체 예약과 그 아래 구역 단위 예약이 겹치는 계층 간 충돌은 트리거({@code
+     * trg_venue_reservation_hierarchy_conflict})가 최종적으로 막는다. 여기서는 빠른 실패를 위해 기간 유효성만 먼저
+     * 검증한다.
      */
     @Transactional
     public VenueReservationResponse create(
@@ -87,7 +89,9 @@ public class VenueReservationService {
             return venueReservationConverter.toResponse(saved);
         } catch (DataIntegrityViolationException e) {
             String cause = e.getMostSpecificCause().getMessage();
-            if (cause != null && cause.contains("ex_venue_reservations_period")) {
+            if (cause != null
+                    && (cause.contains("ex_venue_reservations_period")
+                            || cause.contains("venue_reservation_hierarchy_conflict"))) {
                 throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
             }
             log.warn(

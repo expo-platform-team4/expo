@@ -31,8 +31,10 @@ public class VenueHallService {
     /**
      * 장소 안에 홀 등록. 같은 장소 안에서 홀 코드가 중복될 수 없다.
      *
-     * <p>사전 중복 검사만으로는 동시 요청 사이의 중복 삽입을 막지 못해, DB의 {@code uq_venue_halls_code} 고유 제약을 최종
-     * 방어선으로 삼는다.
+     * <p>킨텍스 실제 구조(제1·제2전시장)에 맞춰 한 장소에는 홀을 2개까지만 등록할 수 있다.
+     *
+     * <p>사전 검사만으로는 동시 요청 사이의 중복·초과 삽입을 막지 못해, DB의 {@code uq_venue_halls_code} 고유 제약과
+     * {@code trg_venue_hall_limit} 트리거를 최종 방어선으로 삼는다.
      */
     @Transactional
     public VenueHallResponse create(Long venueId, CreateVenueHallRequest request) {
@@ -41,6 +43,9 @@ public class VenueHallService {
         }
         if (venueHallRepository.existsByVenueIdAndHallCode(venueId, request.hallCode())) {
             throw new BusinessException(ErrorCode.DUPLICATE_VENUE_HALL_CODE);
+        }
+        if (venueHallRepository.countByVenueId(venueId) >= 2) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_LIMIT_EXCEEDED);
         }
         VenueHall hall =
                 VenueHall.create(
@@ -57,6 +62,9 @@ public class VenueHallService {
             String cause = e.getMostSpecificCause().getMessage();
             if (cause != null && cause.contains("uq_venue_halls_code")) {
                 throw new BusinessException(ErrorCode.DUPLICATE_VENUE_HALL_CODE);
+            }
+            if (cause != null && cause.contains("venue_hall_limit_exceeded")) {
+                throw new BusinessException(ErrorCode.VENUE_HALL_LIMIT_EXCEEDED);
             }
             throw e;
         }
