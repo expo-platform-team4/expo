@@ -16,8 +16,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <p>다만 이쪽은 <b>대상이 N명</b>이라 무게가 다르다. 1,000명 기준으로 잡았고, 그 근거와 한계는
  * {@code expo-docs/07-SCALE.md} 에 있다.
  *
+ * <p>커밋 뒤에 도는 만큼 <b>대상 조회가 최종 상태를 본다.</b> 취소 처리가 티켓을 무효화했다면
+ * 리스너에게는 이미 무효화된 티켓만 보인다. 그래서 대상 조회는 {@code INVALIDATED} 를 대상에
+ * 포함한다 — 발행 순서로는 해결되지 않는 문제라 조회 쪽에서 견딘다.
+ *
  * <p><b>아직 이 이벤트를 발행하는 코드가 없다.</b> 박람회 도메인이 0줄이다. 발행 시점의 요구사항은
- * {@link ExpoCanceledEvent} 주석에 적어 뒀다 — 특히 <b>티켓을 무효화하기 전에</b> 발행해야 한다.
+ * {@link ExpoCanceledEvent} 주석에 적어 뒀다.
  */
 @Component
 public class ExpoCanceledEventListener {

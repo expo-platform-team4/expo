@@ -33,8 +33,16 @@
       번호가 NULL 인 대상까지 하나로 뭉쳐지면 안 된다. 번호가 없는 사람이 여럿이면 각각
       "보내려 했으나 번호가 없었다"(CANCELED) 로 남아야 하므로, 그때는 주문 단위로 갈라 둔다.
 
-      status 조건 - 이미 취소·무효화된 티켓은 뺀다. 한 주문의 티켓 중 하나라도 살아 있으면 남는다.
-      NOT EXISTS  - 이미 환불된 주문은 뺀다. 환불 완료 문자를 받은 사람에게 또 보내면 안 된다.
+      status 조건 - CANCELED 만 뺀다. INVALIDATED 는 포함한다.
+      처음에는 IN ('ISSUED','CHECKED_IN') 이었는데, 그러면 이 알림이 절대 나가지 않는다.
+      리스너가 AFTER_COMMIT 이라 박람회 취소 트랜잭션이 끝난 뒤에 이 조회가 돈다. 취소 처리가
+      티켓을 INVALIDATED 로 바꿨다면 그 시점에는 이미 반영돼 있어 대상이 0명이 된다.
+      발행 순서를 아무리 조정해도 해결되지 않는다 - AFTER_COMMIT 은 커밋 뒤에 발사되기 때문이다.
+      CANCELED(구매자가 개별 취소한 티켓)만 빼고, 취소로 무효화된 티켓은 대상으로 남긴다.
+
+      NOT EXISTS  - 환불이 COMPLETED 인 주문만 뺀다.
+      행의 존재만 보면 REQUESTED·PROCESSING·FAILED 도 걸러진다. 특히 FAILED 는 돈을 못 돌려받은
+      사람인데 취소 안내까지 못 받게 된다. 빼려던 대상은 '환불 완료 문자를 이미 받은 사람' 이다.
     -->
     <select id="findExpoCancelTargets" resultType="com.expo.notification.dto.ExpoCancelTarget">
         SELECT DISTINCT ON (COALESCE(u.phone_number, g.phone_number, 'ORDER:' || o.id))
@@ -47,9 +55,10 @@
         LEFT JOIN users             u ON u.id = o.member_user_id
         LEFT JOIN guest_order_infos g ON g.ticket_order_id = o.id
         WHERE it.expo_id = #{expoId}
-          AND it.status IN ('ISSUED', 'CHECKED_IN')
+          AND it.status &lt;&gt; 'CANCELED'
           AND NOT EXISTS (
-              SELECT 1 FROM ticket_refunds r WHERE r.ticket_order_id = o.id
+              SELECT 1 FROM ticket_refunds r
+              WHERE r.ticket_order_id = o.id AND r.status = 'COMPLETED'
           )
         ORDER BY COALESCE(u.phone_number, g.phone_number, 'ORDER:' || o.id), o.id
     </select>
