@@ -127,9 +127,17 @@ public class NotificationDispatcher {
      * 왕복이 한 건에 약 1초라 낱건으로 돌리면 50명만 넘어도 호출부가 1분 가까이 묶인다. 대행사도 낱건
      * 반복을 하지 말라고 명시했다.
      *
+     * <h2>{@code dispatch()} 와 전파 방식이 다르다</h2>
+     *
+     * 이쪽은 {@code REQUIRED} 다. 호출부가 <b>이미 박람회 행을 잠근 트랜잭션</b>을 열어 두었고, 잠금과
+     * 알림 저장이 같은 트랜잭션 안에 있어야 중복 방어가 성립하기 때문이다. 여기서 새 트랜잭션을 열면
+     * 잠금은 바깥에, 저장은 안쪽에 있게 되어 경계가 갈라진다.
+     *
+     * <p>트랜잭션이 없는 곳에서 불리면 {@code REQUIRED} 가 알아서 하나 연다.
+     *
      * @param requests 보낼 알림들. <b>수신번호가 중복되면 안 된다</b> — 대행사가 걸러 실패로 기록된다
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void dispatchMany(List<NotificationRequest> requests) {
         if (requests.isEmpty()) {
             return;
