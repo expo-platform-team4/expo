@@ -12,6 +12,7 @@ import com.expo.ticket.repository.TicketOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class GuestTicketOrderSearchService {
     private final PasswordEncoder passwordEncoder;
     private final TicketOrderConverter ticketOrderConverter;
 
+    @Transactional
     public GuestTicketSearchResponse guestTicketSearch(GuestTicketSearchRequest request) {
         TicketOrder order =
                 ticketOrderRepository
@@ -35,11 +37,16 @@ public class GuestTicketOrderSearchService {
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED));
 
+        guestOrder.validateNotLocked();
+
         if (!guestOrder.getPhoneNumber().equals(request.phoneNumber())
                 || !passwordEncoder.matches(
                         request.password(), guestOrder.getLookupPasswordHash())) {
+            guestOrder.recordFailedAttempt();
             throw new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED);
         }
+
+        guestOrder.resetFailedAttempts();
 
         return ticketOrderConverter.toGuestTicketSearchResponse(order);
     }
