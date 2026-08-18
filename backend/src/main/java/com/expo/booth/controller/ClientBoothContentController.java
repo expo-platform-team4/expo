@@ -73,13 +73,14 @@ public class ClientBoothContentController {
                                 contentId, request, principal.getMemberId())));
     }
 
-    @Operation(summary = "부스 콘텐츠 공개")
-    @PostMapping("/{contentId}/publish")
-    public ResponseEntity<ApiResponse<BoothContentResponse>> publish(
+    @Operation(summary = "부스 콘텐츠 검수 요청 (관리자 승인 후 공개된다)")
+    @PostMapping("/{contentId}/submit-for-review")
+    public ResponseEntity<ApiResponse<BoothContentResponse>> submitForReview(
             @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long contentId) {
         return ResponseEntity.ok(
                 ApiResponse.ok(
-                        clientBoothContentService.publish(contentId, principal.getMemberId())));
+                        clientBoothContentService.submitForReview(
+                                contentId, principal.getMemberId())));
     }
 
     @Operation(summary = "부스 콘텐츠 첨부 파일 등록")

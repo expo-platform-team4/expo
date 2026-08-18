@@ -117,12 +117,20 @@ public class BoothContent extends BaseTimeEntity {
         this.mainImageFileId = mainImageFileId;
     }
 
-    /** 콘텐츠 공개. 이전 보완 요청 흔적은 지운다(이력은 {@code BoothManagementHistory} 에 남는다). */
-    public void publish() {
-        this.status = BoothContentStatus.PUBLISHED;
-        this.publishedAt = Instant.now();
+    /** 검수 요청. 관리자 승인 전까지는 공개되지 않는다. 이전 보완 요청 흔적은 지운다(이력은 {@code BoothManagementHistory}
+     * 에 남는다). */
+    public void submitForReview() {
+        this.status = BoothContentStatus.UNDER_REVIEW;
         this.correctionRequestedAt = null;
         this.correctionMessage = null;
+    }
+
+    /** 관리자 승인. 검수 요청 상태에서만 호출되며, 이때 비로소 공개된다. */
+    public void approve(Long adminId) {
+        this.status = BoothContentStatus.PUBLISHED;
+        this.publishedAt = Instant.now();
+        this.checkedByAdminId = adminId;
+        this.checkedAt = Instant.now();
     }
 
     /** 관리자 운영 확인. 상태는 바꾸지 않고 확인 시각·주체만 기록한다. */

@@ -142,14 +142,14 @@ public class ClientBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 콘텐츠 공개. 초안·보완 요청 상태에서만 공개할 수 있다. */
+    /** 콘텐츠 검수 요청. 초안·보완 요청 상태에서만 요청할 수 있다. 관리자가 승인해야 실제로 공개된다. */
     @Transactional
-    public BoothContentResponse publish(Long contentId, Long clientUserId) {
+    public BoothContentResponse submitForReview(Long contentId, Long clientUserId) {
         BoothContent content = getOwnedEntity(contentId, clientUserId);
         if (!EDITABLE_STATUSES.contains(content.getStatus())) {
-            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_PUBLISHABLE);
+            throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_SUBMITTABLE);
         }
-        content.publish();
+        content.submitForReview();
         return toResponseWithFiles(content);
     }
 

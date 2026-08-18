@@ -56,6 +56,15 @@ public class AdminBoothContentController {
                 ApiResponse.ok(adminBoothContentService.check(contentId, principal.getMemberId())));
     }
 
+    @Operation(summary = "부스 콘텐츠 검수 승인 (공개)")
+    @PostMapping("/{contentId}/approve")
+    public ResponseEntity<ApiResponse<BoothContentResponse>> approve(
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long contentId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        adminBoothContentService.approve(contentId, principal.getMemberId())));
+    }
+
     @Operation(summary = "부스 콘텐츠 보완 요청")
     @PostMapping("/{contentId}/request-correction")
     public ResponseEntity<ApiResponse<BoothContentResponse>> requestCorrection(
