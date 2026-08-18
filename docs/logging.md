@@ -106,10 +106,10 @@ log.info("정산 완료 성공={} 실패={}", success, failed);
 | `DataIntegrityViolationException` | `WARN` | 동시 가입 등 예상 가능한 경합 |
 | 그 외 처리되지 않은 예외 | `ERROR` + 스택트레이스 | 예상 못 한 것이다 |
 
-현재 [AuthExceptionHandler](../backend/src/main/java/com/expo/auth/exception/AuthExceptionHandler.java)
-에는 로깅이 없다. 특히 `handleDataIntegrityViolation` 은 어떤 제약이 걸렸는지 판단한 뒤
-원본 예외를 그대로 버린다 — 예상 밖 제약 위반이 들어오면 추적할 단서가 없다.
-공통 핸들러로 승격할 때 같이 정리한다.
+[AuthExceptionHandler](../backend/src/main/java/com/expo/auth/exception/AuthExceptionHandler.java)
+의 `handleDataIntegrityViolation` 은 인식한 제약(사업자등록번호·이메일·닉네임 중복)은 조용히
+비즈니스 예외로 변환하고, 어느 제약인지 못 알아본 경우에만 `WARN` 으로 원본 예외를 남긴다.
+값 자체(이메일 등)를 로그에 남기지 않으면서도 예상 밖 위반의 추적 단서는 남기기 위해서다.
 
 ## 6. MDC — 요청 하나를 추적하는 법
 

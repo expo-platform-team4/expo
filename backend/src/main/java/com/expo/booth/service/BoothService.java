@@ -9,6 +9,7 @@ import com.expo.booth.repository.BoothTemplateRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.repository.VenueZoneRepository;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -77,5 +78,26 @@ public class BoothService {
                     e);
             throw e;
         }
+    }
+
+    /** 구역 내 부스 공간 목록 조회. 도면 정렬 순서대로 반환한다. */
+    @Transactional(readOnly = true)
+    public List<BoothResponse> list(Long venueZoneId) {
+        if (!venueZoneRepository.existsById(venueZoneId)) {
+            throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        }
+        return boothRepository.findAllByVenueZoneIdOrderBySortOrderAscIdAsc(venueZoneId).stream()
+                .map(boothConverter::toResponse)
+                .toList();
+    }
+
+    /** 구역 내 부스 공간 상세 조회. */
+    @Transactional(readOnly = true)
+    public BoothResponse get(Long venueZoneId, Long boothId) {
+        Booth booth =
+                boothRepository
+                        .findByIdAndVenueZoneId(boothId, venueZoneId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_NOT_FOUND));
+        return boothConverter.toResponse(booth);
     }
 }

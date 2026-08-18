@@ -2,6 +2,7 @@ package com.expo.auth.exception;
 
 import com.expo.common.exception.ErrorCode;
 import com.expo.common.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p>이전에는 컨트롤러별로 {@code assignableTypes} 를 지정한 핸들러가 셋이었고 셋 다 같은 코드를 복사해 갖고 있었다. 공통 부분을 걷어내고 나니
  * 컨트롤러를 구분할 이유가 없어져 하나로 합쳤다.
  */
+@Slf4j
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
@@ -67,6 +69,7 @@ public class AuthExceptionHandler {
                 return toResponse(ErrorCode.DUPLICATE_NICKNAME);
             }
         }
+        log.warn("예상하지 못한 무결성 제약 위반으로 회원가입 실패", ex);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
     }
