@@ -86,7 +86,6 @@ class AdminRecruitmentResultServiceTest {
                 RecruitmentNotice.create(
                         10L,
                         HOST_CLIENT_ID,
-                        11L,
                         "제목",
                         "내용",
                         Instant.now(),
@@ -113,7 +112,6 @@ class AdminRecruitmentResultServiceTest {
                 RecruitmentNotice.create(
                         10L,
                         HOST_CLIENT_ID,
-                        11L,
                         "제목",
                         "내용",
                         Instant.now(),
@@ -183,36 +181,6 @@ class AdminRecruitmentResultServiceTest {
         assertThat(response.confirmedCompanyCount()).isEqualTo(1);
         assertThat(response.confirmedBoothCount()).isEqualTo(1);
         assertThat(response.totalBoothSalesAmount()).isEqualByComparingTo("100000");
-        assertThat(response.status()).isEqualTo(RecruitmentResultStatus.GENERATED);
-    }
-
-    @Test
-    void deliverRejectsWhenNotGenerated() {
-        RecruitmentResult result =
-                RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        result.deliver();
-        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
-                .thenReturn(Optional.of(result));
-        when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
-                .thenReturn(List.of());
-
-        assertThatThrownBy(() -> service.deliver(RESULT_ID))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.RECRUITMENT_RESULT_NOT_DELIVERABLE);
-    }
-
-    @Test
-    void deliverSucceeds() {
-        RecruitmentResult result =
-                RecruitmentResult.create(NOTICE_ID, HOST_CLIENT_ID, 0, 0, BigDecimal.ZERO);
-        when(recruitmentResultRepository.findByIdForUpdate(RESULT_ID))
-                .thenReturn(Optional.of(result));
-        when(recruitmentResultItemRepository.findAllByRecruitmentResultId(any()))
-                .thenReturn(List.of());
-
-        var response = service.deliver(RESULT_ID);
-
         assertThat(response.status()).isEqualTo(RecruitmentResultStatus.DELIVERED);
     }
 

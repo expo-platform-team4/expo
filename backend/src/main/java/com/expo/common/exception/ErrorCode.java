@@ -15,6 +15,7 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
     DUPLICATE_BUSINESS_NUMBER(HttpStatus.CONFLICT, "이미 가입된 사업자등록번호입니다."),
+    GUEST_ORDER_LOOKUP_LOCKED(HttpStatus.BAD_REQUEST, "10분 재시도 하십시오."),
 
     // --- 로그인 · 토큰 ---
     INVALID_LOGIN_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
@@ -54,10 +55,13 @@ public enum ErrorCode {
     // --- 가상 장소 ---
     DUPLICATE_VIRTUAL_VENUE_NAME(HttpStatus.CONFLICT, "이미 등록된 장소명입니다."),
     VIRTUAL_VENUE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 가상 장소입니다."),
+    VIRTUAL_VENUE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "장소는 1개(킨텍스)까지만 등록할 수 있습니다."),
     DUPLICATE_VENUE_HALL_CODE(HttpStatus.CONFLICT, "이미 등록된 홀 코드입니다."),
     VENUE_HALL_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 홀입니다."),
+    VENUE_HALL_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "한 장소에는 전시장(홀)을 2개까지만 등록할 수 있습니다."),
     DUPLICATE_VENUE_ZONE_CODE(HttpStatus.CONFLICT, "이미 등록된 구역 코드입니다."),
     VENUE_ZONE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 구역입니다."),
+    VENUE_ZONE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "한 홀에는 구역을 5개까지만 등록할 수 있습니다."),
     RECRUITMENT_NOTICE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 모집공고 생성 요청입니다."),
     VENUE_RESERVATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "사용 종료 일시는 시작 일시보다 늦어야 합니다."),
     VENUE_RESERVATION_PERIOD_CONFLICT(HttpStatus.CONFLICT, "같은 장소·기간에 이미 확정된 예약이 있습니다."),
@@ -66,6 +70,7 @@ public enum ErrorCode {
     VENUE_HALL_ZONE_MISMATCH(HttpStatus.BAD_REQUEST, "홀·구역이 지정한 장소·홀 소속이 아닙니다."),
     RECRUITMENT_NOTICE_REQUEST_NOT_ALLOWED(
             HttpStatus.CONFLICT, "장소 충돌 판정에서 승인(ALLOWED)된 요청만 장소를 예약할 수 있습니다."),
+    RECRUITMENT_NOTICE_REQUEST_ZONES_EMPTY(HttpStatus.CONFLICT, "이 요청에 고른 구역이 없어 장소를 예약할 수 없습니다."),
 
     // --- 부스 ---
     DUPLICATE_BOOTH_TEMPLATE_SHAPE_CODE(HttpStatus.CONFLICT, "이미 등록된 형태 코드입니다."),
@@ -98,7 +103,10 @@ public enum ErrorCode {
     BOOTH_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠입니다."),
     DUPLICATE_BOOTH_CONTENT(HttpStatus.CONFLICT, "이미 해당 배정에 등록된 부스 콘텐츠입니다."),
     BOOTH_CONTENT_NOT_EDITABLE(HttpStatus.CONFLICT, "초안 또는 보완 요청 상태의 콘텐츠만 수정할 수 있습니다."),
-    BOOTH_CONTENT_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "초안·보완 요청 상태의 콘텐츠만 공개할 수 있습니다."),
+    BOOTH_CONTENT_NOT_SUBMITTABLE(HttpStatus.CONFLICT, "초안 또는 보완 요청 상태의 콘텐츠만 검수 요청할 수 있습니다."),
+    BOOTH_CONTENT_NOT_APPROVABLE(HttpStatus.CONFLICT, "검수 요청 상태의 콘텐츠만 승인(공개)할 수 있습니다."),
+    BOOTH_CONTENT_NOT_CORRECTION_REQUESTABLE(
+            HttpStatus.CONFLICT, "검수 요청 또는 공개 상태의 콘텐츠만 보완을 요청할 수 있습니다."),
     BOOTH_CONTENT_NOT_HIDABLE(HttpStatus.CONFLICT, "공개되었거나 보완 요청 상태의 콘텐츠만 숨길 수 있습니다."),
     BOOTH_CONTENT_NOT_RESTORABLE(HttpStatus.CONFLICT, "숨김 상태의 콘텐츠만 숨김 해제할 수 있습니다."),
     BOOTH_CONTENT_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠 첨부 파일입니다."),
@@ -123,8 +131,6 @@ public enum ErrorCode {
     RECRUITMENT_NOTICE_NOT_CLOSED(HttpStatus.CONFLICT, "마감된 공고만 결과를 생성할 수 있습니다."),
     DUPLICATE_RECRUITMENT_RESULT(HttpStatus.CONFLICT, "이미 결과가 생성된 공고입니다."),
     RECRUITMENT_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 모집 결과입니다."),
-    RECRUITMENT_RESULT_NOT_DELIVERABLE(HttpStatus.CONFLICT, "생성된 결과만 주최자에게 전달할 수 있습니다."),
-    RECRUITMENT_RESULT_NOT_CONFIRMABLE(HttpStatus.CONFLICT, "전달된 결과만 확인할 수 있습니다."),
     RECRUITMENT_RESULT_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 확정되어 박람회 구성에 반영된 결과는 취소할 수 없습니다."),
 
     // --- 참여 신청 ---

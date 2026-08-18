@@ -41,6 +41,7 @@ class ClientBoothContentServiceTest {
     private static final Long APPLICATION_ID = 4L;
     private static final Long ORDER_ID = 5L;
     private static final Long BOOTH_PRODUCT_ID = 6L;
+    private static final Long ADMIN_ID = 7L;
 
     private BoothContentRepository boothContentRepository;
     private BoothContentFileRepository boothContentFileRepository;
@@ -76,6 +77,12 @@ class ClientBoothContentServiceTest {
         return BoothContent.create(
                         ALLOCATION_ID, CLIENT_USER_ID, "회사", "제목", "회사소개", "부스소개", "제품소개")
                 .attachImages(null, null);
+    }
+
+    /** 검수 요청 → 승인을 거쳐 공개 상태로 만든다. */
+    private static void moveToPublished(BoothContent content) {
+        content.submitForReview();
+        content.approve(ADMIN_ID);
     }
 
     private static void withId(Object entity, Long id) {
@@ -137,7 +144,7 @@ class ClientBoothContentServiceTest {
     @Test
     void updateRejectsWhenPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
         UpdateBoothContentRequest request =
@@ -165,31 +172,32 @@ class ClientBoothContentServiceTest {
     }
 
     @Test
-    void publishRejectsWhenAlreadyPublished() {
+    void submitForReviewRejectsWhenAlreadyPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
 
-        assertThatThrownBy(() -> service.publish(CONTENT_ID, CLIENT_USER_ID))
+        assertThatThrownBy(() -> service.submitForReview(CONTENT_ID, CLIENT_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_PUBLISHABLE);
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_SUBMITTABLE);
     }
 
+    /** 검수 요청만으로는 바로 공개되지 않고, 관리자 승인 전 상태(UNDER_REVIEW)로만 넘어가야 한다. */
     @Test
-    void publishSucceedsFromCorrectionRequested() {
+    void submitForReviewSucceedsFromCorrectionRequested() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         content.requestCorrection("문구 수정 필요");
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
         when(boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
                 .thenReturn(List.of());
 
-        var response = service.publish(CONTENT_ID, CLIENT_USER_ID);
+        var response = service.submitForReview(CONTENT_ID, CLIENT_USER_ID);
 
-        assertThat(response.status().name()).isEqualTo("PUBLISHED");
+        assertThat(response.status().name()).isEqualTo("UNDER_REVIEW");
         assertThat(response.correctionRequestedAt()).isNull();
         assertThat(response.correctionMessage()).isNull();
     }
@@ -208,7 +216,7 @@ class ClientBoothContentServiceTest {
     @Test
     void getPublishedSucceeds() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findByBoothAllocationId(ALLOCATION_ID))
                 .thenReturn(Optional.of(content));
         when(boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
@@ -237,7 +245,7 @@ class ClientBoothContentServiceTest {
     @Test
     void addFileRejectsWhenPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         withId(content, CONTENT_ID);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
@@ -253,7 +261,7 @@ class ClientBoothContentServiceTest {
     @Test
     void removeFileRejectsWhenPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         withId(content, CONTENT_ID);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
@@ -267,7 +275,7 @@ class ClientBoothContentServiceTest {
     @Test
     void reorderFileRejectsWhenPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         withId(content, CONTENT_ID);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));
@@ -330,7 +338,7 @@ class ClientBoothContentServiceTest {
     @Test
     void addLinkRejectsWhenPublished() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         withId(content, CONTENT_ID);
         when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(content));

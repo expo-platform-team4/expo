@@ -18,6 +18,7 @@ import com.expo.venue.repository.VenueZoneRepository;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /** {@link VenueZoneService} 의 상위 홀 존재 여부·구역 코드 중복 검증을 확인한다. */
 class VenueZoneServiceTest {
@@ -76,5 +77,33 @@ class VenueZoneServiceTest {
         assertThat(response.hallId()).isEqualTo(HALL_ID);
         assertThat(response.zoneCode()).isEqualTo("ZONE-1");
         verify(venueZoneRepository).saveAndFlush(any());
+    }
+
+    /** 같은 홀에 구역이 이미 5개(킨텍스 1~5홀) 있으면 더 등록할 수 없다. */
+    @Test
+    void createRejectsWhenZoneLimitReached() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueZoneRepository.existsByHallIdAndZoneCode(HALL_ID, "ZONE-1")).thenReturn(false);
+        when(venueZoneRepository.countByHallId(HALL_ID)).thenReturn(5L);
+
+        assertThatThrownBy(() -> service.create(HALL_ID, request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_LIMIT_EXCEEDED);
+        verify(venueZoneRepository, never()).saveAndFlush(any());
+    }
+
+    /** 사전 개수 검사를 통과해도 동시 삽입으로 트리거가 막으면 같은 오류로 변환돼야 한다. */
+    @Test
+    void createTranslatesLimitTriggerViolationToLimitExceeded() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueZoneRepository.existsByHallIdAndZoneCode(HALL_ID, "ZONE-1")).thenReturn(false);
+        when(venueZoneRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("ERROR: venue_zone_limit_exceeded"));
+
+        assertThatThrownBy(() -> service.create(HALL_ID, request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_LIMIT_EXCEEDED);
     }
 }

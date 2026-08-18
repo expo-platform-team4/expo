@@ -2,12 +2,14 @@ package com.expo.recruitment.converter;
 
 import com.expo.recruitment.dto.RecruitmentNoticeRequestResponse;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RecruitmentNoticeRequestConverter {
 
-    public RecruitmentNoticeRequestResponse toResponse(RecruitmentNoticeRequest request) {
+    public RecruitmentNoticeRequestResponse toResponse(
+            RecruitmentNoticeRequest request, List<Long> venueZoneIds) {
         return new RecruitmentNoticeRequestResponse(
                 request.getId(),
                 request.getHostClientId(),
@@ -19,7 +21,7 @@ public class RecruitmentNoticeRequestConverter {
                 request.getEventEndAt(),
                 request.getVirtualVenueId(),
                 request.getVenueHallId(),
-                request.getVenueZoneId(),
+                venueZoneIds,
                 request.getTargetCompanyCount(),
                 request.getRequestedBoothConfig(),
                 request.getStatus(),

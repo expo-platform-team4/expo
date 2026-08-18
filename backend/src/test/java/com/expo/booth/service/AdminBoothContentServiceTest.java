@@ -83,6 +83,12 @@ class AdminBoothContentServiceTest {
         }
     }
 
+    /** 검수 요청 → 승인을 거쳐 공개 상태로 만든다. */
+    private static void moveToPublished(BoothContent content) {
+        content.submitForReview();
+        content.approve(ADMIN_ID);
+    }
+
     @Test
     void listFillsFilesAndLinksViaBatchQuery() {
         BoothContent content = content();
@@ -131,9 +137,43 @@ class AdminBoothContentServiceTest {
     }
 
     @Test
+    void approveSucceedsFromUnderReview() {
+        BoothContent content = content();
+        content.submitForReview();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+
+        var response = service.approve(CONTENT_ID, ADMIN_ID);
+
+        assertThat(response.status().name()).isEqualTo("PUBLISHED");
+        verify(boothManagementHistoryRepository).save(any());
+    }
+
+    @Test
+    void approveRejectsWhenNotUnderReview() {
+        BoothContent content = content();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+
+        assertThatThrownBy(() -> service.approve(CONTENT_ID, ADMIN_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_APPROVABLE);
+    }
+
+    @Test
+    void requestCorrectionRejectsWhenDraft() {
+        BoothContent content = content();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+
+        assertThatThrownBy(() -> service.requestCorrection(CONTENT_ID, ADMIN_ID, "문구 확인 필요"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_CORRECTION_REQUESTABLE);
+    }
+
+    @Test
     void requestCorrectionMovesToCorrectionRequestedAndLogsHistory() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
 
         var response = service.requestCorrection(CONTENT_ID, ADMIN_ID, "문구 확인 필요");
@@ -145,7 +185,7 @@ class AdminBoothContentServiceTest {
     @Test
     void hideMovesToHiddenAndLogsHistory() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
 
         var response = service.hide(CONTENT_ID, ADMIN_ID, "정책 위반");
@@ -168,7 +208,7 @@ class AdminBoothContentServiceTest {
     @Test
     void restoreRejectsWhenNotHidden() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
 
         assertThatThrownBy(() -> service.restore(CONTENT_ID, ADMIN_ID, null))
@@ -180,7 +220,7 @@ class AdminBoothContentServiceTest {
     @Test
     void restoreSucceedsFromHidden() {
         BoothContent content = content();
-        content.publish();
+        moveToPublished(content);
         content.hide();
         when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
 

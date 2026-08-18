@@ -28,13 +28,18 @@ public class VirtualVenueService {
     /**
      * 가상 장소 등록. 같은 이름의 장소를 두 번 등록할 수 없다.
      *
-     * <p>사전 중복 검사만으로는 동시 요청 사이의 중복 삽입을 막지 못해, DB의 {@code virtual_venues_name_key} 고유 제약을
-     * 최종 방어선으로 삼는다.
+     * <p>현재 이 플랫폼은 킨텍스 한 곳만 다루므로 장소는 1개까지만 등록할 수 있다.
+     *
+     * <p>사전 검사만으로는 동시 요청 사이의 중복·초과 삽입을 막지 못해, DB의 {@code virtual_venues_name_key} 고유 제약과
+     * {@code trg_virtual_venue_limit} 트리거를 최종 방어선으로 삼는다.
      */
     @Transactional
     public VirtualVenueResponse create(CreateVirtualVenueRequest request) {
         if (virtualVenueRepository.existsByName(request.name())) {
             throw new BusinessException(ErrorCode.DUPLICATE_VIRTUAL_VENUE_NAME);
+        }
+        if (virtualVenueRepository.count() >= 1) {
+            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_LIMIT_EXCEEDED);
         }
         VirtualVenue venue =
                 VirtualVenue.create(
@@ -50,6 +55,9 @@ public class VirtualVenueService {
             String cause = e.getMostSpecificCause().getMessage();
             if (cause != null && cause.contains("virtual_venues_name_key")) {
                 throw new BusinessException(ErrorCode.DUPLICATE_VIRTUAL_VENUE_NAME);
+            }
+            if (cause != null && cause.contains("virtual_venue_limit_exceeded")) {
+                throw new BusinessException(ErrorCode.VIRTUAL_VENUE_LIMIT_EXCEEDED);
             }
             throw e;
         }

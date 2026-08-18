@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 관리자용 모집 결과 생성·조회·전달·직권 취소. */
-@Tag(name = "Admin Recruitment Result", description = "관리자 모집 결과 생성·조회·전달·직권 취소")
+/** 관리자용 모집 결과 생성·조회·직권 취소. 결과는 생성과 동시에 주최자에게 전달된다. */
+@Tag(name = "Admin Recruitment Result", description = "관리자 모집 결과 생성·조회·직권 취소")
 @RestController
 @RequestMapping("/api/admin/recruitment-results")
 public class AdminRecruitmentResultController {
@@ -49,13 +49,6 @@ public class AdminRecruitmentResultController {
     @GetMapping("/{resultId}")
     public ResponseEntity<ApiResponse<RecruitmentResultResponse>> get(@PathVariable Long resultId) {
         return ResponseEntity.ok(ApiResponse.ok(adminRecruitmentResultService.get(resultId)));
-    }
-
-    @Operation(summary = "주최자에게 결과 전달")
-    @PostMapping("/{resultId}/deliver")
-    public ResponseEntity<ApiResponse<RecruitmentResultResponse>> deliver(
-            @PathVariable Long resultId) {
-        return ResponseEntity.ok(ApiResponse.ok(adminRecruitmentResultService.deliver(resultId)));
     }
 
     @Operation(summary = "모집 결과 직권 취소")

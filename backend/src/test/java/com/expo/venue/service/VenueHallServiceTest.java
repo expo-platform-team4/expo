@@ -18,6 +18,7 @@ import com.expo.venue.repository.VirtualVenueRepository;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /** {@link VenueHallService} 의 상위 장소 존재 여부·홀 코드 중복 검증을 확인한다. */
 class VenueHallServiceTest {
@@ -75,5 +76,33 @@ class VenueHallServiceTest {
         assertThat(response.venueId()).isEqualTo(VENUE_ID);
         assertThat(response.hallCode()).isEqualTo("HALL-A");
         verify(venueHallRepository).saveAndFlush(any());
+    }
+
+    /** 같은 장소에 홀이 이미 2개(킨텍스 제1·제2전시장) 있으면 더 등록할 수 없다. */
+    @Test
+    void createRejectsWhenHallLimitReached() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueHallRepository.existsByVenueIdAndHallCode(VENUE_ID, "HALL-A")).thenReturn(false);
+        when(venueHallRepository.countByVenueId(VENUE_ID)).thenReturn(2L);
+
+        assertThatThrownBy(() -> service.create(VENUE_ID, request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_LIMIT_EXCEEDED);
+        verify(venueHallRepository, never()).saveAndFlush(any());
+    }
+
+    /** 사전 개수 검사를 통과해도 동시 삽입으로 트리거가 막으면 같은 오류로 변환돼야 한다. */
+    @Test
+    void createTranslatesLimitTriggerViolationToLimitExceeded() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueHallRepository.existsByVenueIdAndHallCode(VENUE_ID, "HALL-A")).thenReturn(false);
+        when(venueHallRepository.saveAndFlush(any()))
+                .thenThrow(new DataIntegrityViolationException("ERROR: venue_hall_limit_exceeded"));
+
+        assertThatThrownBy(() -> service.create(VENUE_ID, request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_LIMIT_EXCEEDED);
     }
 }

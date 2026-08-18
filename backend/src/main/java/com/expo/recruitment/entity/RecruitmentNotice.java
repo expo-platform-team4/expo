@@ -33,9 +33,6 @@ public class RecruitmentNotice extends BaseTimeEntity {
     @Column(name = "host_client_id", nullable = false)
     private Long hostClientId;
 
-    @Column(name = "venue_reservation_id", nullable = false, unique = true)
-    private Long venueReservationId;
-
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -73,7 +70,6 @@ public class RecruitmentNotice extends BaseTimeEntity {
     public static RecruitmentNotice create(
             Long requestId,
             Long hostClientId,
-            Long venueReservationId,
             String title,
             String content,
             Instant applicationStartAt,
@@ -82,7 +78,6 @@ public class RecruitmentNotice extends BaseTimeEntity {
         RecruitmentNotice notice = new RecruitmentNotice();
         notice.requestId = requestId;
         notice.hostClientId = hostClientId;
-        notice.venueReservationId = venueReservationId;
         notice.title = title;
         notice.content = content;
         notice.applicationStartAt = applicationStartAt;

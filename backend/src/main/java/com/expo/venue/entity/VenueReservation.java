@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
  * 장소 예약 단일 원본.
  *
  * <p>모집공고 경로({@code RECRUITMENT_NOTICE})와 일반 박람회 등록 경로({@code EXPO_DIRECT})를 모두 담는다. 장소·홀·구역·기간은
- * 오직 이 테이블에만 저장하고, 기간 중복도 이 테이블(DB의 EXCLUDE 제약)에서만 막는다.
+ * 오직 이 테이블에만 저장하고, 기간 중복도 이 테이블(DB의 EXCLUDE 제약 + 계층 겹침 트리거)에서만 막는다.
  */
 @Getter
 @Entity
@@ -98,5 +98,10 @@ public class VenueReservation extends BaseTimeEntity {
     public void release() {
         this.status = VenueReservationStatus.RELEASED;
         this.releasedAt = Instant.now();
+    }
+
+    /** 모집공고 생성 완료 후, 그 공고에 이 예약을 연결한다. */
+    public void linkToNotice(Long recruitmentNoticeId) {
+        this.recruitmentNoticeId = recruitmentNoticeId;
     }
 }

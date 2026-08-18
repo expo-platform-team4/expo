@@ -4,6 +4,7 @@ package com.expo.booth.entity;
 public enum BoothManagementActionType {
     ALLOCATION_CORRECTED,
     INFORMATION_UPDATED,
+    CONTENT_APPROVED,
     CORRECTION_REQUESTED,
     CONTENT_HIDDEN,
     CONTENT_RESTORED

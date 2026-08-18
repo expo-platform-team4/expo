@@ -54,9 +54,6 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     @Column(name = "venue_hall_id")
     private Long venueHallId;
 
-    @Column(name = "venue_zone_id")
-    private Long venueZoneId;
-
     @Column(name = "target_company_count")
     private Integer targetCompanyCount;
 
@@ -117,14 +114,10 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
         return request;
     }
 
-    /** 희망 장소 세부 정보와 부스 구성 지정. */
+    /** 희망 전시관(홀)과 부스 구성 지정. 그 전시관 안에서 고른 구역 목록은 별도 테이블에 저장한다. */
     public RecruitmentNoticeRequest withVenueDetails(
-            Long venueHallId,
-            Long venueZoneId,
-            Integer targetCompanyCount,
-            String requestedBoothConfig) {
+            Long venueHallId, Integer targetCompanyCount, String requestedBoothConfig) {
         this.venueHallId = venueHallId;
-        this.venueZoneId = venueZoneId;
         this.targetCompanyCount = targetCompanyCount;
         this.requestedBoothConfig = requestedBoothConfig;
         return this;
