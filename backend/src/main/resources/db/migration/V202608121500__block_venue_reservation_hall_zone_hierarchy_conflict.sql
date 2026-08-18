@@ -10,15 +10,17 @@ CREATE OR REPLACE FUNCTION check_venue_reservation_hierarchy_conflict()
     RETURNS TRIGGER AS
 $$
 BEGIN
-    IF NEW.status <> 'CONFIRMED' THEN
-        RETURN NEW;
-    END IF;
-
-    -- 같은 홀을 대상으로 하는 확정 시도를 직렬화한다. 잠금 없이 EXISTS 만 확인하면, 홀 전체
-    -- 예약과 그 안의 구역 예약이 동시에 들어올 때 서로의 미확정(커밋 전) 행을 보지 못해 계층
-    -- 충돌 검사를 둘 다 통과해버릴 수 있다(고전적인 TOCTOU 경쟁 상태).
+    -- 같은 홀을 대상으로 하는 확정·해제 시도를 전부 직렬화한다. CONFIRMED 로 바뀌는 삽입뿐 아니라
+    -- RELEASED 로 바뀌는 해제도 같은 잠금을 잡아야 한다 - 안 그러면 해제가 커밋되기 전에 같은 홀에
+    -- 겹치는 새 예약을 확정하려는 시도가 "아직 해제 안 된" 예약과 겹친다고 잘못 거부될 수 있다.
+    -- 잠금 없이 EXISTS 만 확인하면, 두 트랜잭션이 서로의 커밋 전 상태를 보지 못해 계층 충돌 검사를
+    -- 둘 다 통과해버릴 수도 있다(고전적인 TOCTOU 경쟁 상태).
     IF NEW.venue_hall_id IS NOT NULL THEN
         PERFORM 1 FROM venue_halls WHERE id = NEW.venue_hall_id FOR UPDATE;
+    END IF;
+
+    IF NEW.status <> 'CONFIRMED' THEN
+        RETURN NEW;
     END IF;
 
     IF NEW.venue_hall_id IS NOT NULL AND NEW.venue_zone_id IS NULL THEN
