@@ -81,8 +81,18 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
-	testRuntimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// 스프링 컨텍스트를 띄우는 테스트는 실제 PostgreSQL 위에서 돈다.
+	// H2 는 V1__init_schema.sql 의 PostgreSQL 전용 구문(CREATE EXTENSION, JSONB, EXCLUDE)을
+	// 실행하지 못해 Flyway 를 꺼야 했고, 그러면 JPA 가 엔티티로 스키마를 만들어
+	// "엔티티와 마이그레이션이 어긋나도 테스트가 통과하는" 상태가 된다. 그것 때문에 뺐다.
+	// 버전은 Boot 4.1.0 의 BOM 이 관리한다 (Testcontainers 2.0.5).
+	// 2.x 부터 아티팩트 이름에 testcontainers- 접두어가 붙는다.
+	// 1.x 의 org.testcontainers:postgresql 로 적으면 해석되지 않는다.
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 }
 
 tasks.named('test') {

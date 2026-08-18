@@ -15,15 +15,13 @@
 ## 규칙
 
 1. **이미 머지된 마이그레이션 파일은 수정하지 않는다.** 다른 사람 DB에는 이미 적용된 상태라 체크섬이 깨진다. 항상 새 버전 파일을 추가한다.
-2. **PostgreSQL 네이티브 SQL 을 쓴다.** 표준 SQL 유지는 V1 시점에 포기했다. JSONB·`EXCLUDE`·부분 인덱스가 필요해졌고, 낮추면 명세가 요구하는 무결성을 코드로 떠넘기게 된다. 아래 "H2 호환성" 절 참조.
+2. **PostgreSQL 네이티브 SQL 을 쓴다.** 표준 SQL 유지는 V1 시점에 포기했다. JSONB·`EXCLUDE`·부분 인덱스가 필요해졌고, 낮추면 명세가 요구하는 무결성을 코드로 떠넘기게 된다. 아래 "PostgreSQL 전용이다" 절 참조.
 3. **`db/migration` 하나만 쓴다.** PostgreSQL 전용으로 `db/migration-pg` 를 나누지 않는다.
 
-## H2 호환성 — 현재 상태
+## PostgreSQL 전용이다 — 테스트도 PostgreSQL 에서 돈다
 
-**`V1__init_schema.sql` 과 뷰 16개는 PostgreSQL 전용이다. test 프로필(H2)에서는 실행되지 않는다.**
-
-스키마가 아래 셋을 요구하는데 H2 는 어느 것도 지원하지 않는다. 분기해서 낮추면 명세가 요구하는
-무결성 보장을 코드로 떠넘기게 되어, 낮추는 대신 네이티브로 가기로 했다.
+**`V1__init_schema.sql` 과 뷰 16개는 PostgreSQL 전용이다.** 스키마가 아래 셋을 요구하는데,
+분기해서 낮추면 명세가 요구하는 무결성 보장을 코드로 떠넘기게 되어 네이티브로 가기로 했다.
 
 | 기능 | 쓰는 곳 | 왜 필요한가 |
 |-|-|-|
@@ -31,11 +29,24 @@
 | `EXCLUDE USING gist` | `venue_reservations` | 장소·홀·구역·기간 중복을 DB 가 최종 차단. 명세가 "동시 요청은 이 제약이 최종적으로 차단한다"고 명시 |
 | 부분 UNIQUE 인덱스 | `booth_reservations` | 한 부스 상품에 활성 임시 확보 1건. 명세가 SQL 을 그대로 제시 |
 
-**따라서 스키마에 의존하는 테스트를 쓰기 전에 test 프로필을 Testcontainers PostgreSQL 로 전환해야 한다.**
+한동안 test 프로필은 H2 였고, 위 구문 때문에 **Flyway 를 끈 채** JPA 가 엔티티로 스키마를 만들었다.
+그 구성은 테스트를 통과시키지만 **엔티티와 마이그레이션이 어긋나도 아무도 모르는 상태**를 만든다 —
+검사 대상과 검사 기준이 둘 다 엔티티에서 나오기 때문이다.
 
-이미 `ExpoApplicationTests.contextLoads` 가 이것 때문에 실패한다 — H2 가 `V1__init_schema.sql` 첫머리의
-`CREATE EXTENSION IF NOT EXISTS btree_gist` 에서 문법 오류를 낸다. 그래서 CI 에서는 백엔드 테스트 job 을 돌리지 않는다
-([ci.yml](../../../../../../.github/workflows/ci.yml) 하단 주석 참조). Testcontainers 로 전환하면 되살린다.
+**지금은 Testcontainers 가 실제 PostgreSQL 을 띄운다.** 매 실행마다 빈 DB 에 마이그레이션을 처음부터
+적용하고, `ddl-auto: validate` 가 엔티티와 대조한다. 즉 **마이그레이션을 고치고 엔티티를 안 고치면
+(혹은 그 반대면) `ExpoApplicationTests.contextLoads` 가 깨진다.**
+
+```
+missing column [drift_probe_column] in table [notifications]
+```
+
+일부러 어긋나게 만들어 확인한 메시지다. 컨테이너 설정은
+`backend/src/test/java/com/expo/support/PostgresContainerConfig.java` 에 있고,
+이미지는 `docker-compose.yml` 과 같은 `postgres:18-alpine` 이다.
+
+> **Docker 가 필요하다.** 스프링 컨텍스트를 띄우는 테스트만 컨테이너를 쓰므로, Docker 가 없어도
+> 나머지 단위 테스트는 그대로 돈다.
 
 ## 뷰
 

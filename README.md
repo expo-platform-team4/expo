@@ -45,7 +45,7 @@
 | SQL 매퍼 | MyBatis Spring Boot Starter | 4.0.1 (MyBatis 3.5.19) |
 | DB 마이그레이션 | Flyway | 12.4.0 |
 | Database | PostgreSQL (JDBC 드라이버 42.7.11) | 18 |
-| 테스트 DB | H2 (PostgreSQL 호환 모드) | 2.4.240 |
+| 테스트 DB | Testcontainers PostgreSQL (운영과 같은 이미지) | 2.0.5 / `postgres:18-alpine` |
 | 테스트 프레임워크 | JUnit Jupiter / Mockito | 6.0.3 / 5.23.0 |
 | 직렬화 | Jackson (`tools.jackson`) | 3.1.4 |
 | 로깅 | Logback | 1.5.34 |
@@ -127,7 +127,7 @@ expo/
 │       └── resources/
 │           ├── application.yml             공통
 │           ├── application-local.yml       로컬 (PostgreSQL)
-│           ├── application-test.yml        테스트 (H2)
+│           ├── application-test.yml        테스트 (Testcontainers PostgreSQL)
 │           ├── application-prod.yml        운영
 │           ├── application-oauth2.yml      소셜 로그인 (키 발급 후 활성화)
 │           ├── db/migration/               Flyway 마이그레이션
@@ -420,11 +420,18 @@ java.lang.IllegalStateException: Client id of registration 'google' must not be 
 엔티티를 추가·수정하면 **반드시** 대응하는 마이그레이션 파일을 같이 커밋한다. 안 하면 기동 시점에 검증 실패한다.
 작성 규칙은 [`backend/src/main/resources/db/migration/README.md`](backend/src/main/resources/db/migration/README.md) 참고.
 
-### 알려진 제약: Flyway + H2
+### 테스트도 실제 PostgreSQL 에서 돈다
 
-local(PostgreSQL)과 test(H2)가 **같은 마이그레이션 SQL** 을 실행한다.
-H2 는 `MODE=PostgreSQL` 로 상당 부분을 흡수하지만 JSONB, 배열 타입, `ON CONFLICT` 세부 문법까지는 따라오지 못한다.
+local 과 test 가 **같은 마이그레이션 SQL 을 같은 DB 엔진에서** 실행한다. test 프로필은
+Testcontainers 가 띄우는 `postgres:18-alpine` 을 쓴다 — 운영·로컬과 같은 이미지다.
 
-마이그레이션 SQL 은 가급적 표준 문법으로 쓴다. PostgreSQL 전용 기능이 꼭 필요해지면
-`db/migration`(공통) + `db/migration-pg`(전용)로 `spring.flyway.locations` 를 프로필별로 나누고,
-그마저 감당이 안 되면 테스트를 Testcontainers PostgreSQL 로 전환한다.
+한동안 test 는 H2 였다. 스키마가 JSONB·`EXCLUDE USING gist`·부분 인덱스를 쓰는데 H2 가 그것을
+실행하지 못해 **Flyway 를 끄고** JPA 가 엔티티로 스키마를 만들게 해 두었다. 테스트는 통과하지만
+**엔티티와 마이그레이션이 어긋나도 드러나지 않는** 구성이었고, 실제로 로컬 DB 하나가 두 주 동안
+어긋난 채였는데 어떤 테스트도 잡지 못했다.
+
+지금은 매 실행마다 빈 PostgreSQL 에 마이그레이션을 처음부터 적용하고 `ddl-auto: validate` 가
+엔티티와 대조한다. **마이그레이션과 엔티티 중 한쪽만 고치면 `contextLoads` 가 깨진다.**
+
+> `./gradlew test` 에는 **Docker 데몬이 필요하다.** 스프링 컨텍스트를 띄우는 테스트만 컨테이너를
+> 쓰므로, Docker 가 없어도 나머지 단위 테스트는 그대로 돈다.
