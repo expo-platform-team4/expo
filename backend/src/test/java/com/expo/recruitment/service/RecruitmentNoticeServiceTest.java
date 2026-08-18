@@ -38,6 +38,7 @@ class RecruitmentNoticeServiceTest {
     private static final Long HOST_CLIENT_ID = 30L;
     private static final Long HALL_ID = 40L;
     private static final Long ZONE_ID = 50L;
+    private static final Long OTHER_ZONE_ID = 51L;
     private static final Instant T1 = Instant.parse("2026-09-01T00:00:00Z");
     private static final Instant T2 = Instant.parse("2026-09-30T00:00:00Z");
     private static final Instant T3 = Instant.parse("2026-10-01T00:00:00Z");
@@ -76,8 +77,12 @@ class RecruitmentNoticeServiceTest {
     }
 
     private VenueReservation confirmedReservation(Long noticeRequestId) {
+        return confirmedReservation(noticeRequestId, ZONE_ID);
+    }
+
+    private VenueReservation confirmedReservation(Long noticeRequestId, Long zoneId) {
         return VenueReservation.confirmForRecruitmentNotice(
-                noticeRequestId, 1L, HALL_ID, ZONE_ID, T3, T4, ADMIN_ID);
+                noticeRequestId, 1L, HALL_ID, zoneId, T3, T4, ADMIN_ID);
     }
 
     @Test
@@ -159,14 +164,16 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
     }
 
+    /** 예약이 여러 건이어도(구역 여러 개) 전부 이 공고에 연결돼야 한다 - 첫 건만 연결하는 회귀를 잡는다. */
     @Test
     void createSucceedsAsDraftAndLinksAllReservations() throws ReflectiveOperationException {
-        VenueReservation reservation = confirmedReservation(REQUEST_ID);
+        VenueReservation reservation1 = confirmedReservation(REQUEST_ID, ZONE_ID);
+        VenueReservation reservation2 = confirmedReservation(REQUEST_ID, OTHER_ZONE_ID);
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
         when(venueReservationRepository.findAllByNoticeRequestId(REQUEST_ID))
-                .thenReturn(List.of(reservation));
+                .thenReturn(List.of(reservation1, reservation2));
         when(recruitmentNoticeRepository.save(any()))
                 .thenAnswer(
                         invocation -> {
@@ -180,9 +187,12 @@ class RecruitmentNoticeServiceTest {
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.DRAFT);
         assertThat(response.hostClientId()).isEqualTo(HOST_CLIENT_ID);
         assertThat(response.venueHallId()).isEqualTo(HALL_ID);
-        assertThat(response.venueZoneIds()).containsExactly(ZONE_ID);
-        assertThat(reservation.getRecruitmentNoticeId())
-                .as("공고 생성 후 딸린 예약이 이 공고에 연결돼야 한다")
+        assertThat(response.venueZoneIds()).containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
+        assertThat(reservation1.getRecruitmentNoticeId())
+                .as("공고 생성 후 딸린 예약이 전부 이 공고에 연결돼야 한다")
+                .isEqualTo(99L);
+        assertThat(reservation2.getRecruitmentNoticeId())
+                .as("공고 생성 후 딸린 예약이 전부 이 공고에 연결돼야 한다")
                 .isEqualTo(99L);
     }
 
@@ -281,21 +291,26 @@ class RecruitmentNoticeServiceTest {
         verify(recruitmentNoticeHistoryRepository, never()).save(any());
     }
 
+    /** 예약이 여러 건이어도(구역 여러 개) 전부 해제돼야 한다 - 첫 건만 해제하는 회귀를 잡는다. */
     @Test
     void cancelSucceedsFromOpenAndLogsHistoryAndReleasesReservations() {
         RecruitmentNotice notice = draftNotice();
         notice.publish();
-        VenueReservation reservation = confirmedReservation(REQUEST_ID);
+        VenueReservation reservation1 = confirmedReservation(REQUEST_ID, ZONE_ID);
+        VenueReservation reservation2 = confirmedReservation(REQUEST_ID, OTHER_ZONE_ID);
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
         when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
-                .thenReturn(List.of(reservation));
+                .thenReturn(List.of(reservation1, reservation2));
 
         RecruitmentNoticeResponse response = service.cancel(1L, ADMIN_ID, "테스트 취소");
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.CANCELED);
         verify(recruitmentNoticeHistoryRepository).save(any());
-        assertThat(reservation.getStatus())
-                .as("공고 취소 시 딸린 예약도 같이 해제돼야 한다")
+        assertThat(reservation1.getStatus())
+                .as("공고 취소 시 딸린 예약이 전부 같이 해제돼야 한다")
+                .isEqualTo(VenueReservationStatus.RELEASED);
+        assertThat(reservation2.getStatus())
+                .as("공고 취소 시 딸린 예약이 전부 같이 해제돼야 한다")
                 .isEqualTo(VenueReservationStatus.RELEASED);
     }
 

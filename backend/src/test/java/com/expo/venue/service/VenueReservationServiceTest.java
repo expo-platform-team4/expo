@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -172,14 +173,20 @@ class VenueReservationServiceTest {
                 .containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
     }
 
-    /** DB EXCLUDE 제약({@code ex_venue_reservations_period}) 위반은 기간 중복 오류로 변환돼야 한다. */
+    /**
+     * DB EXCLUDE 제약({@code ex_venue_reservations_period}) 위반은 기간 중복 오류로 변환돼야 한다. 첫
+     * 번째 구역은 저장에 성공하고 두 번째 구역에서 충돌이 나는 경우로 검증한다 - 첫 항목만으로는 저장
+     * 루프가 두 번째 항목까지 제대로 진행하는지 못 잡는다. (실제 DB 트랜잭션 롤백 여부는 이 세션에서
+     * psql로 직접 검증했고, Mockito 단위 테스트로는 확인할 수 없는 영역이라 여기서는 다루지 않는다.)
+     */
     @Test
     void createTranslatesConstraintViolationToPeriodConflict() {
         when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
                 .thenReturn(Optional.of(allowedNoticeRequest()));
         when(recruitmentNoticeRequestZoneRepository.findVenueZoneIdsByRequestId(REQUEST_ID))
-                .thenReturn(List.of(ZONE_ID));
+                .thenReturn(List.of(ZONE_ID, OTHER_ZONE_ID));
         when(venueReservationRepository.saveAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0))
                 .thenThrow(
                         new DataIntegrityViolationException(
                                 "duplicate key value violates exclusion constraint"
@@ -189,6 +196,7 @@ class VenueReservationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_PERIOD_CONFLICT);
+        verify(venueReservationRepository, times(2)).saveAndFlush(any());
     }
 
     /**
