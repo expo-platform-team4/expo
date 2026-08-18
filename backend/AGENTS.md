@@ -68,5 +68,7 @@ cd backend && ./gradlew build -x test
 
 - **포맷은 신경 쓰지 않는다.** 로컬에서 `./gradlew` 를 돌리면 `compileJava` 가 Spotless 를 자동 적용한다
 - **Checkstyle 은 `maxWarnings = 0` 이다.** 경고 하나만 나와도 빌드가 실패한다
-- 테스트(`./gradlew test`)는 현재 `contextLoads` 가 H2 문제로 실패한다. 알려진 상태이고
-  CI 에서도 돌리지 않는다. 새로 작성하는 단위 테스트는 정상 동작한다
+- **테스트는 CI 에서 돈다** (`backend-test` job). 로컬에서도 `./gradlew test` 로 전부 돌아간다
+- `ExpoApplicationTests` 는 **Testcontainers 로 실제 PostgreSQL 을 띄운다.** 마이그레이션을 처음부터
+  적용하고 `ddl-auto: validate` 로 엔티티와 대조하므로, **스키마와 엔티티가 어긋나면 여기서 깨진다.**
+  그래서 Docker 데몬이 필요하다 — 순수 단위 테스트는 Docker 없이도 돈다
