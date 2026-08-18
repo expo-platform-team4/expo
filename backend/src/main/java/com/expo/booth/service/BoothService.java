@@ -94,6 +94,9 @@ public class BoothService {
     /** 구역 내 부스 공간 상세 조회. */
     @Transactional(readOnly = true)
     public BoothResponse get(Long venueZoneId, Long boothId) {
+        if (!venueZoneRepository.existsById(venueZoneId)) {
+            throw new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        }
         Booth booth =
                 boothRepository
                         .findByIdAndVenueZoneId(boothId, venueZoneId)

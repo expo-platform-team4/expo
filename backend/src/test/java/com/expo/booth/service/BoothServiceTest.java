@@ -197,7 +197,19 @@ class BoothServiceTest {
     }
 
     @Test
+    void getRejectsWhenZoneNotFound() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.get(ZONE_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        verify(boothRepository, never()).findByIdAndVenueZoneId(any(), any());
+    }
+
+    @Test
     void getRejectsWhenNotFoundInZone() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
         when(boothRepository.findByIdAndVenueZoneId(10L, ZONE_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.get(ZONE_ID, 10L))
@@ -208,6 +220,7 @@ class BoothServiceTest {
 
     @Test
     void getSucceeds() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
         Booth booth =
                 Booth.create(
                         ZONE_ID,

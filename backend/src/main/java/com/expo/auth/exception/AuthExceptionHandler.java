@@ -2,6 +2,8 @@ package com.expo.auth.exception;
 
 import com.expo.common.exception.ErrorCode;
 import com.expo.common.response.ApiResponse;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class AuthExceptionHandler {
+
+    /** PostgreSQL 제약 위반 메시지에서 제약명만 뽑는다. 값(Detail 절)은 개인정보일 수 있어 로그에 남기지 않는다. */
+    private static final Pattern CONSTRAINT_NAME_PATTERN =
+            Pattern.compile("constraint \"([^\"]+)\"");
 
     /** 사업자등록번호 필수값·형식 오류 (A-API-005). */
     @ExceptionHandler(InvalidBusinessNumberException.class)
@@ -69,9 +75,17 @@ public class AuthExceptionHandler {
                 return toResponse(ErrorCode.DUPLICATE_NICKNAME);
             }
         }
-        log.warn("예상하지 못한 무결성 제약 위반으로 회원가입 실패", ex);
+        log.warn("예상하지 못한 무결성 제약 위반으로 회원가입 실패. constraint={}", constraintName(message));
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    private static String constraintName(String message) {
+        if (message == null) {
+            return "unknown";
+        }
+        Matcher matcher = CONSTRAINT_NAME_PATTERN.matcher(message);
+        return matcher.find() ? matcher.group(1) : "unknown";
     }
 
     private ResponseEntity<ApiResponse<Void>> toResponse(ErrorCode errorCode) {
