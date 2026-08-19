@@ -20,6 +20,12 @@ import { homeRouteFor, type Role, useAuthStore } from '@/lib/auth'
  * accessToken 이 null 로 보여서, 하이드레이션 전에 바로 리다이렉트하면 로그인 상태인
  * 사용자도 /login 으로 튕겨 나간다. store 의 `hasHydrated` 로 그 틱을 기다린다
  * (`lib/auth.ts` 의 `onRehydrateStorage` 참고 — effect 로 흉내 내지 않는다).
+ *
+ * redirect 대상은 `window.location`(pathname + search) 으로 만든다 — `usePathname()` 만
+ * 쓰면 쿼리스트링이 빠져서, 예를 들어 `/orders?expoId=1` 에서 로그인하고 돌아오면 어떤
+ * 박람회를 보던 중이었는지 잃어버린다. `useSearchParams()` 는 Suspense 경계를 요구하는데
+ * `RequireAuth` 는 레이아웃에서도 쓰여 그걸 강제하기 어려워, effect 안에서만(클라이언트
+ * 전용) `window.location` 을 직접 읽는다.
  */
 const RequireAuth = ({ roles, children }: { roles?: Role[]; children: React.ReactNode }) => {
   const router = useRouter()
@@ -32,7 +38,8 @@ const RequireAuth = ({ roles, children }: { roles?: Role[]; children: React.Reac
     if (!hasHydrated) return
 
     if (!accessToken) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
+      const currentPath = window.location.pathname + window.location.search
+      router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
       return
     }
     if (roleMismatch && role) {
