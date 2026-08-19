@@ -22,4 +22,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * @return 사용 가능한 Refresh Token 목록 (없으면 빈 리스트)
      */
     List<RefreshToken> findByRevokedAtIsNullAndExpiresAtAfter(Instant now);
+
+    /**
+     * 특정 사용자의 아직 폐기되지 않은 Refresh Token을 모두 조회한다 (전체 기기 로그아웃용, A-API-012).
+     *
+     * @param userId 대상 사용자 ID
+     * @return 폐기 대상 Refresh Token 목록 (없으면 빈 리스트)
+     */
+    List<RefreshToken> findByUserIdAndRevokedAtIsNull(Long userId);
 }

@@ -5,11 +5,15 @@ import com.expo.auth.dto.LoginResponse;
 import com.expo.auth.dto.TokenReissueRequest;
 import com.expo.auth.dto.TokenReissueResponse;
 import com.expo.auth.service.LoginService;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import com.expo.common.response.ApiResponse;
+import com.expo.jwt.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,5 +64,25 @@ public class LoginController {
             @Valid @RequestBody TokenReissueRequest request) {
         return ResponseEntity.ok(
                 ApiResponse.ok(loginService.reissueAccessToken(request.refreshToken())));
+    }
+
+    @Operation(
+            summary = "전체 기기 로그아웃",
+            description =
+                    """
+          로그인한 사용자 명의로 발급된 모든 Refresh Token을 폐기합니다.
+
+          - Authorization 헤더에 유효한 Access Token이 필요합니다.
+          - Access Token 자체는 Stateless라 서버에서 즉시 무효화되지 않고, 클라이언트가 폐기해야 합니다.
+          - 이후 폐기된 Refresh Token으로는 재발급(A-API-011)을 시도할 수 없습니다.
+          """)
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @AuthenticationPrincipal AuthPrincipal principal) {
+        if (principal == null) {
+            throw new BusinessException(ErrorCode.AUTHENTICATION_REQUIRED);
+        }
+        loginService.logout(principal.getMemberId());
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

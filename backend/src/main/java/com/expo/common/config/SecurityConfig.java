@@ -86,6 +86,9 @@ public class SecurityConfig {
                                         // 일반 회원 API — ROLE_MEMBER 필요
                                         .requestMatchers("/api/member/**")
                                         .hasRole("MEMBER")
+                                        // 마이페이지(회원·클라이언트 공통) — MEMBER 또는 CLIENT
+                                        .requestMatchers("/api/users/**")
+                                        .hasAnyRole("MEMBER", "CLIENT")
                                         // 위에 해당하지 않는 나머지 URL — 인증 없이 허용 (필요 시 authenticated()로 변경)
                                         .anyRequest()
                                         .permitAll())

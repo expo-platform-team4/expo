@@ -14,6 +14,7 @@ import com.expo.jwt.JwtProperties;
 import com.expo.jwt.JwtTokenProvider;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -160,5 +161,23 @@ public class LoginService {
         // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         // Access Token 재발급이 성공했을 때 클라이언트에 돌려줄 응답 DTO
         return new TokenReissueResponse(accessToken, jwtProperties.getAccessTokenExpireMinutes());
+    }
+
+    /**
+     * 전체 기기 로그아웃 (A-API-012).
+     *
+     * <p>이 사용자 명의로 발급된, 아직 폐기되지 않은 Refresh Token을 전부 폐기(revoked_at 채움)한다. Access
+     * Token은 Stateless JWT라 서버에서 즉시 무효화할 수 없다 — 클라이언트가 토큰을 버리고, 만료 시간이 지나면
+     * 자연히 못 쓰게 된다.
+     */
+    @Transactional
+    public void logout(Long userId) {
+        Instant now = Instant.now();
+        List<RefreshToken> activeTokens =
+                refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId);
+        for (RefreshToken token : activeTokens) {
+            token.revoke(now);
+        }
+        refreshTokenRepository.saveAll(activeTokens);
     }
 }
