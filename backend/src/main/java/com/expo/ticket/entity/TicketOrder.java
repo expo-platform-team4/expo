@@ -29,7 +29,7 @@ public class TicketOrder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_number", nullable = false, unique = true, length = 40)
+    @Column(name = "order_number", nullable = false, unique = true, length = 50)
     private String orderNumber;
 
     @Column(name = "member_user_id")
