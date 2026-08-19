@@ -80,6 +80,12 @@ public class SecurityConfig {
                                         // 관리자 전용 — ROLE_ADMIN 필요
                                         .requestMatchers("/api/admin/**")
                                         .hasRole("ADMIN")
+                                        // 내부 배치·운영 호출 — 지금은 ADMIN 으로 막는다.
+                                        // 아래 anyRequest() 가 permitAll 이라 규칙을 안 적으면
+                                        // 누구나 부를 수 있는 경로가 된다. 정산 대상을 만드는
+                                        // API 가 여기 있어 반드시 명시한다.
+                                        .requestMatchers("/api/internal/**")
+                                        .hasRole("ADMIN")
                                         // 클라이언트(업체) API — CLIENT 또는 ADMIN
                                         .requestMatchers("/api/client/**")
                                         .hasAnyRole("CLIENT", "ADMIN")
