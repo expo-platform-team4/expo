@@ -16,7 +16,10 @@ import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
+import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ public class RecruitmentNoticeService {
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private final RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
     private final VenueReservationRepository venueReservationRepository;
+    private final VenueReservationHistoryRepository venueReservationHistoryRepository;
     private final RecruitmentNoticeConverter recruitmentNoticeConverter;
 
     public RecruitmentNoticeService(
@@ -36,11 +40,13 @@ public class RecruitmentNoticeService {
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
             RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository,
             VenueReservationRepository venueReservationRepository,
+            VenueReservationHistoryRepository venueReservationHistoryRepository,
             RecruitmentNoticeConverter recruitmentNoticeConverter) {
         this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeHistoryRepository = recruitmentNoticeHistoryRepository;
         this.venueReservationRepository = venueReservationRepository;
+        this.venueReservationHistoryRepository = venueReservationHistoryRepository;
         this.recruitmentNoticeConverter = recruitmentNoticeConverter;
     }
 
@@ -175,11 +181,21 @@ public class RecruitmentNoticeService {
                         "{\"status\": \"" + notice.getStatus() + "\"}",
                         reason,
                         adminId));
+        String releaseReason = reason == null ? "모집공고 취소" : "모집공고 취소: " + reason;
         List<VenueReservation> reservations =
                 venueReservationRepository.findAllByRecruitmentNoticeId(noticeId);
         reservations.stream()
                 .filter(r -> r.getStatus() == VenueReservationStatus.CONFIRMED)
-                .forEach(VenueReservation::release);
+                .forEach(
+                        r -> {
+                            r.release();
+                            venueReservationHistoryRepository.save(
+                                    VenueReservationHistory.create(
+                                            r.getId(),
+                                            VenueReservationActionType.RELEASED,
+                                            releaseReason,
+                                            adminId));
+                        });
         return toResponseWithVenue(notice, reservations);
     }
 

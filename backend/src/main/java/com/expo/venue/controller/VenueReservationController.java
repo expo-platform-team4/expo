@@ -3,6 +3,8 @@ package com.expo.venue.controller;
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
 import com.expo.venue.dto.CreateVenueReservationRequest;
+import com.expo.venue.dto.VenueReservationHistoryResponse;
+import com.expo.venue.dto.VenueReservationReleaseRequest;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.service.VenueReservationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,10 +62,23 @@ public class VenueReservationController {
         return ResponseEntity.ok(ApiResponse.ok(venueReservationService.get(reservationId)));
     }
 
-    @Operation(summary = "박람회 취소 시 장소 예약 해제")
+    @Operation(summary = "장소 예약 직권 해제")
     @PatchMapping("/{reservationId}/release")
     public ResponseEntity<ApiResponse<VenueReservationResponse>> release(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long reservationId,
+            @Valid @RequestBody VenueReservationReleaseRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        venueReservationService.release(
+                                reservationId, principal.getMemberId(), request.reason())));
+    }
+
+    @Operation(summary = "장소 예약 확정·해제 이력 조회")
+    @GetMapping("/{reservationId}/histories")
+    public ResponseEntity<ApiResponse<List<VenueReservationHistoryResponse>>> listHistory(
             @PathVariable Long reservationId) {
-        return ResponseEntity.ok(ApiResponse.ok(venueReservationService.release(reservationId)));
+        return ResponseEntity.ok(
+                ApiResponse.ok(venueReservationService.listHistory(reservationId)));
     }
 }

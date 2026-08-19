@@ -3,8 +3,10 @@ package com.expo.recruitment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +24,10 @@ import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
+import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.time.Instant;
 import java.util.List;
@@ -48,6 +53,7 @@ class RecruitmentNoticeServiceTest {
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
     private VenueReservationRepository venueReservationRepository;
+    private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeService service;
 
     @BeforeEach
@@ -56,12 +62,14 @@ class RecruitmentNoticeServiceTest {
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeHistoryRepository = mock(RecruitmentNoticeHistoryRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
+        venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         service =
                 new RecruitmentNoticeService(
                         recruitmentNoticeRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeHistoryRepository,
                         venueReservationRepository,
+                        venueReservationHistoryRepository,
                         new RecruitmentNoticeConverter());
     }
 
@@ -312,6 +320,34 @@ class RecruitmentNoticeServiceTest {
         assertThat(reservation2.getStatus())
                 .as("공고 취소 시 딸린 예약이 전부 같이 해제돼야 한다")
                 .isEqualTo(VenueReservationStatus.RELEASED);
+        verify(venueReservationHistoryRepository, times(2))
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.RELEASED
+                                                && "모집공고 취소: 테스트 취소".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
+    }
+
+    /** 취소 사유를 안 넣어도(reason == null) 이력에 문자열 "null" 이 그대로 붙으면 안 된다. */
+    @Test
+    void cancelWithoutReasonDoesNotLeakNullIntoReleaseHistoryReason() {
+        RecruitmentNotice notice = draftNotice();
+        notice.publish();
+        VenueReservation reservation = confirmedReservation(REQUEST_ID, ZONE_ID);
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
+                .thenReturn(List.of(reservation));
+
+        service.cancel(1L, ADMIN_ID, null);
+
+        verify(venueReservationHistoryRepository)
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        "모집공고 취소".equals(history.getReason())));
     }
 
     @Test
