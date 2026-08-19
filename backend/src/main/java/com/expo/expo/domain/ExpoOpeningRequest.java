@@ -21,7 +21,7 @@ import org.hibernate.annotations.UpdateTimestamp;
  *   임시저장(DRAFT) 단계에서도 이 값들은 입력되어야 한다. (정의서 v2와 다른 점)
  */
 @Entity
-@Table(name = "sexpo_opening_requests")
+@Table(name = "expo_opening_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExpoOpeningRequest {

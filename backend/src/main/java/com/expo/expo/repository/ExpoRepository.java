@@ -69,9 +69,15 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
                        ELSE 'ON_SALE'
                    END                                    AS saleStatus
             FROM expos e
-            LEFT JOIN expo_venue_assignments eva ON eva.expo_id = e.id
-            LEFT JOIN venue_reservations vr      ON vr.id = eva.venue_reservation_id
-            LEFT JOIN virtual_venues vv          ON vv.id = vr.virtual_venue_id
+                        LEFT JOIN LATERAL (
+                                        SELECT vv2.name
+                                        FROM expo_venue_assignments eva
+                                        JOIN venue_reservations vr  ON vr.id = eva.venue_reservation_id
+                                        JOIN virtual_venues vv2     ON vv2.id = vr.virtual_venue_id
+                                        WHERE eva.expo_id = e.id
+                                        ORDER BY eva.id
+                                        LIMIT 1
+                                    ) vv ON TRUE
             LEFT JOIN LATERAL (
                 SELECT ei.file_id
                 FROM expo_images ei

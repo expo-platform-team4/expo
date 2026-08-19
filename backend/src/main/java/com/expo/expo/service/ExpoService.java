@@ -116,9 +116,10 @@ public class ExpoService {
         Expo expo = expoRepository.save(Expo.publishFrom(request, regionCode, req.adminId()));
 
         if (req.categoryIds() != null) {
-            for (Long categoryId : req.categoryIds()) {
+            for (Long categoryId : new java.util.LinkedHashSet<>(req.categoryIds())) {
                 em.createNativeQuery(
-                                "INSERT INTO expo_categories (expo_id, category_id) VALUES (:expoId, :categoryId)")
+                                "INSERT INTO expo_categories (expo_id, category_id) VALUES (:expoId, :categoryId)"
+                                        + " ON CONFLICT DO NOTHING")
                         .setParameter("expoId", expo.getId())
                         .setParameter("categoryId", categoryId)
                         .executeUpdate();
