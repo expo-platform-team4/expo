@@ -142,15 +142,33 @@ public class ExpoOpeningRequest {
                             + status
                             + ")");
         }
-        if (title != null) this.title = title;
-        if (description != null) this.description = description;
-        if (eventStartAt != null) this.eventStartAt = eventStartAt;
-        if (eventEndAt != null) this.eventEndAt = eventEndAt;
-        if (salesStartAt != null) this.salesStartAt = salesStartAt;
-        if (salesEndAt != null) this.salesEndAt = salesEndAt;
-        if (desiredVenueId != null) this.desiredVenueId = desiredVenueId;
-        if (desiredVenueHallId != null) this.desiredVenueHallId = desiredVenueHallId;
-        if (desiredVenueZoneId != null) this.desiredVenueZoneId = desiredVenueZoneId;
+        if (title != null) {
+            this.title = title;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (eventStartAt != null) {
+            this.eventStartAt = eventStartAt;
+        }
+        if (eventEndAt != null) {
+            this.eventEndAt = eventEndAt;
+        }
+        if (salesStartAt != null) {
+            this.salesStartAt = salesStartAt;
+        }
+        if (salesEndAt != null) {
+            this.salesEndAt = salesEndAt;
+        }
+        if (desiredVenueId != null) {
+            this.desiredVenueId = desiredVenueId;
+        }
+        if (desiredVenueHallId != null) {
+            this.desiredVenueHallId = desiredVenueHallId;
+        }
+        if (desiredVenueZoneId != null) {
+            this.desiredVenueZoneId = desiredVenueZoneId;
+        }
         validate();
     }
 

@@ -1,24 +1,50 @@
 package com.expo.expo.service;
 
-import com.expo.expo.dto.ExpoDto.*;
+import com.expo.expo.dto.ExpoDto.ChangeRequestCreate;
+import com.expo.expo.dto.ExpoDto.ExpoCardResponse;
+import com.expo.expo.dto.ExpoDto.ExpoDetailResponse;
+import com.expo.expo.dto.ExpoDto.ExpoFileCreate;
+import com.expo.expo.dto.ExpoDto.ExpoImageCreate;
+import com.expo.expo.dto.ExpoDto.ExternalLinkCreate;
+import com.expo.expo.dto.ExpoDto.OpeningRequestApprove;
+import com.expo.expo.dto.ExpoDto.OpeningRequestCreate;
+import com.expo.expo.dto.ExpoDto.OpeningRequestReject;
+import com.expo.expo.dto.ExpoDto.OpeningRequestResponse;
+import com.expo.expo.dto.ExpoDto.OpeningRequestUpdate;
+import com.expo.expo.dto.ExpoDto.SearchCondition;
 import com.expo.expo.entity.Expo;
-import com.expo.expo.entity.ExpoAttachments.*;
+import com.expo.expo.entity.ExpoAttachments.ExpoChangeRequest;
+import com.expo.expo.entity.ExpoAttachments.ExpoFile;
+import com.expo.expo.entity.ExpoAttachments.ExpoImage;
+import com.expo.expo.entity.ExpoAttachments.ExternalLink;
+import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
 import com.expo.expo.entity.ExpoEnums.SaleStatus;
 import com.expo.expo.entity.ExpoOpeningRequest;
 import com.expo.expo.exception.ExpoStateException;
-import com.expo.expo.repository.*;
+import com.expo.expo.repository.ExpoChangeRequestRepository;
+import com.expo.expo.repository.ExpoExternalLinkRepository;
+import com.expo.expo.repository.ExpoFileRepository;
+import com.expo.expo.repository.ExpoImageRepository;
+import com.expo.expo.repository.ExpoOpeningRequestRepository;
+import com.expo.expo.repository.ExpoRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.OffsetDateTime;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 박람회 도메인 서비스.
+ *
+ * <p>클라이언트/관리자 메서드는 첫 인자로 인증 주체의 {@code memberId} 를 받는다. 컨트롤러가
+ * {@code AuthPrincipal.getMemberId()} 로 넘겨주며, 본인 소유 여부는 여기서 재검증한다(위변조 방지).
+ * 관리자 메서드의 {@code memberId} 는 처리자 기록용이다(권한 자체는 SecurityConfig 필터가 검증).
+ */
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ExpoService {
 
@@ -30,95 +56,119 @@ public class ExpoService {
     private final ExpoChangeRequestRepository changeRequestRepository;
     private final EntityManager em;
 
+    public ExpoService(
+            ExpoRepository expoRepository,
+            ExpoOpeningRequestRepository openingRequestRepository,
+            ExpoImageRepository expoImageRepository,
+            ExpoFileRepository expoFileRepository,
+            ExpoExternalLinkRepository expoExternalLinkRepository,
+            ExpoChangeRequestRepository changeRequestRepository,
+            EntityManager em) {
+        this.expoRepository = expoRepository;
+        this.openingRequestRepository = openingRequestRepository;
+        this.expoImageRepository = expoImageRepository;
+        this.expoFileRepository = expoFileRepository;
+        this.expoExternalLinkRepository = expoExternalLinkRepository;
+        this.changeRequestRepository = changeRequestRepository;
+        this.em = em;
+    }
+
     /* ==================== 개최 신청 (클라이언트) ==================== */
 
-    /** 희-EXPO-01 임시저장 / 희-EXPO-17 개최 신청 시작 — expo_opening_requests DRAFT 생성 */
+    /** 희-EXPO-01 임시저장 / 희-EXPO-17 개최 신청 시작. 신청자는 인증 주체로 고정. */
     @Transactional
-    public Long createOpeningRequest(OpeningRequestCreate req) {
-        ExpoOpeningRequest request =
+    public Long createOpeningRequest(Long memberId, OpeningRequestCreate request) {
+        ExpoOpeningRequest entity =
                 ExpoOpeningRequest.builder()
-                        .hostClientId(req.hostClientId())
-                        .title(req.title())
-                        .description(req.description())
-                        .eventStartAt(req.eventStartAt())
-                        .eventEndAt(req.eventEndAt())
-                        .salesStartAt(req.salesStartAt())
-                        .salesEndAt(req.salesEndAt())
-                        .desiredVenueId(req.desiredVenueId())
-                        .desiredVenueHallId(req.desiredVenueHallId())
-                        .desiredVenueZoneId(req.desiredVenueZoneId())
+                        .hostClientId(memberId)
+                        .title(request.title())
+                        .description(request.description())
+                        .eventStartAt(request.eventStartAt())
+                        .eventEndAt(request.eventEndAt())
+                        .salesStartAt(request.salesStartAt())
+                        .salesEndAt(request.salesEndAt())
+                        .desiredVenueId(request.desiredVenueId())
+                        .desiredVenueHallId(request.desiredVenueHallId())
+                        .desiredVenueZoneId(request.desiredVenueZoneId())
                         .build();
-        return openingRequestRepository.save(request).getId();
+        return openingRequestRepository.save(entity).getId();
     }
 
-    /** 희-EXPO-05 승인 전 직접 수정 (APPROVED 이후엔 도메인에서 차단 — 희-EXPO-06) */
+    /** 희-EXPO-05 승인 전 직접 수정 (승인 후에는 도메인에서 차단 — 희-EXPO-06). */
     @Transactional
-    public void updateOpeningRequest(Long requestId, OpeningRequestUpdate req) {
-        ExpoOpeningRequest request = getOpeningRequest(requestId);
-        validateOwner(request.isOwnedBy(req.hostClientId()));
-        request.updateByClient(
-                req.title(),
-                req.description(),
-                req.eventStartAt(),
-                req.eventEndAt(),
-                req.salesStartAt(),
-                req.salesEndAt(),
-                req.desiredVenueId(),
-                req.desiredVenueHallId(),
-                req.desiredVenueZoneId());
+    public void updateOpeningRequest(Long memberId, Long requestId, OpeningRequestUpdate request) {
+        ExpoOpeningRequest entity = getOpeningRequest(requestId);
+        validateOwner(entity.isOwnedBy(memberId));
+        entity.updateByClient(
+                request.title(),
+                request.description(),
+                request.eventStartAt(),
+                request.eventEndAt(),
+                request.salesStartAt(),
+                request.salesEndAt(),
+                request.desiredVenueId(),
+                request.desiredVenueHallId(),
+                request.desiredVenueZoneId());
     }
 
-    /** 희-EXPO-02 등록 및 심사 요청 */
+    /** 희-EXPO-02 박람회 등록 및 심사 요청. */
     @Transactional
-    public void submitOpeningRequest(Long requestId, Long clientId) {
-        ExpoOpeningRequest request = getOpeningRequest(requestId);
-        validateOwner(request.isOwnedBy(clientId));
-        request.submit();
+    public void submitOpeningRequest(Long memberId, Long requestId) {
+        ExpoOpeningRequest entity = getOpeningRequest(requestId);
+        validateOwner(entity.isOwnedBy(memberId));
+        entity.submit();
     }
 
-    /** 신청 취소 (승인 전) */
+    /** 신청 취소 (승인 전). */
     @Transactional
-    public void cancelOpeningRequest(Long requestId, Long clientId) {
-        ExpoOpeningRequest request = getOpeningRequest(requestId);
-        validateOwner(request.isOwnedBy(clientId));
-        request.cancel();
+    public void cancelOpeningRequest(Long memberId, Long requestId) {
+        ExpoOpeningRequest entity = getOpeningRequest(requestId);
+        validateOwner(entity.isOwnedBy(memberId));
+        entity.cancel();
     }
 
-    public Page<OpeningRequestResponse> getMyOpeningRequests(Long clientId, int page, int size) {
+    /** 내 개최 신청 목록 (임시저장 포함). */
+    public Page<OpeningRequestResponse> getMyOpeningRequests(Long memberId, int page, int size) {
         return openingRequestRepository
-                .findByHostClientId(clientId, pageOf(page, size))
+                .findByHostClientId(memberId, pageOf(page, size))
                 .map(OpeningRequestResponse::from);
     }
 
-    public OpeningRequestResponse getOpeningRequestDetail(Long requestId) {
-        return OpeningRequestResponse.from(getOpeningRequest(requestId));
+    /**
+     * 내 개최 신청 상세 (API 명세 No.3). 본인 소유만 조회 가능하도록 검증하여 타인 신청 열람을 막는다.
+     */
+    public OpeningRequestResponse getMyOpeningRequestDetail(Long memberId, Long requestId) {
+        ExpoOpeningRequest entity = getOpeningRequest(requestId);
+        validateOwner(entity.isOwnedBy(memberId));
+        return OpeningRequestResponse.from(entity);
     }
 
     /* ==================== 심사 (관리자) ==================== */
 
+    /** 심사 시작. */
     @Transactional
-    public void startReview(Long requestId, Long adminId) {
-        getOpeningRequest(requestId).startReview(adminId);
+    public void startReview(Long adminMemberId, Long requestId) {
+        getOpeningRequest(requestId).startReview(adminMemberId);
     }
 
     /**
-     * 희-EXPO-09 승인 → expos 생성 + PUBLIC 자동 공개 → 목록 자동 반영(희-SRCH-12)
-     * region_code 는 요청값 > 희망 장소(virtual_venues.region_code) 순으로 해석.
-     * 카테고리(expo_categories N:M)도 함께 연결한다.
+     * 희-EXPO-09 승인 → expos 생성 + PUBLIC 자동 공개 → 목록 자동 반영(희-SRCH-12). region_code 는
+     * 요청값 > 희망 장소(virtual_venues.region_code) 순으로 해석하고, 카테고리(N:M)도 연결한다.
      */
     @Transactional
-    public Long approveOpeningRequest(Long requestId, OpeningRequestApprove req) {
-        ExpoOpeningRequest request = getOpeningRequest(requestId);
-        request.approve(req.adminId());
+    public Long approveOpeningRequest(
+            Long adminMemberId, Long requestId, OpeningRequestApprove request) {
+        ExpoOpeningRequest entity = getOpeningRequest(requestId);
+        entity.approve(adminMemberId);
 
-        String regionCode = resolveRegionCode(req.regionCode(), request.getDesiredVenueId());
-        Expo expo = expoRepository.save(Expo.publishFrom(request, regionCode, req.adminId()));
+        String regionCode = resolveRegionCode(request.regionCode(), entity.getDesiredVenueId());
+        Expo expo = expoRepository.save(Expo.publishFrom(entity, regionCode, adminMemberId));
 
-        if (req.categoryIds() != null) {
-            for (Long categoryId : new java.util.LinkedHashSet<>(req.categoryIds())) {
+        if (request.categoryIds() != null) {
+            for (Long categoryId : request.categoryIds()) {
                 em.createNativeQuery(
-                                "INSERT INTO expo_categories (expo_id, category_id) VALUES (:expoId, :categoryId)"
-                                        + " ON CONFLICT DO NOTHING")
+                                "INSERT INTO expo_categories (expo_id, category_id)"
+                                        + " VALUES (:expoId, :categoryId)")
                         .setParameter("expoId", expo.getId())
                         .setParameter("categoryId", categoryId)
                         .executeUpdate();
@@ -127,112 +177,131 @@ public class ExpoService {
         return expo.getId();
     }
 
+    /** 반려. */
     @Transactional
-    public void rejectOpeningRequest(Long requestId, OpeningRequestReject req) {
-        getOpeningRequest(requestId).reject(req.adminId(), req.rejectionReason());
+    public void rejectOpeningRequest(
+            Long adminMemberId, Long requestId, OpeningRequestReject request) {
+        getOpeningRequest(requestId).reject(adminMemberId, request.rejectionReason());
     }
 
-    /* ==================== 첨부 자료 (희-EXPO-13~15) ==================== */
+    /** 관리자 개최 신청 목록·검색 (API 명세 No.6). status 가 null 이면 전체 조회. */
+    public Page<OpeningRequestResponse> getOpeningRequests(
+            OpeningRequestStatus status, int page, int size) {
+        Pageable pageable = pageOf(page, size);
+        Page<ExpoOpeningRequest> result =
+                (status == null)
+                        ? openingRequestRepository.findAll(pageable)
+                        : openingRequestRepository.findByStatusOrderBySubmittedAtAsc(
+                                status, pageable);
+        return result.map(OpeningRequestResponse::from);
+    }
 
-    /** 희-EXPO-15 대표 이미지(THUMBNAIL)·상세 이미지 등록 */
+    /** 관리자 개최 신청 상세 (API 명세 No.7). 관리자는 소유자 검증 없이 조회 가능. */
+    public OpeningRequestResponse getOpeningRequestDetail(Long requestId) {
+        return OpeningRequestResponse.from(getOpeningRequest(requestId));
+    }
+
+    /* ==================== 첨부 자료 (희-EXPO-13~15) — 후속 PR 대비 유지 ==================== */
+
+    /** 희-EXPO-15 대표 이미지(THUMBNAIL)·상세 이미지 등록. */
     @Transactional
-    public Long addImage(Long expoId, ExpoImageCreate req) {
-        requireExpo(expoId);
+    public Long addImage(Long memberId, Long expoId, ExpoImageCreate request) {
+        Expo expo = requireExpo(expoId);
+        validateOwner(expo.isOwnedBy(memberId));
         return expoImageRepository
                 .save(
                         ExpoImage.builder()
                                 .expoId(expoId)
-                                .fileId(req.fileId())
-                                .imageType(req.imageType())
-                                .altText(req.altText())
-                                .sortOrder(req.sortOrder())
+                                .fileId(request.fileId())
+                                .imageType(request.imageType())
+                                .altText(request.altText())
+                                .sortOrder(request.sortOrder())
                                 .build())
                 .getId();
     }
 
-    /** 희-EXPO-14/15 PDF·카탈로그·리플렛·홍보영상 등록 */
+    /** 희-EXPO-14/15 PDF·카탈로그·리플렛·홍보영상 등록. */
     @Transactional
-    public Long addFile(Long expoId, ExpoFileCreate req) {
-        requireExpo(expoId);
+    public Long addFile(Long memberId, Long expoId, ExpoFileCreate request) {
+        Expo expo = requireExpo(expoId);
+        validateOwner(expo.isOwnedBy(memberId));
         return expoFileRepository
                 .save(
                         ExpoFile.builder()
                                 .expoId(expoId)
-                                .fileId(req.fileId())
-                                .filePurpose(req.filePurpose())
-                                .title(req.title())
-                                .sortOrder(req.sortOrder())
+                                .fileId(request.fileId())
+                                .filePurpose(request.filePurpose())
+                                .title(request.title())
+                                .sortOrder(request.sortOrder())
                                 .build())
                 .getId();
     }
 
-    /** 희-EXPO-13 외부 링크 등록 */
+    /** 희-EXPO-13 외부 링크 등록. */
     @Transactional
-    public Long addExternalLink(Long expoId, ExternalLinkCreate req) {
-        requireExpo(expoId);
+    public Long addExternalLink(Long memberId, Long expoId, ExternalLinkCreate request) {
+        Expo expo = requireExpo(expoId);
+        validateOwner(expo.isOwnedBy(memberId));
         return expoExternalLinkRepository
                 .save(
                         ExternalLink.builder()
                                 .expoId(expoId)
-                                .linkType(req.linkType())
-                                .label(req.label())
-                                .url(req.url())
-                                .sortOrder(req.sortOrder())
+                                .linkType(request.linkType())
+                                .label(request.label())
+                                .url(request.url())
+                                .sortOrder(request.sortOrder())
                                 .build())
                 .getId();
     }
 
-    /* ==================== 승인 후 수정 요청 (희-EXPO-06 대응 경로) ==================== */
-
+    /** 희-EXPO-06 대응 경로 — 승인 후 수정 요청. */
     @Transactional
-    public Long createChangeRequest(Long expoId, ChangeRequestCreate req) {
+    public Long createChangeRequest(Long memberId, Long expoId, ChangeRequestCreate request) {
         Expo expo = requireExpo(expoId);
-        validateOwner(expo.isOwnedBy(req.requesterClientId()));
+        validateOwner(expo.isOwnedBy(memberId));
         return changeRequestRepository
                 .save(
                         ExpoChangeRequest.builder()
                                 .expoId(expoId)
-                                .requesterClientId(req.requesterClientId())
-                                .changeReason(req.changeReason())
-                                .requestedChanges(req.requestedChanges())
+                                .requesterClientId(memberId)
+                                .changeReason(request.changeReason())
+                                .requestedChanges(request.requestedChanges())
                                 .build())
                 .getId();
     }
 
     /* ==================== 공개 조회 (희-SRCH-01~13) ==================== */
 
-    /** 목록 검색 — page 는 1부터 시작 (희-SRCH-10) */
-    public Page<ExpoCardResponse> search(SearchCondition c, int page, int size) {
+    /** 목록 검색 — page 는 1부터 시작 (희-SRCH-10). */
+    public Page<ExpoCardResponse> search(SearchCondition condition, int page, int size) {
         return expoRepository
                 .searchPublic(
-                        emptyToNull(c.keyword()),
-                        c.categoryId(),
-                        emptyToNull(c.regionCode()),
-                        c.fromDate(),
-                        c.toDate(),
-                        c.minPrice(),
-                        c.maxPrice(),
-                        c.saleStatus() == null ? null : c.saleStatus().name(),
-                        c.sortOrDefault().name(),
+                        emptyToNull(condition.keyword()),
+                        condition.categoryId(),
+                        emptyToNull(condition.regionCode()),
+                        condition.fromDate(),
+                        condition.toDate(),
+                        condition.minPrice(),
+                        condition.maxPrice(),
+                        condition.saleStatus() == null ? null : condition.saleStatus().name(),
+                        condition.sortOrDefault().name(),
                         pageOf(page, size))
                 .map(ExpoCardResponse::from);
     }
 
-    /** 상세 조회 — 판매 상태(희-EXPO-10) 계산 + 이미지·파일·링크 포함 */
+    /** 상세 조회 — 판매 상태(희-EXPO-10) 계산 + 이미지·파일·링크 포함. */
     public ExpoDetailResponse getDetail(Long expoId) {
         Expo expo = requireExpo(expoId);
 
-        // 티켓 상품 존재·전량 매진 여부 (ticket_products + ticket_inventories)
         Object[] agg =
                 (Object[])
                         em.createNativeQuery(
-                                        """
-                        SELECT COUNT(*),
-                               COALESCE(BOOL_AND(COALESCE(ti.available_quantity, 0) = 0), FALSE)
-                        FROM ticket_products tp
-                        LEFT JOIN ticket_inventories ti ON ti.ticket_product_id = tp.id
-                        WHERE tp.expo_id = :expoId AND tp.status <> 'CANCELED'
-                        """)
+                                        "SELECT COUNT(*),"
+                                                + " COALESCE(BOOL_AND(COALESCE(ti.available_quantity, 0) = 0), FALSE)"
+                                                + " FROM ticket_products tp"
+                                                + " LEFT JOIN ticket_inventories ti"
+                                                + " ON ti.ticket_product_id = tp.id"
+                                                + " WHERE tp.expo_id = :expoId AND tp.status <> 'CANCELED'")
                                 .setParameter("expoId", expoId)
                                 .getSingleResult();
         boolean hasProducts = ((Number) agg[0]).longValue() > 0;
@@ -248,12 +317,11 @@ public class ExpoService {
                         hasProducts,
                         allSoldOut);
 
-        return ExpoDetailResponse.of(
-                expo,
-                saleStatus,
-                expoImageRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId),
-                expoFileRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId),
-                expoExternalLinkRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId));
+        List<ExpoImage> images = expoImageRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId);
+        List<ExpoFile> files = expoFileRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId);
+        List<ExternalLink> links =
+                expoExternalLinkRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId);
+        return ExpoDetailResponse.of(expo, saleStatus, images, files, links);
     }
 
     /* ==================== 내부 유틸 ==================== */
@@ -292,7 +360,7 @@ public class ExpoService {
         return PageRequest.of(Math.max(page - 1, 0), size);
     }
 
-    private String emptyToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
+    private String emptyToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 }

@@ -5,6 +5,7 @@ import com.expo.jwt.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -87,6 +88,11 @@ public class SecurityConfig {
                                         .requestMatchers("/api/member/**")
                                         .hasRole("MEMBER")
                                         // 위에 해당하지 않는 나머지 URL — 인증 없이 허용 (필요 시 authenticated()로 변경)
+                                        .requestMatchers(HttpMethod.GET, "/api/expos/**")
+                                        .permitAll() // 공개 조회
+                                        .requestMatchers("/api/client/**")
+                                        .authenticated() // 클라이언트
+                                        // /api/admin/** 는 기존 hasRole("ADMIN") 규칙 유지
                                         .anyRequest()
                                         .permitAll())
                 // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치해 토큰을 먼저 처리
