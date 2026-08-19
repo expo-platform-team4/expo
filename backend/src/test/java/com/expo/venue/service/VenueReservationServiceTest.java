@@ -23,6 +23,7 @@ import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
@@ -48,6 +49,7 @@ class VenueReservationServiceTest {
     private static final Instant END = Instant.parse("2026-10-05T00:00:00Z");
 
     private VenueReservationRepository venueReservationRepository;
+    private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
     private VirtualVenueRepository virtualVenueRepository;
@@ -58,6 +60,7 @@ class VenueReservationServiceTest {
     @BeforeEach
     void setUp() {
         venueReservationRepository = mock(VenueReservationRepository.class);
+        venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeRequestZoneRepository = mock(RecruitmentNoticeRequestZoneRepository.class);
         virtualVenueRepository = mock(VirtualVenueRepository.class);
@@ -66,6 +69,7 @@ class VenueReservationServiceTest {
         service =
                 new VenueReservationService(
                         venueReservationRepository,
+                        venueReservationHistoryRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeRequestZoneRepository,
                         virtualVenueRepository,
@@ -173,6 +177,7 @@ class VenueReservationServiceTest {
                         });
         assertThat(responses.stream().map(VenueReservationResponse::venueZoneId))
                 .containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
+        verify(venueReservationHistoryRepository, times(2)).save(any());
     }
 
     /**
@@ -274,7 +279,7 @@ class VenueReservationServiceTest {
     void releaseRejectsWhenReservationNotFound() {
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.release(1L))
+        assertThatThrownBy(() -> service.release(1L, ADMIN_ID, "정책 위반"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
@@ -286,7 +291,7 @@ class VenueReservationServiceTest {
         reservation.release();
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        assertThatThrownBy(() -> service.release(1L))
+        assertThatThrownBy(() -> service.release(1L, ADMIN_ID, "정책 위반"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
@@ -297,9 +302,20 @@ class VenueReservationServiceTest {
         VenueReservation reservation = confirmedReservation();
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        VenueReservationResponse response = service.release(1L);
+        VenueReservationResponse response = service.release(1L, ADMIN_ID, "정책 위반");
 
         assertThat(response.status()).isEqualTo(VenueReservationStatus.RELEASED);
+        verify(venueReservationHistoryRepository).save(any());
+    }
+
+    @Test
+    void listHistoryRejectsWhenNotFound() {
+        when(venueReservationRepository.existsById(1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.listHistory(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
     }
 
     @Test

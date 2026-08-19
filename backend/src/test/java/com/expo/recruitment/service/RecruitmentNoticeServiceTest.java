@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationStatus;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.time.Instant;
 import java.util.List;
@@ -48,6 +50,7 @@ class RecruitmentNoticeServiceTest {
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
     private VenueReservationRepository venueReservationRepository;
+    private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeService service;
 
     @BeforeEach
@@ -56,12 +59,14 @@ class RecruitmentNoticeServiceTest {
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeHistoryRepository = mock(RecruitmentNoticeHistoryRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
+        venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         service =
                 new RecruitmentNoticeService(
                         recruitmentNoticeRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeHistoryRepository,
                         venueReservationRepository,
+                        venueReservationHistoryRepository,
                         new RecruitmentNoticeConverter());
     }
 
@@ -312,6 +317,7 @@ class RecruitmentNoticeServiceTest {
         assertThat(reservation2.getStatus())
                 .as("공고 취소 시 딸린 예약이 전부 같이 해제돼야 한다")
                 .isEqualTo(VenueReservationStatus.RELEASED);
+        verify(venueReservationHistoryRepository, times(2)).save(any());
     }
 
     @Test

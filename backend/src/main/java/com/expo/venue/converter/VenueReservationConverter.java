@@ -1,7 +1,9 @@
 package com.expo.venue.converter;
 
+import com.expo.venue.dto.VenueReservationHistoryResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationHistory;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,5 +23,14 @@ public class VenueReservationConverter {
                 reservation.getConfirmedByAdminId(),
                 reservation.getConfirmedAt(),
                 reservation.getReleasedAt());
+    }
+
+    public VenueReservationHistoryResponse toHistoryResponse(VenueReservationHistory history) {
+        return new VenueReservationHistoryResponse(
+                history.getId(),
+                history.getActionType(),
+                history.getReason(),
+                history.getProcessedByAdminId(),
+                history.getCreatedAt());
     }
 }
