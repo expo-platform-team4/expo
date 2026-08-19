@@ -106,10 +106,14 @@ log.info("정산 완료 성공={} 실패={}", success, failed);
 | `DataIntegrityViolationException` | `WARN` | 동시 가입 등 예상 가능한 경합 |
 | 그 외 처리되지 않은 예외 | `ERROR` + 스택트레이스 | 예상 못 한 것이다 |
 
-현재 [AuthExceptionHandler](../backend/src/main/java/com/expo/auth/exception/AuthExceptionHandler.java)
-에는 로깅이 없다. 특히 `handleDataIntegrityViolation` 은 어떤 제약이 걸렸는지 판단한 뒤
-원본 예외를 그대로 버린다 — 예상 밖 제약 위반이 들어오면 추적할 단서가 없다.
-공통 핸들러로 승격할 때 같이 정리한다.
+[AuthExceptionHandler](../backend/src/main/java/com/expo/auth/exception/AuthExceptionHandler.java)
+의 `handleDataIntegrityViolation` 은 인식한 제약(사업자등록번호·이메일·닉네임 중복)을 조용히
+해당 `ErrorCode` 의 오류 응답으로 변환하고, 어느 제약인지 못 알아본 경우에만 `WARN` 으로 제약명을 남긴다.
+원본 예외(메시지·스택트레이스)에는 DB의 Detail 절을 통해 이메일 등 실제 값이 담길 수 있어 로그에는 절대 남기지
+않는다. 참고로 여기서 만드는 건 `BusinessException` 이 아니라 바로 HTTP 오류 응답이다 — 서비스 계층 저장
+직후의 경합을 잡는 이 핸들러와 달리, 가입 흐름 자체의 중복 검사는
+[AuthService.toBusinessException](../backend/src/main/java/com/expo/auth/service/AuthService.java)
+에서 `BusinessException` 으로 변환한다.
 
 ## 6. MDC — 요청 하나를 추적하는 법
 

@@ -11,12 +11,16 @@ import static org.mockito.Mockito.when;
 import com.expo.booth.converter.BoothConverter;
 import com.expo.booth.dto.BoothResponse;
 import com.expo.booth.dto.CreateBoothRequest;
+import com.expo.booth.entity.Booth;
 import com.expo.booth.repository.BoothRepository;
 import com.expo.booth.repository.BoothTemplateRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.repository.VenueZoneRepository;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -147,5 +151,92 @@ class BoothServiceTest {
 
         assertThatThrownBy(() -> service.create(ZONE_ID, requestWithTemplate(null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private static void withId(Object entity, Long id) {
+        try {
+            Field field = entity.getClass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    void listRejectsWhenZoneNotFound() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.list(ZONE_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+    }
+
+    @Test
+    void listReturnsBoothsInZone() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        Booth booth =
+                Booth.create(
+                        ZONE_ID,
+                        null,
+                        "A-01",
+                        "STANDARD-3X3",
+                        BigDecimal.valueOf(3),
+                        null,
+                        BigDecimal.valueOf(3),
+                        null);
+        withId(booth, 10L);
+        when(boothRepository.findAllByVenueZoneIdOrderBySortOrderAscIdAsc(ZONE_ID))
+                .thenReturn(List.of(booth));
+
+        List<BoothResponse> responses = service.list(ZONE_ID);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(10L);
+    }
+
+    @Test
+    void getRejectsWhenZoneNotFound() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.get(ZONE_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        verify(boothRepository, never()).findByIdAndVenueZoneId(any(), any());
+    }
+
+    @Test
+    void getRejectsWhenNotFoundInZone() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.findByIdAndVenueZoneId(10L, ZONE_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.get(ZONE_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_NOT_FOUND);
+    }
+
+    @Test
+    void getSucceeds() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        Booth booth =
+                Booth.create(
+                        ZONE_ID,
+                        null,
+                        "A-01",
+                        "STANDARD-3X3",
+                        BigDecimal.valueOf(3),
+                        null,
+                        BigDecimal.valueOf(3),
+                        null);
+        withId(booth, 10L);
+        when(boothRepository.findByIdAndVenueZoneId(10L, ZONE_ID)).thenReturn(Optional.of(booth));
+
+        BoothResponse response = service.get(ZONE_ID, 10L);
+
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.boothNumber()).isEqualTo("A-01");
     }
 }

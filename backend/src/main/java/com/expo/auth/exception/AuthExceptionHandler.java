@@ -2,6 +2,9 @@ package com.expo.auth.exception;
 
 import com.expo.common.exception.ErrorCode;
 import com.expo.common.response.ApiResponse;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,8 +19,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p>이전에는 컨트롤러별로 {@code assignableTypes} 를 지정한 핸들러가 셋이었고 셋 다 같은 코드를 복사해 갖고 있었다. 공통 부분을 걷어내고 나니
  * 컨트롤러를 구분할 이유가 없어져 하나로 합쳤다.
  */
+@Slf4j
 @RestControllerAdvice
 public class AuthExceptionHandler {
+
+    /** PostgreSQL 제약 위반 메시지에서 제약명만 뽑는다. 값(Detail 절)은 개인정보일 수 있어 로그에 남기지 않는다. */
+    private static final Pattern CONSTRAINT_NAME_PATTERN =
+            Pattern.compile("constraint \"([^\"]+)\"");
 
     /** 사업자등록번호 필수값·형식 오류 (A-API-005). */
     @ExceptionHandler(InvalidBusinessNumberException.class)
@@ -67,8 +75,17 @@ public class AuthExceptionHandler {
                 return toResponse(ErrorCode.DUPLICATE_NICKNAME);
             }
         }
+        log.warn("예상하지 못한 무결성 제약 위반으로 회원가입 실패. constraint={}", constraintName(message));
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT.getMessage()));
+    }
+
+    private static String constraintName(String message) {
+        if (message == null) {
+            return "unknown";
+        }
+        Matcher matcher = CONSTRAINT_NAME_PATTERN.matcher(message);
+        return matcher.find() ? matcher.group(1) : "unknown";
     }
 
     private ResponseEntity<ApiResponse<Void>> toResponse(ErrorCode errorCode) {
