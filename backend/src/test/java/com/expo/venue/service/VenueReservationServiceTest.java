@@ -3,6 +3,7 @@ package com.expo.venue.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -180,7 +181,14 @@ class VenueReservationServiceTest {
                         });
         assertThat(responses.stream().map(VenueReservationResponse::venueZoneId))
                 .containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
-        verify(venueReservationHistoryRepository, times(2)).save(any());
+        verify(venueReservationHistoryRepository, times(2))
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.CONFIRMED
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 
     /**
@@ -308,7 +316,15 @@ class VenueReservationServiceTest {
         VenueReservationResponse response = service.release(1L, ADMIN_ID, "정책 위반");
 
         assertThat(response.status()).isEqualTo(VenueReservationStatus.RELEASED);
-        verify(venueReservationHistoryRepository).save(any());
+        verify(venueReservationHistoryRepository)
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.RELEASED
+                                                && "정책 위반".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 
     @Test

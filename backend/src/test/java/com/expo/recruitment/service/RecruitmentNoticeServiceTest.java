@@ -24,6 +24,7 @@ import com.expo.recruitment.repository.RecruitmentNoticeHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
 import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationHistoryRepository;
@@ -319,7 +320,15 @@ class RecruitmentNoticeServiceTest {
         assertThat(reservation2.getStatus())
                 .as("공고 취소 시 딸린 예약이 전부 같이 해제돼야 한다")
                 .isEqualTo(VenueReservationStatus.RELEASED);
-        verify(venueReservationHistoryRepository, times(2)).save(any());
+        verify(venueReservationHistoryRepository, times(2))
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.RELEASED
+                                                && "모집공고 취소: 테스트 취소".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 
     /** 취소 사유를 안 넣어도(reason == null) 이력에 문자열 "null" 이 그대로 붙으면 안 된다. */
@@ -338,7 +347,7 @@ class RecruitmentNoticeServiceTest {
                 .save(
                         argThat(
                                 (VenueReservationHistory history) ->
-                                        !history.getReason().contains("null")));
+                                        "모집공고 취소".equals(history.getReason())));
     }
 
     @Test
