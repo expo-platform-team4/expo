@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.notification.repository.NotificationRecipientMapper">
+
+    <!--
+      수신 번호는 주문자 유형에 따라 출처가 다르다.
+        회원   users.phone_number             (NULL 일 수 있다 - 소셜 로그인 회원)
+        비회원 guest_order_infos.phone_number (NOT NULL)
+      COALESCE 로 둘 중 있는 쪽을 고른다. 둘 다 없으면 NULL 이고, 그 처리는 발송기가 한다.
+
+      발권 매퍼의 같은 조회와 달리 FOR UPDATE 를 붙이지 않는다.
+      알림을 보내려고 주문 행을 잠글 이유가 없고, 잠그면 그 사이 결제·환불이 막힌다.
+    -->
+    <select id="findByTicketOrderId" resultType="com.expo.notification.dto.NotificationRecipient">
+        SELECT o.member_user_id                         AS user_id,
+               COALESCE(u.phone_number, g.phone_number) AS phone_number
+        FROM ticket_orders o
+        LEFT JOIN users             u ON u.id = o.member_user_id
+        LEFT JOIN guest_order_infos g ON g.ticket_order_id = o.id
+        WHERE o.id = #{ticketOrderId}
+    </select>
+
+
+    <!--
+      박람회 취소 안내 대상. 수신번호 단위로 중복을 제거한다.
+
+      주문 단위가 아니라 번호 단위인 이유는 대행사 동작 때문이다. 한 요청 안에 같은 수신번호가
+      두 번 있으면 하나만 남기고 나머지를 실패 처리한다(statusCode 1026). 한 사람이 같은 박람회
+      주문을 두 건 가지고 있으면 실제로 그렇게 되고, "우리가 잘못 넣은 것" 이 "발송 실패" 로 기록된다.
+      실제 데이터로 확인했다 - 시드에서 한 번호가 7개 주문에 걸쳐 있었다.
+
+      DISTINCT ON 의 키가 COALESCE(번호, 'ORDER:' || o.id) 인 이유:
+      번호가 NULL 인 대상까지 하나로 뭉쳐지면 안 된다. 번호가 없는 사람이 여럿이면 각각
+      "보내려 했으나 번호가 없었다"(CANCELED) 로 남아야 하므로, 그때는 주문 단위로 갈라 둔다.
+
+      status 조건 - CANCELED 만 뺀다. INVALIDATED 는 포함한다.
+      처음에는 IN ('ISSUED','CHECKED_IN') 이었는데, 그러면 이 알림이 절대 나가지 않는다.
+      리스너가 AFTER_COMMIT 이라 박람회 취소 트랜잭션이 끝난 뒤에 이 조회가 돈다. 취소 처리가
+      티켓을 INVALIDATED 로 바꿨다면 그 시점에는 이미 반영돼 있어 대상이 0명이 된다.
+      발행 순서를 아무리 조정해도 해결되지 않는다 - AFTER_COMMIT 은 커밋 뒤에 발사되기 때문이다.
+      CANCELED(구매자가 개별 취소한 티켓)만 빼고, 취소로 무효화된 티켓은 대상으로 남긴다.
+
+      NOT EXISTS  - 환불이 COMPLETED 인 주문만 뺀다.
+      행의 존재만 보면 REQUESTED·PROCESSING·FAILED 도 걸러진다. 특히 FAILED 는 돈을 못 돌려받은
+      사람인데 취소 안내까지 못 받게 된다. 빼려던 대상은 '환불 완료 문자를 이미 받은 사람' 이다.
+    -->
+    <select id="findExpoCancelTargets" resultType="com.expo.notification.dto.ExpoCancelTarget">
+        SELECT DISTINCT ON (COALESCE(u.phone_number, g.phone_number, 'ORDER:' || o.id))
+               o.member_user_id                         AS user_id,
+               COALESCE(u.phone_number, g.phone_number) AS phone_number,
+               o.id                                     AS sample_ticket_order_id
+        FROM issued_tickets it
+        JOIN ticket_order_items oi ON oi.id = it.ticket_order_item_id
+        JOIN ticket_orders      o  ON o.id = oi.ticket_order_id
+        LEFT JOIN users             u ON u.id = o.member_user_id
+        LEFT JOIN guest_order_infos g ON g.ticket_order_id = o.id
+        WHERE it.expo_id = #{expoId}
+          AND it.status &lt;&gt; 'CANCELED'
+          AND NOT EXISTS (
+              SELECT 1 FROM ticket_refunds r
+              WHERE r.ticket_order_id = o.id AND r.status = 'COMPLETED'
+          )
+        ORDER BY COALESCE(u.phone_number, g.phone_number, 'ORDER:' || o.id), o.id
+    </select>
+
+    <!--
+      취소 안내를 한 번만 보내기 위해 박람회 행을 잠근다.
+
+      "이미 보냈나" 검사와 알림 저장 사이를 직렬화하는 것이 목적이다. 발권에서 주문 행을 잠근 것과
+      같은 이유이고, 잠금을 얻은 뒤 다시 읽어야 하므로 READ COMMITTED 를 전제한다.
+
+      expos 는 남의 도메인 테이블이지만 읽기만 한다. 잠금 대상으로 이 행을 고른 이유는
+      "박람회 취소" 라는 사건의 단위가 곧 박람회이기 때문이다.
+    -->
+    <select id="lockExpo" resultType="java.lang.Integer">
+        SELECT 1 FROM expos WHERE id = #{expoId} FOR UPDATE
+    </select>
+
+</mapper>

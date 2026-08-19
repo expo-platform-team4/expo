@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -57,10 +57,10 @@ public class BoothContent extends BaseTimeEntity {
     private BoothContentStatus status;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     @Column(name = "correction_requested_at")
-    private LocalDateTime correctionRequestedAt;
+    private Instant correctionRequestedAt;
 
     @Column(name = "correction_message", columnDefinition = "TEXT")
     private String correctionMessage;
@@ -69,5 +69,90 @@ public class BoothContent extends BaseTimeEntity {
     private Long checkedByAdminId;
 
     @Column(name = "checked_at")
-    private LocalDateTime checkedAt;
+    private Instant checkedAt;
+
+    /** 확정 배정 기업의 부스 콘텐츠 작성. 상태는 DRAFT 로 고정한다. */
+    public static BoothContent create(
+            Long boothAllocationId,
+            Long clientUserId,
+            String companyDisplayName,
+            String title,
+            String companyDescription,
+            String boothDescription,
+            String productDescription) {
+        BoothContent content = new BoothContent();
+        content.boothAllocationId = boothAllocationId;
+        content.clientUserId = clientUserId;
+        content.companyDisplayName = companyDisplayName;
+        content.title = title;
+        content.companyDescription = companyDescription;
+        content.boothDescription = boothDescription;
+        content.productDescription = productDescription;
+        content.status = BoothContentStatus.DRAFT;
+        return content;
+    }
+
+    /** 로고·대표 이미지 첨부. {@link #create} 뒤에 이어서 호출한다. */
+    public BoothContent attachImages(Long logoFileId, Long mainImageFileId) {
+        this.logoFileId = logoFileId;
+        this.mainImageFileId = mainImageFileId;
+        return this;
+    }
+
+    /** 콘텐츠 본문 수정. 상태 전이는 하지 않는다. */
+    public void updateContent(
+            String companyDisplayName,
+            String title,
+            String companyDescription,
+            String boothDescription,
+            String productDescription,
+            Long logoFileId,
+            Long mainImageFileId) {
+        this.companyDisplayName = companyDisplayName;
+        this.title = title;
+        this.companyDescription = companyDescription;
+        this.boothDescription = boothDescription;
+        this.productDescription = productDescription;
+        this.logoFileId = logoFileId;
+        this.mainImageFileId = mainImageFileId;
+    }
+
+    /** 검수 요청. 관리자 승인 전까지는 공개되지 않는다. 이전 보완 요청 흔적은 지운다(이력은 {@code BoothManagementHistory}
+     * 에 남는다). */
+    public void submitForReview() {
+        this.status = BoothContentStatus.UNDER_REVIEW;
+        this.correctionRequestedAt = null;
+        this.correctionMessage = null;
+    }
+
+    /** 관리자 승인. 검수 요청 상태에서만 호출되며, 이때 비로소 공개된다. */
+    public void approve(Long adminId) {
+        this.status = BoothContentStatus.PUBLISHED;
+        this.publishedAt = Instant.now();
+        this.checkedByAdminId = adminId;
+        this.checkedAt = Instant.now();
+    }
+
+    /** 관리자 운영 확인. 상태는 바꾸지 않고 확인 시각·주체만 기록한다. */
+    public void check(Long adminId) {
+        this.checkedByAdminId = adminId;
+        this.checkedAt = Instant.now();
+    }
+
+    /** 보완 요청. 공개를 내리고 사유를 남긴다. */
+    public void requestCorrection(String message) {
+        this.status = BoothContentStatus.CORRECTION_REQUESTED;
+        this.correctionRequestedAt = Instant.now();
+        this.correctionMessage = message;
+    }
+
+    /** 관리자 직권 숨김. */
+    public void hide() {
+        this.status = BoothContentStatus.HIDDEN;
+    }
+
+    /** 숨김 해제. 공개 상태로 복원한다. */
+    public void restore() {
+        this.status = BoothContentStatus.PUBLISHED;
+    }
 }

@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,15 +38,35 @@ public class BoothAllocation extends BaseTimeEntity {
     private Long clientUserId;
 
     @Column(name = "allocated_at", nullable = false)
-    private LocalDateTime allocatedAt;
+    private Instant allocatedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BoothAllocationStatus status;
 
     @Column(name = "canceled_at")
-    private LocalDateTime canceledAt;
+    private Instant canceledAt;
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
     private String cancelReason;
+
+    /** 결제 승인 완료로 부스 확정 배정. */
+    public static BoothAllocation create(
+            Long applicationId, Long boothOrderId, Long boothProductId, Long clientUserId) {
+        BoothAllocation allocation = new BoothAllocation();
+        allocation.applicationId = applicationId;
+        allocation.boothOrderId = boothOrderId;
+        allocation.boothProductId = boothProductId;
+        allocation.clientUserId = clientUserId;
+        allocation.allocatedAt = Instant.now();
+        allocation.status = BoothAllocationStatus.ASSIGNED;
+        return allocation;
+    }
+
+    /** 관리자 배정 취소. 부스 이중 배정 등 운영상 정정이 필요할 때만 쓴다. */
+    public void cancel(String reason) {
+        this.status = BoothAllocationStatus.CANCELED;
+        this.canceledAt = Instant.now();
+        this.cancelReason = reason;
+    }
 }

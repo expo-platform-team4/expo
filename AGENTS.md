@@ -93,8 +93,8 @@ Claude Code · Cursor · Copilot · Codex 어느 것이든 이 파일이 정본�
 - **Node 는 24 로 고정이다.** Node 26 에서는 Next 16 의 `rewrites()` 가 전부 500 으로 깨진다.
   `/api` 프록시가 rewrites 라 백엔드 호출이 전부 실패한다.
 - **스키마는 PostgreSQL 전용이다.** JSONB · `EXCLUDE USING gist` · 부분 인덱스를 쓴다.
-  H2 로는 돌지 않는다 — `ExpoApplicationTests.contextLoads` 가 실제로 실패하고 있고,
-  그래서 CI 에서 백엔드 테스트를 돌리지 않는다.
+  H2 로는 돌지 않아 **테스트도 Testcontainers 로 실제 PostgreSQL 을 띄운다.** 그래서
+  `./gradlew test` 에는 **Docker 데몬이 필요하다**(스프링 컨텍스트 테스트만 해당).
 
 ---
 

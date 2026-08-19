@@ -58,4 +58,52 @@ public class CheckInHistory {
 
     @Column(columnDefinition = "TEXT")
     private String detail;
+
+    private CheckInHistory(
+            Long issuedTicketId,
+            Long expoId,
+            Long processedByClientId,
+            CheckInMethod method,
+            CheckInResult result,
+            Instant checkedAt,
+            String requestIp,
+            String detail) {
+        this.issuedTicketId = issuedTicketId;
+        this.expoId = expoId;
+        this.processedByClientId = processedByClientId;
+        this.method = method;
+        this.result = result;
+        this.checkedAt = checkedAt;
+        this.requestIp = requestIp;
+        this.detail = detail;
+    }
+
+    /**
+     * 체크인 시도 한 건을 남긴다. <b>성공만이 아니라 거절도 남긴다</b> — 현장에서 "안 들여보내 줬다" 는 항의를 가릴 근거가 이것뿐이다.
+     *
+     * <p>{@link CheckInResult#INVALID_TOKEN} 은 이 메서드로 남길 수 없다. {@code issued_ticket_id} 가 NOT NULL
+     * 인데 위조 QR 에는 가리킬 티켓이 없기 때문이다. 그 경우는 로그로만 남긴다.
+     *
+     * @param expoId <b>스캔이 일어난</b> 박람회. 티켓의 소속이 아니다 — 다른 박람회 티켓을 찍은 경우({@code WRONG_EXPO}) 에도
+     *     "이 현장에서 이런 시도가 있었다" 로 읽혀야 한다
+     */
+    public static CheckInHistory record(
+            Long issuedTicketId,
+            Long expoId,
+            Long processedByClientId,
+            CheckInMethod method,
+            CheckInResult result,
+            Instant checkedAt,
+            String requestIp,
+            String detail) {
+        return new CheckInHistory(
+                issuedTicketId,
+                expoId,
+                processedByClientId,
+                method,
+                result,
+                checkedAt,
+                requestIp,
+                detail);
+    }
 }

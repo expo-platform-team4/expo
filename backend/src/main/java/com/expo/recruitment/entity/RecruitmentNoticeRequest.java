@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,25 +37,22 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     private String description;
 
     @Column(name = "application_start_at", nullable = false)
-    private LocalDateTime applicationStartAt;
+    private Instant applicationStartAt;
 
     @Column(name = "application_end_at", nullable = false)
-    private LocalDateTime applicationEndAt;
+    private Instant applicationEndAt;
 
     @Column(name = "event_start_at", nullable = false)
-    private LocalDateTime eventStartAt;
+    private Instant eventStartAt;
 
     @Column(name = "event_end_at", nullable = false)
-    private LocalDateTime eventEndAt;
+    private Instant eventEndAt;
 
     @Column(name = "virtual_venue_id", nullable = false)
     private Long virtualVenueId;
 
     @Column(name = "venue_hall_id")
     private Long venueHallId;
-
-    @Column(name = "venue_zone_id")
-    private Long venueZoneId;
 
     @Column(name = "target_company_count")
     private Integer targetCompanyCount;
@@ -81,14 +78,61 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     private String conflictGroupKey;
 
     @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
 
     @Column(name = "decided_by_admin_id")
     private Long decidedByAdminId;
 
     @Column(name = "decided_at")
-    private LocalDateTime decidedAt;
+    private Instant decidedAt;
 
     @Column(name = "decision_reason", columnDefinition = "TEXT")
     private String decisionReason;
+
+    /** 모집공고 생성 요청 작성. 상태는 DRAFT, 장소 충돌은 CLEAR, 장소 결정은 PENDING 으로 고정한다. */
+    public static RecruitmentNoticeRequest create(
+            Long hostClientId,
+            String title,
+            String description,
+            Instant applicationStartAt,
+            Instant applicationEndAt,
+            Instant eventStartAt,
+            Instant eventEndAt,
+            Long virtualVenueId) {
+        RecruitmentNoticeRequest request = new RecruitmentNoticeRequest();
+        request.hostClientId = hostClientId;
+        request.title = title;
+        request.description = description;
+        request.applicationStartAt = applicationStartAt;
+        request.applicationEndAt = applicationEndAt;
+        request.eventStartAt = eventStartAt;
+        request.eventEndAt = eventEndAt;
+        request.virtualVenueId = virtualVenueId;
+        request.status = RecruitmentNoticeRequestStatus.DRAFT;
+        request.venueConflictStatus = VenueConflictStatus.CLEAR;
+        request.venueDecision = VenueDecision.PENDING;
+        return request;
+    }
+
+    /** 희망 전시관(홀)과 부스 구성 지정. 그 전시관 안에서 고른 구역 목록은 별도 테이블에 저장한다. */
+    public RecruitmentNoticeRequest withVenueDetails(
+            Long venueHallId, Integer targetCompanyCount, String requestedBoothConfig) {
+        this.venueHallId = venueHallId;
+        this.targetCompanyCount = targetCompanyCount;
+        this.requestedBoothConfig = requestedBoothConfig;
+        return this;
+    }
+
+    /** 장소 충돌 판정. ALLOWED 면 승인, CANCELED 면 반려로 처리한다. */
+    public void decideVenue(VenueDecision decision, Long decidedByAdminId, String decisionReason) {
+        this.venueDecision = decision;
+        this.decidedByAdminId = decidedByAdminId;
+        this.decisionReason = decisionReason;
+        this.decidedAt = Instant.now();
+        this.venueConflictStatus = VenueConflictStatus.RESOLVED;
+        this.status =
+                decision == VenueDecision.ALLOWED
+                        ? RecruitmentNoticeRequestStatus.APPROVED
+                        : RecruitmentNoticeRequestStatus.REJECTED;
+    }
 }

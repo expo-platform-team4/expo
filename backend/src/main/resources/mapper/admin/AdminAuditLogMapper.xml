@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.admin.repository.AdminAuditLogMapper">
+
+    <sql id="searchFilter">
+        <where>
+            <if test="logType != null and logType != ''">
+                AND log_type = #{logType}
+            </if>
+            <if test="targetId != null">
+                AND target_id = #{targetId}
+            </if>
+            <if test="toStatus != null and toStatus != ''">
+                AND to_status = #{toStatus}
+            </if>
+            <if test="startAt != null">
+                AND occurred_at &gt;= #{startAt}
+            </if>
+            <if test="endAt != null">
+                AND occurred_at &lt;= #{endAt}
+            </if>
+        </where>
+    </sql>
+
+    <select id="search" resultType="com.expo.admin.dto.AdminAuditLogResponse">
+        SELECT log_type,
+               log_id,
+               target_id,
+               action,
+               from_status,
+               to_status,
+               reason,
+               processor_admin_id,
+               occurred_at
+        FROM v_admin_audit_logs
+        <include refid="searchFilter" />
+        ORDER BY occurred_at DESC, log_type DESC, log_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT count(*)
+        FROM v_admin_audit_logs
+        <include refid="searchFilter" />
+    </select>
+
+</mapper>

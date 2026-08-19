@@ -63,4 +63,55 @@ public class IssuedTicket extends BaseTimeEntity {
     @Version
     @Column(nullable = false)
     private Long version;
+
+    private IssuedTicket(
+            Long ticketOrderItemId,
+            Long expoId,
+            String ticketCode,
+            String qrTokenHash,
+            Instant issuedAt) {
+        this.ticketOrderItemId = ticketOrderItemId;
+        this.expoId = expoId;
+        this.ticketCode = ticketCode;
+        this.qrTokenHash = qrTokenHash;
+        this.issuedAt = issuedAt;
+        this.status = IssuedTicketStatus.ISSUED;
+    }
+
+    /**
+     * 입장권 한 장을 발권한다.
+     *
+     * <p>QR 해시까지 한 번에 받는다. QR 원문이 {@code ticketCode} 만으로 정해지므로 INSERT 전에 계산할 수 있다 — 티켓 {@code
+     * id} 를 서명에 넣었다면 INSERT 뒤에야 값이 정해져서 임시값을 넣었다 덮어쓰는 2단계 쓰기가 됐을 것이다.
+     *
+     * @param issuedAt 발권 시각. 한 주문의 티켓이 같은 값을 갖도록 호출부에서 넘긴다
+     */
+    public static IssuedTicket issue(
+            Long ticketOrderItemId,
+            Long expoId,
+            String ticketCode,
+            String qrTokenHash,
+            Instant issuedAt) {
+        return new IssuedTicket(ticketOrderItemId, expoId, ticketCode, qrTokenHash, issuedAt);
+    }
+
+    /** 입장에 쓸 수 있는 상태인가. 환불·무효 티켓은 QR 이 유효해도 들여보내면 안 된다. */
+    public boolean isUsable() {
+        return status == IssuedTicketStatus.ISSUED;
+    }
+
+    /** 이미 입장한 티켓인가. 재입장 시도를 가려낸다. */
+    public boolean isCheckedIn() {
+        return status == IssuedTicketStatus.CHECKED_IN;
+    }
+
+    /**
+     * 현장 입장 처리. 되돌릴 수 없다.
+     *
+     * <p>호출 전에 {@link #isUsable()} 로 확인해야 한다. 상태 판정은 이력을 함께 남겨야 해서 서비스가 하고, 여기서는 전이만 한다.
+     */
+    public void checkIn(Instant checkedAt) {
+        this.status = IssuedTicketStatus.CHECKED_IN;
+        this.checkedInAt = checkedAt;
+    }
 }

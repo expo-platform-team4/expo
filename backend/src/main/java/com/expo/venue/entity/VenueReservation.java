@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
  * 장소 예약 단일 원본.
  *
  * <p>모집공고 경로({@code RECRUITMENT_NOTICE})와 일반 박람회 등록 경로({@code EXPO_DIRECT})를 모두 담는다. 장소·홀·구역·기간은
- * 오직 이 테이블에만 저장하고, 기간 중복도 이 테이블(DB의 EXCLUDE 제약)에서만 막는다.
+ * 오직 이 테이블에만 저장하고, 기간 중복도 이 테이블(DB의 EXCLUDE 제약 + 계층 겹침 트리거)에서만 막는다.
  */
 @Getter
 @Entity
@@ -53,10 +53,10 @@ public class VenueReservation extends BaseTimeEntity {
     private Long venueZoneId;
 
     @Column(name = "use_start_at", nullable = false)
-    private LocalDateTime useStartAt;
+    private Instant useStartAt;
 
     @Column(name = "use_end_at", nullable = false)
-    private LocalDateTime useEndAt;
+    private Instant useEndAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -66,8 +66,42 @@ public class VenueReservation extends BaseTimeEntity {
     private Long confirmedByAdminId;
 
     @Column(name = "confirmed_at", nullable = false)
-    private LocalDateTime confirmedAt;
+    private Instant confirmedAt;
 
     @Column(name = "released_at")
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
+
+    /** 모집공고 생성 요청 경로의 확정 장소 예약 생성. */
+    public static VenueReservation confirmForRecruitmentNotice(
+            Long noticeRequestId,
+            Long virtualVenueId,
+            Long venueHallId,
+            Long venueZoneId,
+            Instant useStartAt,
+            Instant useEndAt,
+            Long confirmedByAdminId) {
+        VenueReservation reservation = new VenueReservation();
+        reservation.reservationSourceType = ReservationSourceType.RECRUITMENT_NOTICE;
+        reservation.noticeRequestId = noticeRequestId;
+        reservation.virtualVenueId = virtualVenueId;
+        reservation.venueHallId = venueHallId;
+        reservation.venueZoneId = venueZoneId;
+        reservation.useStartAt = useStartAt;
+        reservation.useEndAt = useEndAt;
+        reservation.status = VenueReservationStatus.CONFIRMED;
+        reservation.confirmedByAdminId = confirmedByAdminId;
+        reservation.confirmedAt = Instant.now();
+        return reservation;
+    }
+
+    /** 박람회 취소 등으로 확정 예약을 해제한다. */
+    public void release() {
+        this.status = VenueReservationStatus.RELEASED;
+        this.releasedAt = Instant.now();
+    }
+
+    /** 모집공고 생성 완료 후, 그 공고에 이 예약을 연결한다. */
+    public void linkToNotice(Long recruitmentNoticeId) {
+        this.recruitmentNoticeId = recruitmentNoticeId;
+    }
 }

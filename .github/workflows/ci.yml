@@ -61,24 +61,21 @@ jobs:
         run: bun run typecheck
       - name: Build
         run: bun run build
-# 백엔드 테스트(./gradlew test)는 아직 CI 에 올리지 않는다.
-# ExpoApplicationTests.contextLoads 가 실패한다 — V1__init_schema.sql 의
-# CREATE EXTENSION btree_gist 를 test 프로필의 H2 가 실행하지 못한다.
-# 항상 빨간불인 job 은 "CI 는 원래 빨갛다" 는 인식을 만들어 게이트 전체를 무력화하므로,
-# 테스트 환경(Testcontainers 전환 또는 db/migration-pg 분리)을 고친 뒤 아래 job 을 추가한다.
-#
-#  backend-test:
-#    name: backend-test
-#    runs-on: ubuntu-latest
-#    defaults:
-#      run:
-#        working-directory: backend
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: actions/setup-java@v4
-#        with:
-#          distribution: temurin
-#          java-version: '21'
-#      - uses: gradle/actions/setup-gradle@v4
-#      - name: Test
-#        run: ./gradlew test
+
+  backend-test:
+    name: backend-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # Testcontainers 가 PostgreSQL 컨테이너를 띄운다. ubuntu-latest 러너에는 Docker 가 있다.
+      # 스프링 컨텍스트 테스트만 컨테이너를 쓰고, 나머지 단위 테스트는 그대로 돈다.
+      - name: Test
+        run: ./gradlew test

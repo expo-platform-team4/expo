@@ -78,4 +78,106 @@ public class Notification extends BaseTimeEntity {
 
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
+
+    private Notification(
+            Long recipientUserId,
+            String recipientPhoneNumber,
+            NotificationChannel channel,
+            String templateCode,
+            String referenceType,
+            Long referenceId,
+            String payload,
+            NotificationStatus status) {
+        this.recipientUserId = recipientUserId;
+        this.recipientPhoneNumber = recipientPhoneNumber;
+        this.channel = channel;
+        this.templateCode = templateCode;
+        this.referenceType = referenceType;
+        this.referenceId = referenceId;
+        this.payload = payload;
+        this.status = status;
+        this.retryCount = 0;
+    }
+
+    /**
+     * 발송을 시도할 알림을 만든다. 상태는 {@link NotificationStatus#PENDING} 으로 시작한다.
+     *
+     * @param payload 템플릿 변수 JSON. <b>접근 토큰 원문을 넣지 않는다</b> — 저장하는 순간 해시만 두는 설계가 무너진다
+     */
+    public static Notification pending(
+            Long recipientUserId,
+            String recipientPhoneNumber,
+            NotificationChannel channel,
+            String templateCode,
+            String referenceType,
+            Long referenceId,
+            String payload) {
+        return new Notification(
+                recipientUserId,
+                recipientPhoneNumber,
+                channel,
+                templateCode,
+                referenceType,
+                referenceId,
+                payload,
+                NotificationStatus.PENDING);
+    }
+
+    /**
+     * 보낼 수 없어 시도조차 하지 않은 알림을 만든다.
+     *
+     * <p>수신 번호가 없는 경우가 여기다. 실패({@code FAILED})와 구분하는 이유는, 재시도로 해결되는 문제가 아니기 때문이다.
+     */
+    public static Notification canceled(
+            Long recipientUserId,
+            NotificationChannel channel,
+            String templateCode,
+            String referenceType,
+            Long referenceId,
+            String payload,
+            String reason) {
+        Notification notification =
+                new Notification(
+                        recipientUserId,
+                        null,
+                        channel,
+                        templateCode,
+                        referenceType,
+                        referenceId,
+                        payload,
+                        NotificationStatus.CANCELED);
+        notification.lastError = reason;
+        return notification;
+    }
+
+    /** 대행사가 접수했다. */
+    public void markSent(Instant sentAt) {
+        this.status = NotificationStatus.SENT;
+        this.sentAt = sentAt;
+        this.lastError = null;
+    }
+
+    /**
+     * 발송에 실패했다.
+     *
+     * <p>재시도 워커가 아직 없으므로 {@link NotificationStatus#RETRYING} 이 아니라 곧바로 {@code FAILED} 로 둔다.
+     * 워커를 붙일 때 이 메서드가 바뀔 자리다.
+     */
+    public void markFailed(String errorMessage) {
+        this.status = NotificationStatus.FAILED;
+        this.lastError = errorMessage;
+    }
+
+    /**
+     * 다시 보내려고 집어 들었다. {@code retry_count} 를 올린다.
+     *
+     * <p>상태는 여기서 바꾸지 않는다. 결과가 나온 뒤 {@link #markSent}/{@link #markFailed} 가 정한다 —
+     * 미리 바꿔 두면 발송 도중에 죽었을 때 "보내는 중" 인지 "실패" 인지 알 수 없게 된다.
+     *
+     * <p>세는 것은 <b>재발송 횟수</b>이지 시도 횟수가 아니다. 최초 발송은 재발송이 아니므로 0 에서 시작하고,
+     * {@code message_histories} 의 시도 번호와는 항상 1 만큼 차이가 난다.
+     */
+    public void markRetried() {
+        this.retryCount++;
+    }
 }

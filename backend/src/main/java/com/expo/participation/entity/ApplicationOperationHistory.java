@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,5 +48,19 @@ public class ApplicationOperationHistory {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    /** 참여 신청 운영 확인·보완 요청 이력 기록. */
+    public static ApplicationOperationHistory create(
+            Long applicationId,
+            ApplicationOperationActionType actionType,
+            String message,
+            Long processedByAdminId) {
+        ApplicationOperationHistory history = new ApplicationOperationHistory();
+        history.applicationId = applicationId;
+        history.actionType = actionType;
+        history.message = message;
+        history.processedByAdminId = processedByAdminId;
+        return history;
+    }
 }

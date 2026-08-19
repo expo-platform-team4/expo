@@ -73,3 +73,16 @@ app:
     # 발권 티켓 QR 원문의 HMAC 서명 키. JWT_SECRET 과 반드시 다른 값을 쓴다.
     # 이 값을 바꾸면 이미 발권된 티켓의 QR 이 전부 무효가 된다.
     token-secret: ${QR_TOKEN_SECRET}
+
+  sms:
+    # logging = 실제로 보내지 않고 로그만 남긴다 (기본, 로컬 개발용)
+    # solapi  = 실제 발송. 아래 app.solapi 값이 전부 있어야 하고, 없으면 기동에 실패한다
+    provider: ${SMS_PROVIDER:logging}
+
+  solapi:
+    # 발신번호는 Solapi 콘솔에 사전 등록·인증된 번호만 쓸 수 있다.
+    # provider 가 logging 이면 비어 있어도 된다.
+    api-key: ${SOLAPI_SMS_API_PUBLIC_KEY:}
+    api-secret: ${SOLAPI_SMS_API_SECRET_KEY:}
+    sender-number: ${SOLAPI_SENDER_NUMBER:}
+    api-base-url: https://api.solapi.com

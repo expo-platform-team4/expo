@@ -7,3 +7,9 @@
 
 # macOS
 .DS_Store
+
+# IntelliJ 사용자별 워크스페이스 설정 (계정 정보·로컬 경로 포함)
+.idea/
+
+# Claude Code 프리뷰 서버 설정 (개인 도구)
+.claude/

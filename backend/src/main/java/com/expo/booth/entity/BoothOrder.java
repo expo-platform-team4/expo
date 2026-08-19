@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +18,8 @@ import lombok.NoArgsConstructor;
 /**
  * 참여 신청에서 고른 단일 부스 상품의 주문.
  *
- * <p>부스는 신청당 1개만 선택하므로 별도 주문 항목 테이블 없이 {@link #boothProductId} 를 직접 연결한다.
+ * <p>부스가 1개만 선택되므로 주문 항목 테이블을 두지 않고 상품을 직접 연결한다. 결제(토스페이먼츠) 연동 전까지는 {@code
+ * PENDING_PAYMENT} 상태의 주문 생성·취소만 다룬다.
  */
 @Getter
 @Entity
@@ -30,7 +31,11 @@ public class BoothOrder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "application_id", nullable = false, unique = true)
+    /**
+     * 신청서 ID. DB 는 취소·만료된 주문을 제외한 활성 주문에만 유일성을 강제한다({@code
+     * uq_booth_orders_active_application} 부분 UNIQUE 인덱스) — 취소 후 재주문을 허용하기 위해서다.
+     */
+    @Column(name = "application_id", nullable = false)
     private Long applicationId;
 
     @Column(name = "client_user_id", nullable = false)
@@ -53,11 +58,44 @@ public class BoothOrder extends BaseTimeEntity {
     private BoothOrderStatus status;
 
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    private Instant paidAt;
 
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 100)
     private String idempotencyKey;
+
+    /** 부스 상품 주문 생성. 단일 부스이므로 결제액은 항상 단가와 같다. */
+    public static BoothOrder create(
+            Long applicationId,
+            Long clientUserId,
+            Long boothProductId,
+            String orderNumber,
+            BigDecimal unitPrice,
+            String idempotencyKey,
+            Instant expiresAt) {
+        BoothOrder order = new BoothOrder();
+        order.applicationId = applicationId;
+        order.clientUserId = clientUserId;
+        order.boothProductId = boothProductId;
+        order.orderNumber = orderNumber;
+        order.unitPrice = unitPrice;
+        order.totalAmount = unitPrice;
+        order.idempotencyKey = idempotencyKey;
+        order.expiresAt = expiresAt;
+        order.status = BoothOrderStatus.PENDING_PAYMENT;
+        return order;
+    }
+
+    /** 결제 전 주문 취소. */
+    public void cancel() {
+        this.status = BoothOrderStatus.CANCELED;
+    }
+
+    /** 결제 승인 완료. */
+    public void markPaid() {
+        this.status = BoothOrderStatus.PAYMENT_COMPLETED;
+        this.paidAt = Instant.now();
+    }
 }

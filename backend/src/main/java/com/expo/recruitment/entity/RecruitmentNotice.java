@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,9 +33,6 @@ public class RecruitmentNotice extends BaseTimeEntity {
     @Column(name = "host_client_id", nullable = false)
     private Long hostClientId;
 
-    @Column(name = "venue_reservation_id", nullable = false, unique = true)
-    private Long venueReservationId;
-
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -51,21 +48,82 @@ public class RecruitmentNotice extends BaseTimeEntity {
     private String submissionRequirements;
 
     @Column(name = "application_start_at", nullable = false)
-    private LocalDateTime applicationStartAt;
+    private Instant applicationStartAt;
 
     @Column(name = "application_end_at", nullable = false)
-    private LocalDateTime applicationEndAt;
+    private Instant applicationEndAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RecruitmentNoticeStatus status;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
     @Column(name = "closed_at")
-    private LocalDateTime closedAt;
+    private Instant closedAt;
 
     @Column(name = "created_by_admin_id", nullable = false)
     private Long createdByAdminId;
+
+    /** 기업 모집 공고 초안 생성. 상태는 DRAFT 로 고정한다. */
+    public static RecruitmentNotice create(
+            Long requestId,
+            Long hostClientId,
+            String title,
+            String content,
+            Instant applicationStartAt,
+            Instant applicationEndAt,
+            Long createdByAdminId) {
+        RecruitmentNotice notice = new RecruitmentNotice();
+        notice.requestId = requestId;
+        notice.hostClientId = hostClientId;
+        notice.title = title;
+        notice.content = content;
+        notice.applicationStartAt = applicationStartAt;
+        notice.applicationEndAt = applicationEndAt;
+        notice.createdByAdminId = createdByAdminId;
+        notice.status = RecruitmentNoticeStatus.DRAFT;
+        return notice;
+    }
+
+    /** 자격 요건과 제출 자료 요구사항 지정. */
+    public RecruitmentNotice withDetails(String eligibility, String submissionRequirements) {
+        this.eligibility = eligibility;
+        this.submissionRequirements = submissionRequirements;
+        return this;
+    }
+
+    /** 공고 내용·조건 수정. */
+    public void update(
+            String title,
+            String content,
+            String eligibility,
+            String submissionRequirements,
+            Instant applicationStartAt,
+            Instant applicationEndAt) {
+        this.title = title;
+        this.content = content;
+        this.eligibility = eligibility;
+        this.submissionRequirements = submissionRequirements;
+        this.applicationStartAt = applicationStartAt;
+        this.applicationEndAt = applicationEndAt;
+    }
+
+    /** 공고 게시. */
+    public void publish() {
+        this.status = RecruitmentNoticeStatus.OPEN;
+        this.publishedAt = Instant.now();
+    }
+
+    /** 기업 모집 조기 마감. 신규 결제를 차단한다. */
+    public void close() {
+        this.status = RecruitmentNoticeStatus.CLOSED;
+        this.closedAt = Instant.now();
+    }
+
+    /** 관리자 직권 취소. 마감(정상 종료)과 달리 공고 자체를 무효화한다. */
+    public void cancel() {
+        this.status = RecruitmentNoticeStatus.CANCELED;
+    }
 }

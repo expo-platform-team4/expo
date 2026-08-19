@@ -9,7 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,5 +60,23 @@ public class RecruitmentNoticeHistory {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
+
+    /** 모집공고 운영 변경 이력 기록. */
+    public static RecruitmentNoticeHistory create(
+            Long recruitmentNoticeId,
+            RecruitmentNoticeActionType actionType,
+            String beforeData,
+            String afterData,
+            String reason,
+            Long processedByAdminId) {
+        RecruitmentNoticeHistory history = new RecruitmentNoticeHistory();
+        history.recruitmentNoticeId = recruitmentNoticeId;
+        history.actionType = actionType;
+        history.beforeData = beforeData;
+        history.afterData = afterData;
+        history.reason = reason;
+        history.processedByAdminId = processedByAdminId;
+        return history;
+    }
 }

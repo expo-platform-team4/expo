@@ -49,4 +49,25 @@ public class VenueZone extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "operational_status", nullable = false, length = 20)
     private OperationalStatus operationalStatus;
+
+    /** 홀 안에 구역 등록. 운영 상태는 ACTIVE 로 고정한다. */
+    public static VenueZone create(
+            Long hallId,
+            String zoneCode,
+            String name,
+            Integer maxBoothCount,
+            BigDecimal width,
+            BigDecimal depth,
+            Long layoutFileId) {
+        VenueZone zone = new VenueZone();
+        zone.hallId = hallId;
+        zone.zoneCode = zoneCode;
+        zone.name = name;
+        zone.maxBoothCount = maxBoothCount;
+        zone.width = width;
+        zone.depth = depth;
+        zone.layoutFileId = layoutFileId;
+        zone.operationalStatus = OperationalStatus.ACTIVE;
+        return zone;
+    }
 }
