@@ -2,12 +2,16 @@ package com.expo.booth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.repository.BoothAllocationRepository;
+import com.expo.booth.repository.BoothContentRepository;
+import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.util.List;
@@ -27,16 +31,24 @@ class BoothAllocationServiceTest {
     private static final Long APPLICATION_ID = 3L;
     private static final Long ORDER_ID = 4L;
     private static final Long BOOTH_PRODUCT_ID = 5L;
+    private static final Long ADMIN_ID = 6L;
 
     private BoothAllocationRepository boothAllocationRepository;
+    private BoothContentRepository boothContentRepository;
+    private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private BoothAllocationService service;
 
     @BeforeEach
     void setUp() {
         boothAllocationRepository = mock(BoothAllocationRepository.class);
+        boothContentRepository = mock(BoothContentRepository.class);
+        boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new BoothAllocationService(
-                        boothAllocationRepository, new BoothAllocationConverter());
+                        boothAllocationRepository,
+                        boothContentRepository,
+                        boothManagementHistoryRepository,
+                        new BoothAllocationConverter());
     }
 
     private BoothAllocation allocation() {
@@ -101,7 +113,7 @@ class BoothAllocationServiceTest {
         when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, "이중 배정 정정"))
+        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND);
@@ -114,7 +126,7 @@ class BoothAllocationServiceTest {
         when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
                 .thenReturn(Optional.of(canceled));
 
-        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, "이중 배정 정정"))
+        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
@@ -127,9 +139,10 @@ class BoothAllocationServiceTest {
         when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
                 .thenReturn(Optional.of(allocation));
 
-        var response = service.cancel(ALLOCATION_ID, "이중 배정 정정");
+        var response = service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정");
 
         assertThat(response.cancelReason()).isEqualTo("이중 배정 정정");
         assertThat(response.status().name()).isEqualTo("CANCELED");
+        verify(boothManagementHistoryRepository).save(any());
     }
 }

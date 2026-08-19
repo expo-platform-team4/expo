@@ -4,6 +4,7 @@ import com.expo.booth.dto.BoothAllocationResponse;
 import com.expo.booth.dto.CancelBoothAllocationRequest;
 import com.expo.booth.service.BoothAllocationService;
 import com.expo.common.response.ApiResponse;
+import com.expo.jwt.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,9 +49,12 @@ public class AdminBoothAllocationController {
     @Operation(summary = "부스 확정 배정 취소 (이중 배정 등 운영상 정정 전용)")
     @PostMapping("/{allocationId}/cancel")
     public ResponseEntity<ApiResponse<BoothAllocationResponse>> cancel(
+            @AuthenticationPrincipal AuthPrincipal principal,
             @PathVariable Long allocationId,
             @Valid @RequestBody CancelBoothAllocationRequest request) {
         return ResponseEntity.ok(
-                ApiResponse.ok(boothAllocationService.cancel(allocationId, request.reason())));
+                ApiResponse.ok(
+                        boothAllocationService.cancel(
+                                allocationId, principal.getMemberId(), request.reason())));
     }
 }

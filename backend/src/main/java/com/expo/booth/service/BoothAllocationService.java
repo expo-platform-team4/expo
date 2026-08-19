@@ -4,7 +4,12 @@ import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.dto.BoothAllocationResponse;
 import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothAllocationStatus;
+import com.expo.booth.entity.BoothContent;
+import com.expo.booth.entity.BoothManagementActionType;
+import com.expo.booth.entity.BoothManagementHistory;
 import com.expo.booth.repository.BoothAllocationRepository;
+import com.expo.booth.repository.BoothContentRepository;
+import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import org.springframework.data.domain.Page;
@@ -17,12 +22,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoothAllocationService {
 
     private final BoothAllocationRepository boothAllocationRepository;
+    private final BoothContentRepository boothContentRepository;
+    private final BoothManagementHistoryRepository boothManagementHistoryRepository;
     private final BoothAllocationConverter boothAllocationConverter;
 
     public BoothAllocationService(
             BoothAllocationRepository boothAllocationRepository,
+            BoothContentRepository boothContentRepository,
+            BoothManagementHistoryRepository boothManagementHistoryRepository,
             BoothAllocationConverter boothAllocationConverter) {
         this.boothAllocationRepository = boothAllocationRepository;
+        this.boothContentRepository = boothContentRepository;
+        this.boothManagementHistoryRepository = boothManagementHistoryRepository;
         this.boothAllocationConverter = boothAllocationConverter;
     }
 
@@ -58,9 +69,11 @@ public class BoothAllocationService {
      * 전역 UNIQUE 라 상품을 다시 팔 수 있게 하면, 그 상품이 재판매·재결제된 시점에 새 배정 저장이 같은
      * 상품 ID 로 유니크 제약 위반이 난다. 취소된 배정을 재판매로 이어가려면 주문·결제·예약·신청서·배정을
      * 함께 되돌리는 보상 흐름이 먼저 있어야 한다.
+     *
+     * <p>권한이 걸린 변경이라 처리 관리자·사유를 감사 이력({@code booth_management_histories})에 남긴다.
      */
     @Transactional
-    public BoothAllocationResponse cancel(Long allocationId, String reason) {
+    public BoothAllocationResponse cancel(Long allocationId, Long adminId, String reason) {
         BoothAllocation allocation =
                 boothAllocationRepository
                         .findByIdForUpdate(allocationId)
@@ -70,6 +83,18 @@ public class BoothAllocationService {
             throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
         }
         allocation.cancel(reason);
+        Long boothContentId =
+                boothContentRepository
+                        .findByBoothAllocationId(allocationId)
+                        .map(BoothContent::getId)
+                        .orElse(null);
+        boothManagementHistoryRepository.save(
+                BoothManagementHistory.create(
+                        allocationId,
+                        boothContentId,
+                        BoothManagementActionType.ALLOCATION_CORRECTED,
+                        reason,
+                        adminId));
         return boothAllocationConverter.toResponse(allocation);
     }
 
