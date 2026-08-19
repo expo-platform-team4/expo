@@ -73,6 +73,107 @@ export const fetchTicketView = async (token: string): Promise<TicketView> => {
  *
  * 상태 코드를 화면까지 끌고 가면 컴포넌트가 HTTP 를 알아야 한다. 여기서 한 번 번역한다.
  */
+// ---------------------------------------------------------------------------
+// 주최사 체크인 (Function.md 3·5절, `ClientCheckInController` 와 짝이다)
+//
+// 전부 `/api/client/expos/{expoId}/...` 아래에 있다 — 주최사가 여러 박람회를 열 수 있어
+// expoId 가 항상 경로에 붙는다. `ExpoHostVerifier` 가 자기 박람회인지 서버에서 다시
+// 검증하므로, 프론트는 "내가 연 박람회 목록"(`features/client`)에서 고른 expoId 를
+// 그대로 넘기면 된다.
+// ---------------------------------------------------------------------------
+
+/** 백엔드 `CheckInSummaryResponse` 와 짝이다. */
+export type CheckInSummary = {
+  issuedCount: number
+  checkedInCount: number
+  notCheckedInCount: number
+  canceledCount: number
+}
+
+/** `GET /api/client/expos/{expoId}/check-in` — 오늘 체크인 현황. */
+export const fetchCheckInSummary = async (expoId: number): Promise<CheckInSummary> => {
+  const { data } = await api.get<ApiResponse<CheckInSummary>>(`/client/expos/${expoId}/check-in`)
+  if (!data.data) {
+    throw new Error(data.message ?? '체크인 현황을 불러오지 못했습니다.')
+  }
+  return data.data
+}
+
+/** 백엔드 `CheckInHistoryRow` 와 짝이다. */
+export type CheckInHistoryRow = {
+  id: number
+  issuedTicketId: number
+  ticketCode: string
+  method: 'QR' | 'MANUAL_CODE'
+  result: 'SUCCESS' | 'ALREADY_USED' | 'CANCELED_TICKET' | 'WRONG_EXPO'
+  checkedAt: string
+  processedByClientId: number
+  detail: string | null
+}
+
+/** 백엔드 `CheckInHistoryPage` 와 짝이다. Spec.md 2절 페이지네이션 봉투. */
+export type CheckInHistoryList = {
+  totalCount: number
+  page: number
+  size: number
+  items: CheckInHistoryRow[]
+}
+
+/** `GET /api/client/expos/{expoId}/check-ins/history` — 체크인 이력. 최신순, 성공·거절 모두 포함. */
+export const fetchCheckInHistory = async (
+  expoId: number,
+  page = 0,
+  size = 100
+): Promise<CheckInHistoryList> => {
+  const { data } = await api.get<ApiResponse<CheckInHistoryList>>(
+    `/client/expos/${expoId}/check-ins/history`,
+    { params: { page, size } }
+  )
+  if (!data.data) {
+    throw new Error(data.message ?? '체크인 이력을 불러오지 못했습니다.')
+  }
+  return data.data
+}
+
+/**
+ * 백엔드 `CheckInResponse` 와 짝이다.
+ *
+ * **거절도 HTTP 200 으로 온다** (컨트롤러 주석 참고). `result !== 'SUCCESS'` 인 응답은
+ * axios 에러가 아니라 정상 응답이므로, 화면은 `admitted` 로 통과 여부를 가른다.
+ */
+export type CheckInResult = {
+  result: 'SUCCESS' | 'ALREADY_USED' | 'CANCELED_TICKET' | 'WRONG_EXPO' | 'INVALID_TOKEN'
+  admitted: boolean
+  issuedTicketId: number | null
+  ticketCode: string | null
+  checkedInAt: string | null
+  message: string
+}
+
+/** `POST /api/client/expos/{expoId}/check-ins/qr` — 스캔한 QR 원문을 그대로 보낸다. */
+export const checkInByQr = async (expoId: number, qrPayload: string): Promise<CheckInResult> => {
+  const { data } = await api.post<ApiResponse<CheckInResult>>(
+    `/client/expos/${expoId}/check-ins/qr`,
+    { qrPayload }
+  )
+  if (!data.data) {
+    throw new Error(data.message ?? '체크인 처리에 실패했습니다.')
+  }
+  return data.data
+}
+
+/** `POST /api/client/expos/{expoId}/check-ins/code` — 카메라가 안 될 때의 대체 경로. */
+export const checkInByCode = async (expoId: number, ticketCode: string): Promise<CheckInResult> => {
+  const { data } = await api.post<ApiResponse<CheckInResult>>(
+    `/client/expos/${expoId}/check-ins/code`,
+    { ticketCode }
+  )
+  if (!data.data) {
+    throw new Error(data.message ?? '체크인 처리에 실패했습니다.')
+  }
+  return data.data
+}
+
 const toTicketViewError = (error: unknown): TicketViewError => {
   if (error instanceof TicketViewError) {
     return error
