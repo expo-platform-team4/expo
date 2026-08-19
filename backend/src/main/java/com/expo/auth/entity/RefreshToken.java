@@ -56,6 +56,11 @@ public class RefreshToken extends BaseTimeEntity {
         this.lastUsedAt = at;
     }
 
+    /** 로그아웃 등으로 이 Refresh Token을 더 이상 쓸 수 없게 폐기한다. */
+    public void revoke(Instant at) {
+        this.revokedAt = at;
+    }
+
     public Instant getRevokedAt() {
         return revokedAt;
     }

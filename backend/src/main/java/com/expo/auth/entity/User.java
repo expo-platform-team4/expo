@@ -88,6 +88,16 @@ public class User extends BaseTimeEntity {
         this.lastLoginAt = at;
     }
 
+    /** 마이페이지에서 닉네임을 변경한다 (A-API-016). 중복·형식 검증은 서비스 계층에서 끝낸 뒤 호출한다. */
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    /** 비밀번호 재설정 등으로 비밀번호 해시를 교체한다 (A-API-014). 이미 BCrypt로 인코딩된 값을 받는다. */
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
     public Long getId() {
         return id;
     }
