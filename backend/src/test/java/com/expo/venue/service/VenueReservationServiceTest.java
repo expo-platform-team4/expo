@@ -32,6 +32,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 /** {@link VenueReservationService} 의 승인 상태 검증·구역별 다건 확정·기간 중복 처리 규칙을 검증한다. */
 class VenueReservationServiceTest {
@@ -234,6 +236,38 @@ class VenueReservationServiceTest {
 
         assertThatThrownBy(() -> service.create(ADMIN_ID, requestWith(START, END)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void listReturnsConvertedPage() {
+        var pageable = PageRequest.of(0, 20);
+        when(venueReservationRepository.findAll(pageable))
+                .thenReturn(new PageImpl<>(List.of(confirmedReservation()), pageable, 1));
+
+        var page = service.list(pageable);
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).status()).isEqualTo(VenueReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void getRejectsWhenNotFound() {
+        when(venueReservationRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.get(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+    }
+
+    @Test
+    void getSucceeds() {
+        when(venueReservationRepository.findById(1L))
+                .thenReturn(Optional.of(confirmedReservation()));
+
+        VenueReservationResponse response = service.get(1L);
+
+        assertThat(response.status()).isEqualTo(VenueReservationStatus.CONFIRMED);
     }
 
     @Test

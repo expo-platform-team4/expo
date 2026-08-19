@@ -13,9 +13,13 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.venue.converter.VenueZoneConverter;
 import com.expo.venue.dto.CreateVenueZoneRequest;
 import com.expo.venue.dto.VenueZoneResponse;
+import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -105,5 +109,78 @@ class VenueZoneServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_ZONE_LIMIT_EXCEEDED);
+    }
+
+    private static void withId(Object entity, Long id) {
+        try {
+            Field field = entity.getClass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    void listRejectsWhenHallNotFound() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.list(HALL_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_NOT_FOUND);
+    }
+
+    @Test
+    void listReturnsZonesInHall() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        VenueZone zone =
+                VenueZone.create(
+                        HALL_ID, "ZONE-1", "1구역", 50, BigDecimal.TEN, BigDecimal.TEN, null);
+        withId(zone, 10L);
+        when(venueZoneRepository.findAllByHallIdOrderByZoneCodeAsc(HALL_ID))
+                .thenReturn(List.of(zone));
+
+        List<VenueZoneResponse> responses = service.list(HALL_ID);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).id()).isEqualTo(10L);
+    }
+
+    @Test
+    void getRejectsWhenHallNotFound() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.get(HALL_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_NOT_FOUND);
+        verify(venueZoneRepository, never()).findByIdAndHallId(any(), any());
+    }
+
+    @Test
+    void getRejectsWhenNotFoundInHall() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueZoneRepository.findByIdAndHallId(10L, HALL_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.get(HALL_ID, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+    }
+
+    @Test
+    void getSucceeds() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        VenueZone zone =
+                VenueZone.create(
+                        HALL_ID, "ZONE-1", "1구역", 50, BigDecimal.TEN, BigDecimal.TEN, null);
+        withId(zone, 10L);
+        when(venueZoneRepository.findByIdAndHallId(10L, HALL_ID)).thenReturn(Optional.of(zone));
+
+        VenueZoneResponse response = service.get(HALL_ID, 10L);
+
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.zoneCode()).isEqualTo("ZONE-1");
     }
 }
