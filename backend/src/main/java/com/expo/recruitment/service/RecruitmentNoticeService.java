@@ -181,6 +181,7 @@ public class RecruitmentNoticeService {
                         "{\"status\": \"" + notice.getStatus() + "\"}",
                         reason,
                         adminId));
+        String releaseReason = reason == null ? "모집공고 취소" : "모집공고 취소: " + reason;
         List<VenueReservation> reservations =
                 venueReservationRepository.findAllByRecruitmentNoticeId(noticeId);
         reservations.stream()
@@ -192,7 +193,7 @@ public class RecruitmentNoticeService {
                                     VenueReservationHistory.create(
                                             r.getId(),
                                             VenueReservationActionType.RELEASED,
-                                            "모집공고 취소: " + reason,
+                                            releaseReason,
                                             adminId));
                         });
         return toResponseWithVenue(notice, reservations);
