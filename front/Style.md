@@ -114,12 +114,19 @@
   --text-label-sm--line-height: 16px;
   --text-label-sm--font-weight: 600;
 
-  /* Spacing (8px 그리드) */
-  --spacing-xs: 8px;
-  --spacing-sm: 16px;
-  --spacing-md: 24px;
-  --spacing-lg: 40px;
-  --spacing-xl: 64px;
+  /*
+   * Spacing (8px 그리드) — 이름 있는 토큰을 두지 않는다.
+   *
+   * Tailwind v4 는 `--spacing-*` 네임스페이스 하나를 p/m/gap/w/h/max-w/min-w/inset 등
+   * 모든 크기 유틸리티가 공유한다. 여기에 `--spacing-md: 24px` 처럼 이름을 얹으면
+   * `max-w-md`(기본값 28rem)까지 24px 로 덮어써서 화면 전체의 `max-w-*`·`w-*` 가
+   * 조용히 깨진다 — 실제로 로그인 카드가 24px 로 찌그러지는 걸로 발견했다(구현 단계에서
+   * 처음 시도했던 `--spacing-xs/sm/md/lg/xl` 블록이 이 문제였다).
+   *
+   * 기본 숫자 스케일(`--spacing: 0.25rem` 기반, 건드리지 않음)이 이미 8px 그리드와
+   * 맞아떨어진다 — xs=2(8px) sm=4(16px) md=6(24px) lg=10(40px) xl=16(64px).
+   * 화면에서는 `gap-6`·`p-10`처럼 숫자 유틸리티를 쓴다.
+   */
   --container-max: 1280px;
 
   /* Radius */
