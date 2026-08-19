@@ -2,9 +2,9 @@
 # 스키마는 Flyway 가 만들고 JPA 는 검증만 한다(validate). 엔티티와 스키마가 어긋나면 기동 시점에 잡힌다.
 spring:
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:expo}
-    username: ${POSTGRES_USER:expo}
-    password: ${POSTGRES_PASSWORD:}
+    url: jdbc:postgresql://localhost:5432/expo
+    username: expo
+    password: expo_local_pw
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10

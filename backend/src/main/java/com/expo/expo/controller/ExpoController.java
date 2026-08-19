@@ -1,6 +1,7 @@
 package com.expo.expo.controller;
 
 import com.expo.expo.dto.ExpoDto.*;
+import com.expo.expo.entity.ExpoEnums;
 import com.expo.expo.service.ExpoService;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -160,7 +161,7 @@ public class ExpoController {
                     LocalDate toDate,
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice,
-            @RequestParam(required = false) com.expo.expo.domain.ExpoEnums.SaleStatus saleStatus,
+            @RequestParam(required = false) ExpoEnums.SaleStatus saleStatus,
             @RequestParam(required = false) SearchCondition.Sort sort,
             @RequestParam(defaultValue = "1") int page, // 희-SRCH-10 페이지 번호 방식
             @RequestParam(defaultValue = "12") int size) {

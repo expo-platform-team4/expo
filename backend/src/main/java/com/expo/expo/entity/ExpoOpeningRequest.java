@@ -1,6 +1,6 @@
-package com.expo.expo.domain;
+package com.expo.expo.entity;
 
-import com.expo.expo.domain.ExpoEnums.OpeningRequestStatus;
+import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
 import com.expo.expo.exception.ExpoStateException;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;

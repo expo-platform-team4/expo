@@ -1,8 +1,8 @@
-package com.expo.expo.domain;
+package com.expo.expo.entity;
 
-import com.expo.expo.domain.ExpoEnums.ExpoFilePurpose;
-import com.expo.expo.domain.ExpoEnums.ExpoImageType;
-import com.expo.expo.domain.ExpoEnums.ExternalLinkType;
+import com.expo.expo.entity.ExpoEnums.ExpoFilePurpose;
+import com.expo.expo.entity.ExpoEnums.ExpoImageType;
+import com.expo.expo.entity.ExpoEnums.ExternalLinkType;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.Map;

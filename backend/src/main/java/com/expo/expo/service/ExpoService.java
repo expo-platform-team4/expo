@@ -1,13 +1,12 @@
 package com.expo.expo.service;
 
-import com.expo.expo.domain.Expo;
-import com.expo.expo.domain.ExpoAttachments.*;
-import com.expo.expo.domain.ExpoEnums.SaleStatus;
-import com.expo.expo.domain.ExpoOpeningRequest;
 import com.expo.expo.dto.ExpoDto.*;
+import com.expo.expo.entity.Expo;
+import com.expo.expo.entity.ExpoAttachments.*;
+import com.expo.expo.entity.ExpoEnums.SaleStatus;
+import com.expo.expo.entity.ExpoOpeningRequest;
 import com.expo.expo.exception.ExpoStateException;
-import com.expo.expo.repository.ExpoRepositories.*;
-import com.expo.expo.repository.ExpoRepository;
+import com.expo.expo.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.OffsetDateTime;
@@ -27,7 +26,7 @@ public class ExpoService {
     private final ExpoOpeningRequestRepository openingRequestRepository;
     private final ExpoImageRepository expoImageRepository;
     private final ExpoFileRepository expoFileRepository;
-    private final ExternalLinkRepository externalLinkRepository;
+    private final ExpoExternalLinkRepository expoExternalLinkRepository;
     private final ExpoChangeRequestRepository changeRequestRepository;
     private final EntityManager em;
 
@@ -171,7 +170,7 @@ public class ExpoService {
     @Transactional
     public Long addExternalLink(Long expoId, ExternalLinkCreate req) {
         requireExpo(expoId);
-        return externalLinkRepository
+        return expoExternalLinkRepository
                 .save(
                         ExternalLink.builder()
                                 .expoId(expoId)
@@ -254,7 +253,7 @@ public class ExpoService {
                 saleStatus,
                 expoImageRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId),
                 expoFileRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId),
-                externalLinkRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId));
+                expoExternalLinkRepository.findByExpoIdOrderBySortOrderAscIdAsc(expoId));
     }
 
     /* ==================== 내부 유틸 ==================== */

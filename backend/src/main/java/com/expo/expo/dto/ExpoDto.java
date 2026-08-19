@@ -1,11 +1,11 @@
 package com.expo.expo.dto;
 
-import com.expo.expo.domain.Expo;
-import com.expo.expo.domain.ExpoAttachments.ExpoFile;
-import com.expo.expo.domain.ExpoAttachments.ExpoImage;
-import com.expo.expo.domain.ExpoAttachments.ExternalLink;
-import com.expo.expo.domain.ExpoEnums.*;
-import com.expo.expo.domain.ExpoOpeningRequest;
+import com.expo.expo.entity.Expo;
+import com.expo.expo.entity.ExpoAttachments.ExpoFile;
+import com.expo.expo.entity.ExpoAttachments.ExpoImage;
+import com.expo.expo.entity.ExpoAttachments.ExternalLink;
+import com.expo.expo.entity.ExpoEnums.*;
+import com.expo.expo.entity.ExpoOpeningRequest;
 import com.expo.expo.repository.ExpoCardProjection;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

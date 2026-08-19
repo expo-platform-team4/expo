@@ -1,4 +1,4 @@
-package com.expo.expo.domain;
+package com.expo.expo.entity;
 
 import java.time.OffsetDateTime;
 

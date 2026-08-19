@@ -1,6 +1,6 @@
 package com.expo.expo.repository;
 
-import com.expo.expo.domain.Expo;
+import com.expo.expo.entity.Expo;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
