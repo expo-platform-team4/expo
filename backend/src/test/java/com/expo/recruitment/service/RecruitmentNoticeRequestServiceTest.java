@@ -3,6 +3,7 @@ package com.expo.recruitment.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -16,8 +17,11 @@ import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
 import com.expo.recruitment.dto.DecideVenueRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeRequestResponse;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.RecruitmentNoticeRequestActionType;
+import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.repository.VenueHallRepository;
@@ -45,6 +49,7 @@ class RecruitmentNoticeRequestServiceTest {
 
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
+    private RecruitmentNoticeRequestHistoryRepository recruitmentNoticeRequestHistoryRepository;
     private VirtualVenueRepository virtualVenueRepository;
     private VenueHallRepository venueHallRepository;
     private VenueZoneRepository venueZoneRepository;
@@ -54,6 +59,8 @@ class RecruitmentNoticeRequestServiceTest {
     void setUp() {
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeRequestZoneRepository = mock(RecruitmentNoticeRequestZoneRepository.class);
+        recruitmentNoticeRequestHistoryRepository =
+                mock(RecruitmentNoticeRequestHistoryRepository.class);
         virtualVenueRepository = mock(VirtualVenueRepository.class);
         venueHallRepository = mock(VenueHallRepository.class);
         venueZoneRepository = mock(VenueZoneRepository.class);
@@ -61,6 +68,7 @@ class RecruitmentNoticeRequestServiceTest {
                 new RecruitmentNoticeRequestService(
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeRequestZoneRepository,
+                        recruitmentNoticeRequestHistoryRepository,
                         virtualVenueRepository,
                         venueHallRepository,
                         venueZoneRepository,
@@ -215,6 +223,7 @@ class RecruitmentNoticeRequestServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_DECISION_ALREADY_MADE);
+        verify(recruitmentNoticeRequestHistoryRepository, never()).save(any());
     }
 
     @Test
@@ -228,6 +237,18 @@ class RecruitmentNoticeRequestServiceTest {
 
         assertThat(response.venueDecision()).isEqualTo(VenueDecision.ALLOWED);
         assertThat(response.status()).isEqualTo(RecruitmentNoticeRequestStatus.APPROVED);
+        verify(recruitmentNoticeRequestHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeRequestHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeRequestActionType
+                                                                .VENUE_ALLOW
+                                                && "PENDING".equals(history.getFromStatus())
+                                                && "ALLOWED".equals(history.getToStatus())
+                                                && "충돌 없음".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 
     @Test
@@ -241,6 +262,16 @@ class RecruitmentNoticeRequestServiceTest {
 
         assertThat(response.venueDecision()).isEqualTo(VenueDecision.CANCELED);
         assertThat(response.status()).isEqualTo(RecruitmentNoticeRequestStatus.REJECTED);
+        verify(recruitmentNoticeRequestHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeRequestHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeRequestActionType
+                                                                .VENUE_CANCEL
+                                                && "PENDING".equals(history.getFromStatus())
+                                                && "CANCELED".equals(history.getToStatus())
+                                                && "충돌 발생".equals(history.getReason())));
     }
 
     private RecruitmentNoticeRequest draftRequest() {
