@@ -47,8 +47,9 @@ public class PasswordResetService {
      * <p>이메일 존재 여부를 응답으로 노출하지 않는다(계정 존재 여부 추측 방지) — 가입된 이메일이면 토큰을 발급하고,
      * 아니면 아무 것도 하지 않은 채 같은 성공 메시지를 돌려준다.
      *
-     * <p>MVP 단계: 실제 이메일 발송 미연동. 재설정 토큰 원문은 서버 DEBUG 로그로만 확인한다(휴대폰 본인인증의
-     * 테스트 인증번호 123456과 같은 자리다).
+     * <p>MVP 단계: 실제 이메일 발송 미연동. 개인정보·토큰은 로그에 남기지 않으므로(AGENTS.md), 이메일 연동
+     * 전까지는 이 흐름을 로컬에서 끝까지 수동 테스트할 방법이 없다 — 발급 자체는 정상 동작함을 단위 테스트로
+     * 확인한다.
      */
     @Transactional
     public PasswordResetRequestResponse requestReset(String rawEmail) {
@@ -77,11 +78,10 @@ public class PasswordResetService {
                                             user.getId(), tokenHash, now, expiresAt, null);
                             passwordResetTokenRepository.save(issued);
 
-                            // MVP: 이메일 API 미연동 → 실제 메일은 안 가고, 재설정 토큰은 DEBUG 로그로만 확인.
-                            log.debug(
-                                    "비밀번호 재설정 요청(MVP, 이메일 미연동) email={} resetToken={}",
-                                    email,
-                                    resetToken);
+                            // 개인정보·토큰은 로그에 남기지 않는다 (AGENTS.md, DEBUG도 예외 없음).
+                            // MVP라 이메일 발송이 없어 이 로그만으로는 재설정 토큰을 알 수 없다 —
+                            // 실제 이메일 연동 전까지는 이 흐름을 로컬에서 끝까지 수동 테스트할 방법이 없다.
+                            log.debug("비밀번호 재설정 요청(MVP, 이메일 미연동) userId={}", user.getId());
                         });
 
         return new PasswordResetRequestResponse(
