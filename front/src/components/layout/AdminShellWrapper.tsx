@@ -3,8 +3,8 @@
 import { Bell, Building2, LayoutDashboard, ListChecks, Megaphone, Receipt, Tag } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { ErrorState, LoadingBlock } from '@/components/ui'
-import { useLogout, useMyProfile } from '@/features/auth/hooks'
+import { useLogout } from '@/features/auth/hooks'
+import { useAuthStore } from '@/lib/auth'
 
 import { AdminShell, type AdminMenuSection } from './AdminShell'
 
@@ -28,27 +28,22 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
   },
 ]
 
-/** `/admin/**` 전용 조립. Style.md 5-3 절 — `AdminShell` 은 구조만 두고 메뉴·프로필만 채운다. */
+/**
+ * `/admin/**` 전용 조립. Style.md 5-3 절 — `AdminShell` 은 구조만 두고 메뉴·프로필만 채운다.
+ *
+ * `useMyProfile()`(`GET /api/users/me/profile`)을 쓰지 않는다 — `SecurityConfig` 가
+ * `/api/users/**` 를 `hasAnyRole("MEMBER","CLIENT")` 로만 열어 둬서 ADMIN 계정은 401 을
+ * 받는다(관리자 전용 "내 프로필" 엔드포인트가 따로 없다). 로그인 응답에 이미 실려 오는
+ * `nickname` 을 store 에서 바로 읽는 것으로 충분하다 — 추가 API 호출이 필요 없다.
+ */
 export const AdminShellWrapper = ({ children }: { children: ReactNode }) => {
-  const { data: profile, isPending, isError, error, refetch } = useMyProfile()
+  const nickname = useAuthStore((state) => state.nickname)
   const logoutMutation = useLogout()
-
-  if (isError) {
-    return (
-      <div className="mx-auto max-w-[1280px] px-4 py-8">
-        <ErrorState error={error} onRetry={() => refetch()} />
-      </div>
-    )
-  }
-
-  if (isPending || !profile) {
-    return <LoadingBlock label="프로필을 불러오는 중입니다" />
-  }
 
   return (
     <AdminShell
       sections={ADMIN_SECTIONS}
-      adminName={profile.nickname}
+      adminName={nickname ?? '관리자'}
       onLogout={() => logoutMutation.mutate()}
     >
       {children}
