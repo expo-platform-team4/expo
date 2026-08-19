@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.settlement.repository.SettlementQueryMapper">
+
+    <!--
+      정산 조회 (D-API-011 · 012 · 013).
+
+      뷰를 그대로 읽는다. v_client_dashboard_settlements 와 v_admin_settlement_status 는 V1 스키마에
+      처음부터 있던 것이고, 출력 필드가 곧 화면 명세다. 여기서 컬럼을 새로 고르지 않는다 -
+      뷰를 우회해 테이블을 직접 읽으면 뷰가 바뀔 때 두 곳이 갈린다.
+
+      권한 경계가 뷰에서 갈린다는 점이 중요하다.
+        클라이언트 뷰  host_client_id 로 자기 것만. 리포트 file_id 와 송금 결과까지 보여준다
+        관리자 뷰      전체. 업체명(company_name)과 확정자(confirmed_by)가 더 있다
+    -->
+
+    <!-- D-API-011. 자기 정산만 나온다. 기한이 임박한 것부터 본다. -->
+    <select id="findClientSettlements"
+            resultType="com.expo.settlement.dto.ClientSettlementResponse">
+        SELECT settlement_id,
+               expo_id,
+               expo_title,
+               event_end_at,
+               settlement_due_at,
+               status,
+               gross_ticket_sales_amount,
+               ticket_refund_amount,
+               net_ticket_sales_amount,
+               booking_fee_gross_amount,
+               booking_fee_refund_amount,
+               booking_fee_net_amount,
+               gross_booth_sales_amount,
+               adjustment_amount,
+               remittance_due_amount,
+               remitted_amount,
+               remitted_at,
+               remittance_status,
+               latest_report_file_id,
+               latest_report_format,
+               latest_report_version
+        FROM v_client_dashboard_settlements
+        WHERE host_client_id = #{hostClientId}
+        ORDER BY settlement_due_at, settlement_id
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countClientSettlements" resultType="long">
+        SELECT count(*) FROM v_client_dashboard_settlements WHERE host_client_id = #{hostClientId}
+    </select>
+
+    <!--
+      D-API-012. 상세 한 건.
+
+      host_client_id 를 조건에 넣는다. "찾아서 주인을 확인" 이 아니라 "내 것 중에서 찾는다" 로
+      쓰면 남의 정산을 조회할 길이 없다. 확인을 빠뜨릴 자리 자체를 없앤다.
+    -->
+    <select id="findClientSettlement"
+            resultType="com.expo.settlement.dto.ClientSettlementResponse">
+        SELECT settlement_id,
+               expo_id,
+               expo_title,
+               event_end_at,
+               settlement_due_at,
+               status,
+               gross_ticket_sales_amount,
+               ticket_refund_amount,
+               net_ticket_sales_amount,
+               booking_fee_gross_amount,
+               booking_fee_refund_amount,
+               booking_fee_net_amount,
+               gross_booth_sales_amount,
+               adjustment_amount,
+               remittance_due_amount,
+               remitted_amount,
+               remitted_at,
+               remittance_status,
+               latest_report_file_id,
+               latest_report_format,
+               latest_report_version
+        FROM v_client_dashboard_settlements
+        WHERE settlement_id = #{settlementId}
+          AND host_client_id = #{hostClientId}
+    </select>
+
+    <!--
+      D-API-012 의 "티켓/부스 구분" 부분.
+
+      settlement_items 를 그대로 준다. included_in_remittance 가 송금 대상인지를 가르므로,
+      화면은 그 값만 보고 "정산금에 들어간 항목" 과 "참고 항목(예매 수수료)" 을 나눌 수 있다.
+    -->
+    <select id="findSettlementItems" resultType="com.expo.settlement.dto.SettlementItemResponse">
+        SELECT item_type,
+               amount,
+               included_in_remittance,
+               occurred_at
+        FROM settlement_items
+        WHERE settlement_id = #{settlementId}
+        ORDER BY id
+    </select>
+
+    <!-- D-API-013. 관리자 목록·검색. -->
+    <sql id="adminFilter">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="hostClientId != null">
+                AND host_client_id = #{hostClientId}
+            </if>
+            <if test="expoId != null">
+                AND expo_id = #{expoId}
+            </if>
+            <if test="dueBefore != null">
+                AND settlement_due_at &lt;= #{dueBefore}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findAdminSettlements"
+            resultType="com.expo.settlement.dto.AdminSettlementResponse">
+        SELECT settlement_id,
+               status,
+               expo_id,
+               expo_title,
+               event_end_at,
+               host_client_id,
+               company_name,
+               settlement_due_at,
+               remittance_due_amount,
+               adjustment_amount,
+               confirmed_at,
+               confirmed_by,
+               remitted_amount,
+               remitted_at,
+               remittance_status
+        FROM v_admin_settlement_status
+        <include refid="adminFilter"/>
+        ORDER BY settlement_due_at, settlement_id
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminSettlements" resultType="long">
+        SELECT count(*) FROM v_admin_settlement_status
+        <include refid="adminFilter"/>
+    </select>
+
+</mapper>
