@@ -31,19 +31,19 @@ ADMIN    관리자. 심사·승인·정산 확정을 한다
 
 ## 2. 기술 스택
 
-| 용도 | 쓰는 것 | 버전 |
-|-|-|-|
-| 프레임워크 | Next.js (App Router) | 16.2.12 |
-| 런타임 | React | 19.2.4 |
-| 스타일 | Tailwind CSS | v4 (CSS-first, `tailwind.config.js` 없음) |
-| 서버 상태·캐싱 | TanStack Query | 5.101.4 |
-| 클라이언트 상태 | Zustand | 5.0.14 |
-| 폼 | React Hook Form + Zod | 7.84 / 4.4 |
-| HTTP | axios (`src/lib/api.ts` 인스턴스) | 1.19 |
-| 결제 | Toss Payments SDK | 2.7.1 |
-| QR | qrcode.react | 4.2.0 |
-| 패키지 매니저 | Bun | — |
-| Node | **24 고정** | `.nvmrc` |
+| 용도            | 쓰는 것                           | 버전                                      |
+| --------------- | --------------------------------- | ----------------------------------------- |
+| 프레임워크      | Next.js (App Router)              | 16.2.12                                   |
+| 런타임          | React                             | 19.2.4                                    |
+| 스타일          | Tailwind CSS                      | v4 (CSS-first, `tailwind.config.js` 없음) |
+| 서버 상태·캐싱  | TanStack Query                    | 5.101.4                                   |
+| 클라이언트 상태 | Zustand                           | 5.0.14                                    |
+| 폼              | React Hook Form + Zod             | 7.84 / 4.4                                |
+| HTTP            | axios (`src/lib/api.ts` 인스턴스) | 1.19                                      |
+| 결제            | Toss Payments SDK                 | 2.7.1                                     |
+| QR              | qrcode.react                      | 4.2.0                                     |
+| 패키지 매니저   | Bun                               | —                                         |
+| Node            | **24 고정**                       | `.nvmrc`                                  |
 
 **Node 26 을 쓰면 안 된다.** Next 16 의 `rewrites()` 가 전부 500 으로 깨져 `/api` 프록시가
 통째로 죽는다(`front/AGENTS.md` 에 재현 방법이 있다).

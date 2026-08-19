@@ -25,25 +25,25 @@ CLIENT 와 ADMIN 은 겹치는 경로가 있다 — 백엔드가 `/api/client/**
 
 ## 2. 공개 · 회원 화면
 
-| 화면 | ID | 라우트 | 무엇을 하는가 |
-|-|-|-|-|
-| 홈 | `6e6d886e` | `/` | 진입점. 박람회 추천·배너 (배너 API 없음 — 자리만 두고 빈 상태 처리) |
-| 박람회 목록 | `a1fc1acc` | `/expos` | 전체 박람회 탐색. **목록 API 가 없다** — 임시로 `ticket-products/purchasable` 를 박람회별로 묶거나, 이슈로 별도 API 요청 |
-| 박람회 상세 | `5f9fb15e` | `/expos/{expoId}` | 박람회 정보 + 구매 가능 티켓 상품 목록 |
-| 로그인 | `8d6a731b` | `/login` | 이메일·비밀번호. 성공 시 토큰 저장 후 역할별 홈으로 이동 |
-| 회원가입 — 유형 선택 | `e0548499` | `/signup` | 일반/기업 분기만. API 호출 없음 |
-| 일반회원 가입 | `7eb82549` | `/signup/member` | 휴대폰 인증 포함 (SMS 는 현재 목 — Function 4절) |
-| 기업회원 가입 | `14b50137` | `/signup/client` | 사업자등록번호 검증 포함 |
-| 소셜 로그인 콜백 | `2e17f073` | `/auth/callback` | ✅ 라우트 존재. OAuth2 리다이렉트 처리 |
-| 티켓 예매·결제 (회원) | `d3c2aaf3` | `/orders` | ✅ 라우트 존재. Toss 결제 연동 |
-| 티켓 예매·결제 (비회원) | `2fd025bd` | `/orders/guest` | 이름·연락처·비밀번호로 결제. 결제 완료 시 SMS 발송(백엔드가 이미 처리) |
-| 예매 내역 | `50b7de2e` | `/mypage/orders` | 회원 주문 목록. **API 없음** — 이슈로 별도 요청 |
-| 나의 티켓 | `66513a65` | `/mypage/tickets` | 티켓별 QR. **API 없음** — 이슈로 별도 요청 |
-| 비회원 주문 조회 | `119d7f0f` | `/orders/guest/search` | 주문번호+비밀번호로 조회 |
-| 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/{orderNumber}` | 환불 신청, 개별 티켓 QR |
-| 공고 모집 목록 | `b516ae29` | `/recruitment-notices` | ✅ 라우트 존재 |
-| 공고 참여 신청 | `1921eb04` | `/recruitment-notices/{noticeId}` | 상세 + 참여 신청 폼 (CLIENT 전용 액션) |
-| **SMS 링크 QR 확인** | 대응 디자인 없음 | `/tickets?token=` | ✅ **이미 구현됨.** 결제 완료 SMS 의 링크 착지점 |
+| 화면                    | ID               | 라우트                            | 무엇을 하는가                                                                                                            |
+| ----------------------- | ---------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 홈                      | `6e6d886e`       | `/`                               | 진입점. 박람회 추천·배너 (배너 API 없음 — 자리만 두고 빈 상태 처리)                                                      |
+| 박람회 목록             | `a1fc1acc`       | `/expos`                          | 전체 박람회 탐색. **목록 API 가 없다** — 임시로 `ticket-products/purchasable` 를 박람회별로 묶거나, 이슈로 별도 API 요청 |
+| 박람회 상세             | `5f9fb15e`       | `/expos/{expoId}`                 | 박람회 정보 + 구매 가능 티켓 상품 목록                                                                                   |
+| 로그인                  | `8d6a731b`       | `/login`                          | 이메일·비밀번호. 성공 시 토큰 저장 후 역할별 홈으로 이동                                                                 |
+| 회원가입 — 유형 선택    | `e0548499`       | `/signup`                         | 일반/기업 분기만. API 호출 없음                                                                                          |
+| 일반회원 가입           | `7eb82549`       | `/signup/member`                  | 휴대폰 인증 포함 (SMS 는 현재 목 — Function 4절)                                                                         |
+| 기업회원 가입           | `14b50137`       | `/signup/client`                  | 사업자등록번호 검증 포함                                                                                                 |
+| 소셜 로그인 콜백        | `2e17f073`       | `/auth/callback`                  | ✅ 라우트 존재. OAuth2 리다이렉트 처리                                                                                   |
+| 티켓 예매·결제 (회원)   | `d3c2aaf3`       | `/orders`                         | ✅ 라우트 존재. Toss 결제 연동                                                                                           |
+| 티켓 예매·결제 (비회원) | `2fd025bd`       | `/orders/guest`                   | 이름·연락처·비밀번호로 결제. 결제 완료 시 SMS 발송(백엔드가 이미 처리)                                                   |
+| 예매 내역               | `50b7de2e`       | `/mypage/orders`                  | 회원 주문 목록. **API 없음** — 이슈로 별도 요청                                                                          |
+| 나의 티켓               | `66513a65`       | `/mypage/tickets`                 | 티켓별 QR. **API 없음** — 이슈로 별도 요청                                                                               |
+| 비회원 주문 조회        | `119d7f0f`       | `/orders/guest/search`            | 주문번호+비밀번호로 조회                                                                                                 |
+| 비회원 주문 상세        | `d25ce9bc`       | `/orders/guest/{orderNumber}`     | 환불 신청, 개별 티켓 QR                                                                                                  |
+| 공고 모집 목록          | `b516ae29`       | `/recruitment-notices`            | ✅ 라우트 존재                                                                                                           |
+| 공고 참여 신청          | `1921eb04`       | `/recruitment-notices/{noticeId}` | 상세 + 참여 신청 폼 (CLIENT 전용 액션)                                                                                   |
+| **SMS 링크 QR 확인**    | 대응 디자인 없음 | `/tickets?token=`                 | ✅ **이미 구현됨.** 결제 완료 SMS 의 링크 착지점                                                                         |
 
 ---
 
@@ -51,18 +51,18 @@ CLIENT 와 ADMIN 은 겹치는 경로가 있다 — 백엔드가 `/api/client/**
 
 전부 [Sidebar(light) 셸](Style.md)을 쓴다.
 
-| 화면 | ID | 라우트 | 무엇을 하는가 |
-|-|-|-|-|
-| 클라이언트 대시보드 | `0ae4be64` | `/client/dashboard` | ✅ 라우트 존재. 요약 지표 |
-| 내 박람회 | `f83a3d68` | `/client/expos` | 내가 연 박람회 목록 + 매출 요약 |
-| 박람회 개최 신청 | `13484d75` | `/client/expos/new` | **API 없음** — 이슈로 별도 요청 |
-| 모집공고 요청 관리 | `fe000d47` | `/client/recruitment-notice-requests` | 내 요청 목록·상세 |
-| 공고 생성 요청 | `533717af` | `/client/recruitment-notice-requests/new` | 새 요청 작성 |
-| 참여 신청 내역 | `79d848ba` | `/client/participations` | 내가 신청한 부스 참여 목록 |
-| 정산 리포트 | `3ad4a13d` | `/client/settlements` (목록) `/client/settlements/{id}` (상세) | 티켓/부스 구분 리포트. `settlement` 모듈 신설 |
-| **체크인 현황** | 대응 디자인 없음 | `/client/check-in` | ✅ 라우트 존재, 화면 신설 필요. 아래 4절 |
-| **QR 스캔** | 대응 디자인 없음 | `/client/check-in/scan` | 신설. 카메라 |
-| **체크인 이력** | 대응 디자인 없음 | `/client/check-in/history` | 신설 |
+| 화면                | ID               | 라우트                                                         | 무엇을 하는가                                 |
+| ------------------- | ---------------- | -------------------------------------------------------------- | --------------------------------------------- |
+| 클라이언트 대시보드 | `0ae4be64`       | `/client/dashboard`                                            | ✅ 라우트 존재. 요약 지표                     |
+| 내 박람회           | `f83a3d68`       | `/client/expos`                                                | 내가 연 박람회 목록 + 매출 요약               |
+| 박람회 개최 신청    | `13484d75`       | `/client/expos/new`                                            | **API 없음** — 이슈로 별도 요청               |
+| 모집공고 요청 관리  | `fe000d47`       | `/client/recruitment-notice-requests`                          | 내 요청 목록·상세                             |
+| 공고 생성 요청      | `533717af`       | `/client/recruitment-notice-requests/new`                      | 새 요청 작성                                  |
+| 참여 신청 내역      | `79d848ba`       | `/client/participations`                                       | 내가 신청한 부스 참여 목록                    |
+| 정산 리포트         | `3ad4a13d`       | `/client/settlements` (목록) `/client/settlements/{id}` (상세) | 티켓/부스 구분 리포트. `settlement` 모듈 신설 |
+| **체크인 현황**     | 대응 디자인 없음 | `/client/check-in`                                             | ✅ 라우트 존재, 화면 신설 필요. 아래 4절      |
+| **QR 스캔**         | 대응 디자인 없음 | `/client/check-in/scan`                                        | 신설. 카메라                                  |
+| **체크인 이력**     | 대응 디자인 없음 | `/client/check-in/history`                                     | 신설                                          |
 
 ---
 
@@ -70,15 +70,15 @@ CLIENT 와 ADMIN 은 겹치는 경로가 있다 — 백엔드가 `/api/client/**
 
 전부 [Admin(dark) 셸](Style.md)을 쓴다. `docs/screen-api-map.md` 7-5 가 확정한 라우트다.
 
-| 화면 | ID | 라우트 | 무엇을 하는가 |
-|-|-|-|-|
-| 관리자 대시보드 | `ecafe136` | `/admin` | 요약 지표 + 대기 작업(`pending-tasks`) |
-| 박람회 개최 승인 관리 | `262c25c5` | `/admin/expos` | **API 없음** — 이슈로 별도 요청 |
-| 공고 신청 관리 | `0f675bf6` | `/admin/recruitment-notice-requests` | 장소 결정(venue-decision) 포함 |
-| 공고 모집 관리 | `a3059378` | `/admin/recruitment-notices` | 게시·마감·취소 |
-| 카테고리 관리 | `b1690b49` | `/admin/categories` | CRUD. `admin` 모듈 신설 |
-| 정산 관리 | `fa7c036f` | `/admin/settlements` | 재계산·확정·송금 기록. `settlement` 모듈 신설 |
-| **알림 이력·재발송** | 대응 디자인 없음 | `/admin/notifications` | 신설. `admin` 모듈. Style.md 의 Admin 셸 표 UI 참고 |
+| 화면                  | ID               | 라우트                               | 무엇을 하는가                                       |
+| --------------------- | ---------------- | ------------------------------------ | --------------------------------------------------- |
+| 관리자 대시보드       | `ecafe136`       | `/admin`                             | 요약 지표 + 대기 작업(`pending-tasks`)              |
+| 박람회 개최 승인 관리 | `262c25c5`       | `/admin/expos`                       | **API 없음** — 이슈로 별도 요청                     |
+| 공고 신청 관리        | `0f675bf6`       | `/admin/recruitment-notice-requests` | 장소 결정(venue-decision) 포함                      |
+| 공고 모집 관리        | `a3059378`       | `/admin/recruitment-notices`         | 게시·마감·취소                                      |
+| 카테고리 관리         | `b1690b49`       | `/admin/categories`                  | CRUD. `admin` 모듈 신설                             |
+| 정산 관리             | `fa7c036f`       | `/admin/settlements`                 | 재계산·확정·송금 기록. `settlement` 모듈 신설       |
+| **알림 이력·재발송**  | 대응 디자인 없음 | `/admin/notifications`               | 신설. `admin` 모듈. Style.md 의 Admin 셸 표 UI 참고 |
 
 ---
 
