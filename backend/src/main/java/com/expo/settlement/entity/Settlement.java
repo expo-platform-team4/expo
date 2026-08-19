@@ -177,4 +177,55 @@ public class Settlement {
                 || status == SettlementStatus.UNDER_REVIEW
                 || status == SettlementStatus.ON_HOLD;
     }
+
+    /**
+     * 확정할 수 있는 상태인가 (D-API-015).
+     *
+     * <p>{@code WAITING} 은 <b>제외한다.</b> 금액이 전부 0 인 상태라 "계산해 보지도 않고 확정" 이 되고,
+     * 확정 뒤에는 재계산이 막히므로 <b>0원으로 굳어 버린다.</b> 최소한 한 번은 계산해야 한다.
+     */
+    public boolean confirmable() {
+        return status == SettlementStatus.CALCULATED || status == SettlementStatus.UNDER_REVIEW;
+    }
+
+    /**
+     * 확정한다. <b>되돌리는 메서드는 두지 않는다.</b>
+     *
+     * <p>확정은 "이 금액으로 송금한다" 는 선언이다. 되돌리기를 열어 두면 송금한 뒤에 금액이 바뀌는
+     * 길이 생긴다. 잘못 확정했다면 조정({@code settlement_adjustments})으로 남겨야 추적된다.
+     *
+     * @param confirmedBy 확정한 관리자. {@code users.id}
+     */
+    public void confirm(Long confirmedBy, Instant confirmedAt) {
+        this.status = SettlementStatus.CONFIRMED;
+        this.confirmedBy = confirmedBy;
+        this.confirmedAt = confirmedAt;
+    }
+
+    /**
+     * 송금 결과를 반영할 수 있는 상태인가 (D-API-016).
+     *
+     * <p>확정 전에는 기록할 수 없다. 금액이 아직 바뀔 수 있는데 송금부터 하면 <b>보낸 돈과 확정액이
+     * 어긋난다.</b> {@code REMITTED} 뒤에도 다시 기록할 수 있는데, 첫 시도가 실패해 다시 보내는
+     * 경우가 있어서다.
+     */
+    public boolean remittable() {
+        return status == SettlementStatus.CONFIRMED
+                || status == SettlementStatus.REMITTANCE_PENDING
+                || status == SettlementStatus.REMITTED;
+    }
+
+    /**
+     * 송금 결과에 따라 상태를 옮긴다.
+     *
+     * <p>성공이면 {@code REMITTED}, 아니면 {@code REMITTANCE_PENDING} 이다. 실패를 {@code ON_HOLD}
+     * 로 두지 않는 이유는 <b>보류와 실패가 다르기 때문</b>이다 — 보류는 사람이 멈춘 것이고, 실패는
+     * 다시 보내야 하는 것이다.
+     */
+    public void applyRemittance(RemittanceStatus remittanceStatus) {
+        this.status =
+                remittanceStatus == RemittanceStatus.REMITTED
+                        ? SettlementStatus.REMITTED
+                        : SettlementStatus.REMITTANCE_PENDING;
+    }
 }

@@ -164,6 +164,9 @@ public enum ErrorCode {
     // --- 정산 ---
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 정산입니다."),
     SETTLEMENT_NOT_RECALCULABLE(HttpStatus.CONFLICT, "확정된 정산은 다시 계산할 수 없습니다."),
+    SETTLEMENT_NOT_CONFIRMABLE(HttpStatus.CONFLICT, "계산이 끝난 정산만 확정할 수 있습니다."),
+    SETTLEMENT_NOT_REMITTABLE(HttpStatus.CONFLICT, "확정된 정산만 송금 결과를 기록할 수 있습니다."),
+    INVALID_REMITTANCE_STATUS(HttpStatus.BAD_REQUEST, "송금 상태 값이 올바르지 않습니다."),
 
     // --- 클라이언트 마이페이지 ---
     CLIENT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "클라이언트 프로필을 찾을 수 없습니다.");
