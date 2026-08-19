@@ -49,6 +49,9 @@ public class SettlementGenerationService {
     /** 행사 종료로부터 이만큼이 정산 기한이다. */
     private static final Duration DUE_AFTER = Duration.ofDays(14);
 
+    /** 박람회당 정산 하나를 강제하는 제약. 이 위반만 "이미 있다" 로 본다. */
+    private static final String DUPLICATE_EXPO_CONSTRAINT = "settlements_expo_id_key";
+
     private final SettlementGenerationMapper generationMapper;
     private final SettlementCreator settlementCreator;
 
@@ -80,14 +83,35 @@ public class SettlementGenerationService {
         return new SettlementGenerationResult(created.size(), created);
     }
 
-    /** 한 건을 만든다. 경합으로 이미 만들어졌으면 {@code null} 을 돌려 건너뛴다. */
+    /**
+     * 한 건을 만든다. 경합으로 이미 만들어졌으면 {@code null} 을 돌려 건너뛴다.
+     *
+     * <p><b>{@code expo_id} UNIQUE 위반만 건너뛴다.</b> {@link DataIntegrityViolationException}
+     * 을 통째로 삼키면 {@code host_client_id} FK 위반이나 {@code NOT NULL} 위반까지
+     * "이미 있어 건너뜀" 이 되어, <b>만들어지지 않은 정산이 정상 응답에 묻힌다.</b>
+     */
     private SettlementGenerationResult.Created createOrSkip(SettlementTarget target) {
         try {
             return settlementCreator.create(target, target.eventEndAt().plus(DUE_AFTER));
         } catch (DataIntegrityViolationException e) {
-            // expo_id UNIQUE 위반. 동시에 두 번 불린 경우이고, 결과는 "이미 있다" 로 같다.
+            if (!isDuplicateExpo(e)) {
+                throw e;
+            }
+            // 동시에 두 번 불린 경우다. 결과는 "이미 있다" 로 같으므로 건너뛴다.
             log.info("정산이 이미 있어 건너뜀 expoId={}", target.expoId());
             return null;
         }
+    }
+
+    /**
+     * 이 위반이 "박람회당 정산 하나" 제약인가.
+     *
+     * <p>제약 이름으로 판단한다. PostgreSQL 이 컬럼 하나짜리 UNIQUE 에 붙이는 기본 이름이
+     * {@code settlements_expo_id_key} 다. 이름이 바뀌면 여기도 바꿔야 하지만, 그때는 <b>건너뛰지
+     * 않고 예외가 올라오므로</b> 조용히 틀리지 않는다 — 안전한 쪽으로 실패한다.
+     */
+    private boolean isDuplicateExpo(DataIntegrityViolationException e) {
+        String message = e.getMostSpecificCause().getMessage();
+        return message != null && message.contains(DUPLICATE_EXPO_CONSTRAINT);
     }
 }

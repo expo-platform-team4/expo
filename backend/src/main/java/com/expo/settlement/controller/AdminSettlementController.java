@@ -53,8 +53,9 @@ public class AdminSettlementController {
     public ResponseEntity<ApiResponse<SettlementPage<AdminSettlementResponse>>> searchSettlements(
             @Parameter(
                             description =
-                                    "WAITING / CALCULATED / UNDER_REVIEW / CONFIRMED / "
-                                            + "REMITTANCE_PENDING / REMITTED / ON_HOLD")
+                                    "WAITING / CALCULATED / CONFIRMED / REMITTED / "
+                                            + "REMITTANCE_PENDING. UNDER_REVIEW·ON_HOLD 는 "
+                                            + "아직 이 값으로 바꾸는 API 가 없다")
                     @RequestParam(required = false)
                     String status,
             @Parameter(description = "주최사 ID") @RequestParam(required = false) Long hostClientId,

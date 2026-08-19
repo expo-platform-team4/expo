@@ -214,6 +214,27 @@ class SettlementLifecycleIntegrationTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_REMITTANCE_STATUS);
     }
 
+    /**
+     * <b>보류 중에 재계산해도 보류가 풀리지 않는다.</b>
+     *
+     * <p>재계산이 상태를 무조건 {@code CALCULATED} 로 바꾸면, 분쟁·조사로 멈춰 둔 정산이 조용히
+     * 진행 가능해진다. 그 뒤 확정·송금까지 그대로 흘러가 <b>멈춰 둔 이유가 남아 있는데 돈이
+     * 나간다.</b> 금액만 갱신하고 상태는 그대로여야 한다.
+     */
+    @Test
+    void recalculationDoesNotReleaseHold() {
+        jdbc.update("UPDATE settlements SET status = 'ON_HOLD' WHERE id = ?", settlementId);
+
+        assertThat(calculationService.calculate(settlementId).status()).isEqualTo("ON_HOLD");
+        assertThat(calculationService.calculate(settlementId).remittanceDueAmount())
+                .isEqualByComparingTo("20000"); // 금액은 갱신된다
+
+        // 보류가 유지되므로 확정으로 넘어갈 수 없다
+        assertThatThrownBy(() -> confirmService.confirm(settlementId, adminUserId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.SETTLEMENT_NOT_CONFIRMABLE);
+    }
+
     /** 없는 정산은 404 다. */
     @Test
     void confirmingMissingSettlementIsNotFound() {

@@ -2,6 +2,7 @@ package com.expo.settlement.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -42,6 +43,19 @@ class SettlementGenerationServiceTest {
     @BeforeEach
     void setUp() {
         service = new SettlementGenerationService(generationMapper, settlementCreator);
+    }
+
+    /**
+     * 실제 PostgreSQL 이 내는 모양의 예외.
+     *
+     * <p>메시지에 제약 이름이 들어가야 한다 — 서비스가 <b>그 이름으로</b> "박람회당 정산 하나" 위반인지
+     * 판단하기 때문이다. 예전 테스트는 아무 메시지나 넣어서, 제약을 가려내는 코드를 넣었을 때
+     * 통과하지 못했다.
+     */
+    private DataIntegrityViolationException duplicateExpo() {
+        return new DataIntegrityViolationException(
+                "could not execute statement [ERROR: duplicate key value violates unique "
+                        + "constraint \"settlements_expo_id_key\"]");
     }
 
     private SettlementTarget target(Long expoId, Instant eventEndAt) {
@@ -130,7 +144,7 @@ class SettlementGenerationServiceTest {
                 target(8L, Instant.now().minus(10, ChronoUnit.DAYS)));
         // doThrow 를 쓴다. when(mock.create(...)) 형태로 다시 스텁하면 그 호출이 앞서 걸어 둔
         // thenAnswer 를 null 인자로 실제 실행해 버려 NPE 가 난다.
-        doThrow(new DataIntegrityViolationException("expo_id UNIQUE"))
+        doThrow(duplicateExpo())
                 .when(settlementCreator)
                 .create(Mockito.argThat(t -> t != null && t.expoId().equals(7L)), any());
 
@@ -145,11 +159,31 @@ class SettlementGenerationServiceTest {
     @Test
     void survivesWhenEveryTargetIsDuplicate() {
         given(target(7L, Instant.now().minus(10, ChronoUnit.DAYS)));
-        doThrow(new DataIntegrityViolationException("expo_id UNIQUE"))
-                .when(settlementCreator)
-                .create(any(), any());
+        doThrow(duplicateExpo()).when(settlementCreator).create(any(), any());
 
         assertThatCode(() -> service.generateDue()).doesNotThrowAnyException();
         assertThat(service.generateDue().createdCount()).isZero();
+    }
+
+    /**
+     * <b>UNIQUE 가 아닌 제약 위반은 삼키지 않는다.</b>
+     *
+     * <p>{@code DataIntegrityViolationException} 을 통째로 잡으면 {@code host_client_id} FK 위반이나
+     * {@code NOT NULL} 위반까지 "이미 있어 건너뜀" 이 되어, <b>만들어지지 않은 정산이 정상 응답에
+     * 묻힌다.</b> 배치가 "0건 생성" 을 돌려주는데 이유는 아무 데도 없는 상황이다.
+     */
+    @Test
+    void propagatesNonDuplicateConstraintViolations() {
+        given(target(7L, Instant.now().minus(10, ChronoUnit.DAYS)));
+        doThrow(
+                        new DataIntegrityViolationException(
+                                "could not execute statement [ERROR: insert or update on table "
+                                        + "\"settlements\" violates foreign key constraint "
+                                        + "\"fk_settlements_host\"]"))
+                .when(settlementCreator)
+                .create(any(), any());
+
+        assertThatThrownBy(() -> service.generateDue())
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

@@ -58,15 +58,27 @@
 
       플랫폼 수수료가 0원이라 승인액이 그대로 주최사 몫이다.
       결제 완료 후 환불을 지원하지 않으므로 차감할 것도 없다.
+
+      JOIN 이 아니라 EXISTS 로 거른다. 티켓 집계와 같은 방식이다.
+      JOIN 으로 이으면 오른쪽에 행이 여러 개일 때 결제 하나가 여러 행으로 늘어나
+      승인액이 배수로 더해진다 - 그대로 remittance_due_amount 에 들어가므로 송금액 과다다.
+
+      booth_allocations 는 booth_order_id 가 UNIQUE 라 늘어나지 않지만,
+      expo_companies 의 UNIQUE 는 (expo_id, client_user_id) 여서 booth_allocation_id 를
+      가리키는 행이 여럿일 여지가 남는다. 지금 데이터로는 안 그렇더라도,
+      금액 집계에서 "지금은 괜찮다" 에 기대지 않는다.
     -->
     <select id="aggregateBoothSales" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(bp.approved_amount), 0)
-        FROM booth_payments    bp
-        JOIN booth_orders      bo ON bo.id = bp.booth_order_id
-        JOIN booth_allocations ba ON ba.booth_order_id = bo.id
-        JOIN expo_companies    ec ON ec.booth_allocation_id = ba.id
+        FROM booth_payments bp
         WHERE bp.status = 'DONE'
-          AND ec.expo_id = #{expoId}
+          AND EXISTS (
+              SELECT 1
+              FROM booth_allocations ba
+              JOIN expo_companies    ec ON ec.booth_allocation_id = ba.id
+              WHERE ba.booth_order_id = bp.booth_order_id
+                AND ec.expo_id = #{expoId}
+          )
     </select>
 
     <!-- 확정된 조정만 반영한다. DRAFT 는 검토 중이고 CANCELED 는 철회된 것이다. -->

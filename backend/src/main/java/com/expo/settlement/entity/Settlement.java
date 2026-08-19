@@ -145,10 +145,19 @@ public class Settlement {
     }
 
     /**
-     * 계산 결과를 반영하고 {@code CALCULATED} 로 넘긴다.
+     * 계산 결과를 반영한다.
      *
      * <p>몇 번이든 다시 부를 수 있다. 환불이 뒤늦게 완료되거나 조정이 추가되면 금액이 달라지므로,
      * 재계산은 <b>덮어쓰기</b>지 누적이 아니다.
+     *
+     * <h2>{@code ON_HOLD} 는 상태를 건드리지 않는다</h2>
+     *
+     * 보류는 분쟁·조사로 <b>사람이 멈춰 둔 것</b>이다. 재계산이 상태까지 {@code CALCULATED} 로
+     * 바꾸면 보류가 조용히 풀리고, 그 뒤 확정·송금까지 그대로 진행된다 — <b>멈춰 둔 이유가
+     * 남아 있는데 돈이 나간다.</b> 보류 해제는 명시적인 조작이어야 한다.
+     *
+     * <p>그래서 보류 중에는 금액만 갱신한다. 조사하는 동안 최신 금액을 보는 것은 필요하고,
+     * 그것과 "진행해도 된다" 는 별개다.
      */
     public void applyCalculation(SettlementAmounts amounts) {
         this.grossTicketSalesAmount = amounts.grossTicketSalesAmount();
@@ -161,7 +170,11 @@ public class Settlement {
         this.pgFeeReferenceAmount = amounts.pgFeeReferenceAmount();
         this.adjustmentAmount = amounts.adjustmentAmount();
         this.remittanceDueAmount = amounts.remittanceDueAmount();
-        this.status = SettlementStatus.CALCULATED;
+
+        // 보류 중이면 금액만 갱신하고 상태는 그대로 둔다. 위 주석 참고.
+        if (this.status != SettlementStatus.ON_HOLD) {
+            this.status = SettlementStatus.CALCULATED;
+        }
     }
 
     /**
@@ -187,6 +200,8 @@ public class Settlement {
     public boolean confirmable() {
         return status == SettlementStatus.CALCULATED || status == SettlementStatus.UNDER_REVIEW;
     }
+
+    // ON_HOLD 는 여기 없다. 보류를 푸는 것과 확정하는 것은 다른 조작이다.
 
     /**
      * 확정한다. <b>되돌리는 메서드는 두지 않는다.</b>
