@@ -21,6 +21,8 @@ import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,6 +117,25 @@ public class VenueReservationService {
                     e);
             throw e;
         }
+    }
+
+    /** 장소 예약 목록 조회 (페이지 단위). */
+    @Transactional(readOnly = true)
+    public Page<VenueReservationResponse> list(Pageable pageable) {
+        return venueReservationRepository
+                .findAll(pageable)
+                .map(venueReservationConverter::toResponse);
+    }
+
+    /** 장소 예약 상세 조회. */
+    @Transactional(readOnly = true)
+    public VenueReservationResponse get(Long reservationId) {
+        VenueReservation reservation =
+                venueReservationRepository
+                        .findById(reservationId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND));
+        return venueReservationConverter.toResponse(reservation);
     }
 
     /** 박람회 취소 시 확정 장소 예약 해제. */

@@ -8,6 +8,7 @@ import com.expo.venue.dto.VenueZoneResponse;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
+import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,5 +70,29 @@ public class VenueZoneService {
             }
             throw e;
         }
+    }
+
+    /** 홀 내 구역 목록 조회. 구역 코드 순으로 반환한다. */
+    @Transactional(readOnly = true)
+    public List<VenueZoneResponse> list(Long hallId) {
+        if (!venueHallRepository.existsById(hallId)) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+        }
+        return venueZoneRepository.findAllByHallIdOrderByZoneCodeAsc(hallId).stream()
+                .map(venueZoneConverter::toResponse)
+                .toList();
+    }
+
+    /** 홀 내 구역 상세 조회. */
+    @Transactional(readOnly = true)
+    public VenueZoneResponse get(Long hallId, Long zoneId) {
+        if (!venueHallRepository.existsById(hallId)) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+        }
+        VenueZone zone =
+                venueZoneRepository
+                        .findByIdAndHallId(zoneId, hallId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND));
+        return venueZoneConverter.toResponse(zone);
     }
 }
