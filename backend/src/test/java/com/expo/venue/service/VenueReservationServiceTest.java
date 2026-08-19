@@ -18,8 +18,11 @@ import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
 import com.expo.venue.dto.VenueAvailabilityResponse;
+import com.expo.venue.dto.VenueReservationHistoryResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
+import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
@@ -316,6 +319,24 @@ class VenueReservationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+    }
+
+    @Test
+    void listHistoryReturnsConvertedHistories() {
+        when(venueReservationRepository.existsById(1L)).thenReturn(true);
+        VenueReservationHistory history =
+                VenueReservationHistory.create(
+                        1L, VenueReservationActionType.RELEASED, "정책 위반", ADMIN_ID);
+        when(venueReservationHistoryRepository
+                        .findAllByVenueReservationIdOrderByCreatedAtDescIdDesc(1L))
+                .thenReturn(List.of(history));
+
+        List<VenueReservationHistoryResponse> responses = service.listHistory(1L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).actionType()).isEqualTo(VenueReservationActionType.RELEASED);
+        assertThat(responses.get(0).reason()).isEqualTo("정책 위반");
+        assertThat(responses.get(0).processedByAdminId()).isEqualTo(ADMIN_ID);
     }
 
     @Test
