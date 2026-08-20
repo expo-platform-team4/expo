@@ -12,6 +12,8 @@ import static org.mockito.Mockito.when;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.converter.RecruitmentNoticeConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
@@ -54,6 +56,7 @@ class RecruitmentNoticeServiceTest {
     private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
+    private ParticipationApplicationRepository participationApplicationRepository;
     private VenueReservationRepository venueReservationRepository;
     private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeService service;
@@ -63,6 +66,7 @@ class RecruitmentNoticeServiceTest {
         recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeHistoryRepository = mock(RecruitmentNoticeHistoryRepository.class);
+        participationApplicationRepository = mock(ParticipationApplicationRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
         venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         service =
@@ -70,6 +74,7 @@ class RecruitmentNoticeServiceTest {
                         recruitmentNoticeRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeHistoryRepository,
+                        participationApplicationRepository,
                         venueReservationRepository,
                         venueReservationHistoryRepository,
                         new RecruitmentNoticeConverter());
@@ -342,6 +347,27 @@ class RecruitmentNoticeServiceTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
         verify(recruitmentNoticeHistoryRepository, never()).save(any());
+    }
+
+    /**
+     * 결제 완료(SUBMITTED) 신청서가 있으면 공고 상태와 무관하게 취소를 거부해야 한다 - 안 그러면 이미 돈을 낸
+     * 기업이 있는 채로 공고가 사라져 배정·환불이 방치된다.
+     */
+    @Test
+    void cancelRejectsWhenSubmittedApplicationsExist() {
+        RecruitmentNotice notice = draftNotice();
+        notice.publish();
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(participationApplicationRepository.existsByRecruitmentNoticeIdAndStatus(
+                        1L, ParticipationApplicationStatus.SUBMITTED))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.cancel(1L, ADMIN_ID, "테스트 취소"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_HAS_SUBMITTED_APPLICATIONS);
+        verify(recruitmentNoticeHistoryRepository, never()).save(any());
+        verify(venueReservationRepository, never()).findAllByRecruitmentNoticeId(any());
     }
 
     /** 예약이 여러 건이어도(구역 여러 개) 전부 해제돼야 한다 - 첫 건만 해제하는 회귀를 잡는다. */

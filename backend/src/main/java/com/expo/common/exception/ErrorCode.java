@@ -125,6 +125,8 @@ public enum ErrorCode {
     RECRUITMENT_NOTICE_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "초안 상태에서만 공고를 게시할 수 있습니다."),
     RECRUITMENT_NOTICE_NOT_CLOSABLE(HttpStatus.CONFLICT, "게시 중인 공고만 마감할 수 있습니다."),
     RECRUITMENT_NOTICE_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 마감되었거나 취소된 공고는 취소할 수 없습니다."),
+    RECRUITMENT_NOTICE_HAS_SUBMITTED_APPLICATIONS(
+            HttpStatus.CONFLICT, "결제 완료된 신청이 있는 공고는 취소할 수 없습니다."),
     VENUE_DECISION_INVALID(HttpStatus.BAD_REQUEST, "장소 결정은 ALLOWED 또는 CANCELED 만 가능합니다."),
     VENUE_DECISION_ALREADY_MADE(HttpStatus.CONFLICT, "이미 장소 결정이 완료된 요청입니다."),
     APPLICATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "신청 종료 일시는 시작 일시보다 늦어야 합니다."),
