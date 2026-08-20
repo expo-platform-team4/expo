@@ -23,6 +23,9 @@ import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,6 +54,7 @@ class BoothAllocationServiceTest {
     private BoothAllocationRepository boothAllocationRepository;
     private BoothContentRepository boothContentRepository;
     private BoothProductRepository boothProductRepository;
+    private ParticipationApplicationRepository participationApplicationRepository;
     private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private BoothAllocationService service;
 
@@ -59,14 +63,18 @@ class BoothAllocationServiceTest {
         boothAllocationRepository = mock(BoothAllocationRepository.class);
         boothContentRepository = mock(BoothContentRepository.class);
         boothProductRepository = mock(BoothProductRepository.class);
+        participationApplicationRepository = mock(ParticipationApplicationRepository.class);
         boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new BoothAllocationService(
                         boothAllocationRepository,
                         boothContentRepository,
                         boothProductRepository,
+                        participationApplicationRepository,
                         boothManagementHistoryRepository,
                         new BoothAllocationConverter());
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(submittedApplication()));
     }
 
     private BoothAllocation allocation() {
@@ -91,6 +99,15 @@ class BoothAllocationServiceTest {
             product.changeSalesStatus(status);
         }
         return product;
+    }
+
+    private ParticipationApplication submittedApplication() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "회사", null, null, BOOTH_PRODUCT_ID);
+        application.startPayment(ORDER_ID);
+        application.submit();
+        return application;
     }
 
     @Test
@@ -170,17 +187,38 @@ class BoothAllocationServiceTest {
                 .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
     }
 
-    /** 재판매 보상 흐름이 없어 부스 상품 상태는 건드리지 않고 배정만 취소 기록으로 남겨야 한다. */
     @Test
-    void cancelSucceedsWithoutTouchingBoothProduct() {
+    void cancelRejectsWhenApplicationNotFound() {
         BoothAllocation allocation = allocation();
         when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
                 .thenReturn(Optional.of(allocation));
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND);
+    }
+
+    /**
+     * 재판매 보상 흐름이 없어 부스 상품 상태는 건드리지 않고 배정만 취소 기록으로 남겨야 한다. 딸린 참여
+     * 신청서는 실제로 없는 부스를 확정된 것처럼 보여주지 않도록 같이 취소돼야 한다.
+     */
+    @Test
+    void cancelSucceedsWithoutTouchingBoothProduct() {
+        BoothAllocation allocation = allocation();
+        ParticipationApplication application = submittedApplication();
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(application));
 
         var response = service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정");
 
         assertThat(response.cancelReason()).isEqualTo("이중 배정 정정");
         assertThat(response.status().name()).isEqualTo("CANCELED");
+        assertThat(application.getStatus()).isEqualTo(ParticipationApplicationStatus.CANCELED);
         verify(boothManagementHistoryRepository)
                 .save(
                         argThat(

@@ -16,6 +16,8 @@ import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.repository.ParticipationApplicationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -31,6 +33,7 @@ public class BoothAllocationService {
     private final BoothAllocationRepository boothAllocationRepository;
     private final BoothContentRepository boothContentRepository;
     private final BoothProductRepository boothProductRepository;
+    private final ParticipationApplicationRepository participationApplicationRepository;
     private final BoothManagementHistoryRepository boothManagementHistoryRepository;
     private final BoothAllocationConverter boothAllocationConverter;
 
@@ -38,11 +41,13 @@ public class BoothAllocationService {
             BoothAllocationRepository boothAllocationRepository,
             BoothContentRepository boothContentRepository,
             BoothProductRepository boothProductRepository,
+            ParticipationApplicationRepository participationApplicationRepository,
             BoothManagementHistoryRepository boothManagementHistoryRepository,
             BoothAllocationConverter boothAllocationConverter) {
         this.boothAllocationRepository = boothAllocationRepository;
         this.boothContentRepository = boothContentRepository;
         this.boothProductRepository = boothProductRepository;
+        this.participationApplicationRepository = participationApplicationRepository;
         this.boothManagementHistoryRepository = boothManagementHistoryRepository;
         this.boothAllocationConverter = boothAllocationConverter;
     }
@@ -80,6 +85,9 @@ public class BoothAllocationService {
      * 상품 ID 로 유니크 제약 위반이 난다. 취소된 배정을 재판매로 이어가려면 주문·결제·예약·신청서·배정을
      * 함께 되돌리는 보상 흐름이 먼저 있어야 한다.
      *
+     * <p>이 배정에 딸린 참여 신청서도 함께 취소한다 - 안 그러면 배정은 사라졌는데 신청서만 "신청 완료"로 남아
+     * 실제로는 없는 부스를 확정된 것처럼 보여주게 된다.
+     *
      * <p>공개(PUBLISHED) 상태인 콘텐츠가 있으면 같이 숨긴다 - 안 그러면 배정이 사라진 뒤에도 그 회사 소개 페이지가
      * 공개 사이트에 계속 떠 있게 된다.
      *
@@ -96,6 +104,14 @@ public class BoothAllocationService {
             throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
         }
         allocation.cancel(reason);
+        ParticipationApplication application =
+                participationApplicationRepository
+                        .findById(allocation.getApplicationId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
+        application.cancel();
         BoothContent content =
                 boothContentRepository.findByBoothAllocationId(allocationId).orElse(null);
         Long boothContentId = content != null ? content.getId() : null;
