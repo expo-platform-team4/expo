@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useAuthStore } from '@/lib/auth'
 
@@ -9,6 +9,12 @@ import {
   getClientMyRecruitmentResults,
   getClientSettlements,
 } from './api'
+import {
+  createExpoOpeningRequest,
+  listMyExpoOpeningRequests,
+  submitExpoOpeningRequest,
+  type ExpoOpeningRequestPayload,
+} from './expoOpeningApi'
 import { clientKeys } from './queryKeys'
 
 export const useClientDashboardProfile = () => {
@@ -57,5 +63,43 @@ export const useClientSettlements = (page = 0, size = 100) => {
     queryKey: clientKeys.settlements(page),
     queryFn: () => getClientSettlements(page, size),
     enabled: Boolean(accessToken),
+  })
+}
+
+/** 내 박람회 개최 신청 목록. `/client/expos/new` 화면이 쓴다. */
+export const useMyExpoOpeningRequests = () => {
+  const accessToken = useAuthStore((state) => state.accessToken)
+  return useQuery({
+    queryKey: clientKeys.myExpoOpeningRequests(),
+    queryFn: listMyExpoOpeningRequests,
+    enabled: Boolean(accessToken),
+  })
+}
+
+/** 개최 신청 작성. 성공하면 내 신청 목록과 내 박람회 목록을 모두 무효화한다. */
+export const useCreateExpoOpeningRequest = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      content,
+      submitNow,
+    }: {
+      content: ExpoOpeningRequestPayload
+      submitNow: boolean
+    }) => createExpoOpeningRequest(content, submitNow),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.myExpoOpeningRequests() })
+    },
+  })
+}
+
+/** 임시저장한 신청을 심사 요청으로 올린다. */
+export const useSubmitExpoOpeningRequest = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: submitExpoOpeningRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.myExpoOpeningRequests() })
+    },
   })
 }
