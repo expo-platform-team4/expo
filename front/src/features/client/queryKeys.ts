@@ -4,4 +4,6 @@ export const clientKeys = {
   myConfirmedBooths: ['client', 'my-confirmed-booths'] as const,
   myRecruitmentResults: ['client', 'my-recruitment-results'] as const,
   settlements: (page: number) => ['client', 'settlements', page] as const,
+  expoImages: (expoId: number) => ['client', 'expo-images', expoId] as const,
+  expoFiles: (expoId: number) => ['client', 'expo-files', expoId] as const,
 }
