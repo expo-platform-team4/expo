@@ -110,16 +110,24 @@ const ClientSettlementDetailPage = () => {
       <Card>
         <CardTitle>송금 현황</CardTitle>
         <dl className="text-body-md text-on-surface grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/*
+            송금 관련 필드는 `remittances` 행이 생기기 전까지 응답에서 아예 빠진다
+            (백엔드가 non_null 직렬화 — `ClientSettlement` 타입 주석 참고). 그래서
+            `!== null` 이 아니라 `== null` 로 "없음"을 판정해야 undefined 도 걸린다.
+          */}
           <div>
             <dt className="text-label-sm text-on-surface-variant">송금 상태</dt>
             <dd>
-              {REMITTANCE_STATUS_LABEL[settlement.remittanceStatus] ?? settlement.remittanceStatus}
+              {settlement.remittanceStatus
+                ? (REMITTANCE_STATUS_LABEL[settlement.remittanceStatus] ??
+                  settlement.remittanceStatus)
+                : '송금 대기 전'}
             </dd>
           </div>
           <div>
             <dt className="text-label-sm text-on-surface-variant">실제 송금액</dt>
             <dd>
-              {settlement.remittedAmount !== null
+              {settlement.remittedAmount != null
                 ? formatCurrency(settlement.remittedAmount)
                 : '아직 송금되지 않았습니다'}
             </dd>

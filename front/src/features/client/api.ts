@@ -104,7 +104,18 @@ export const getClientMyRecruitmentResults = async (): Promise<ClientDashboardRe
   return data.data
 }
 
-/** 백엔드 `ClientSettlementResponse` 와 짝이다 (`GET /api/client/settlements`). */
+/**
+ * 백엔드 `ClientSettlementResponse` 와 짝이다 (`GET /api/client/settlements`).
+ *
+ * **값이 없는 필드는 `null` 이 아니라 아예 응답에서 빠진다.** 백엔드가
+ * `spring.jackson.default-property-inclusion: non_null` 이라 null 필드를 직렬화하지 않기
+ * 때문이다. 그래서 비어 있을 수 있는 필드는 `| null` 이 아니라 **선택 필드(`?`)** 로 쓴다 —
+ * `| null` 로 두면 `x !== null` 검사를 통과한 `undefined` 가 그대로 흘러가 터진다(실제로
+ * 정산 상세 화면이 `formatCurrency(undefined)` 로 죽었다). `?` 로 두면 그런 코드가
+ * 타입체크에서 먼저 걸린다.
+ *
+ * 아래 송금·리포트 필드는 `remittances` 행이 아직 없으면 전부 빠진다.
+ */
 export type ClientSettlement = {
   settlementId: number
   expoId: number
@@ -121,12 +132,12 @@ export type ClientSettlement = {
   grossBoothSalesAmount: number
   adjustmentAmount: number
   remittanceDueAmount: number
-  remittedAmount: number | null
-  remittedAt: string | null
-  remittanceStatus: string
-  latestReportFileId: number | null
-  latestReportFormat: string | null
-  latestReportVersion: number | null
+  remittedAmount?: number
+  remittedAt?: string
+  remittanceStatus?: string
+  latestReportFileId?: number
+  latestReportFormat?: string
+  latestReportVersion?: number
 }
 
 /** 백엔드 `SettlementPage<T>` 와 짝이다. Spec.md 2절 페이지네이션 봉투. */

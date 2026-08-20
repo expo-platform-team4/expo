@@ -2,7 +2,13 @@ import { api } from '@/lib/api'
 
 type ApiEnvelope<T> = { success: boolean; data: T; message: string | null }
 
-/** `AdminSettlementResponse` 와 짝이다. `v_admin_settlement_status` 뷰 기반. */
+/**
+ * `AdminSettlementResponse` 와 짝이다. `v_admin_settlement_status` 뷰 기반.
+ *
+ * 비어 있을 수 있는 필드는 `| null` 이 아니라 선택 필드(`?`)다 — 백엔드가
+ * `non_null` 직렬화라 값이 없으면 응답에서 아예 빠지기 때문이다. 자세한 배경은
+ * `features/client/api.ts` 의 `ClientSettlement` 주석 참고.
+ */
 export type AdminSettlement = {
   settlementId: number
   status: string
@@ -14,11 +20,11 @@ export type AdminSettlement = {
   settlementDueAt: string
   remittanceDueAmount: number
   adjustmentAmount: number
-  confirmedAt: string | null
-  confirmedBy: number | null
-  remittedAmount: number | null
-  remittedAt: string | null
-  remittanceStatus: string
+  confirmedAt?: string
+  confirmedBy?: number
+  remittedAmount?: number
+  remittedAt?: string
+  remittanceStatus?: string
 }
 
 /** `SettlementPage<AdminSettlementResponse>` 와 짝이다. Spec.md 2절 페이지네이션 봉투. */

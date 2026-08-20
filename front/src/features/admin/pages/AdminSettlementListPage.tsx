@@ -154,7 +154,7 @@ const SettlementRow = ({ settlement }: { settlement: AdminSettlement }) => {
         </p>
         <p className="text-body-sm text-on-surface">
           실제 송금액{' '}
-          {settlement.remittedAmount !== null ? formatCurrency(settlement.remittedAmount) : '-'}
+          {settlement.remittedAmount != null ? formatCurrency(settlement.remittedAmount) : '-'}
         </p>
       </div>
       {settlement.confirmedAt && (
