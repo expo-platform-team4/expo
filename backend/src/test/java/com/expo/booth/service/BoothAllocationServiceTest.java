@@ -2,13 +2,15 @@ package com.expo.booth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.entity.BoothAllocation;
+import com.expo.booth.entity.BoothManagementActionType;
+import com.expo.booth.entity.BoothManagementHistory;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
@@ -143,6 +145,17 @@ class BoothAllocationServiceTest {
 
         assertThat(response.cancelReason()).isEqualTo("이중 배정 정정");
         assertThat(response.status().name()).isEqualTo("CANCELED");
-        verify(boothManagementHistoryRepository).save(any());
+        verify(boothManagementHistoryRepository)
+                .save(
+                        argThat(
+                                (BoothManagementHistory history) ->
+                                        history.getActionType()
+                                                        == BoothManagementActionType
+                                                                .ALLOCATION_CORRECTED
+                                                && ALLOCATION_ID.equals(
+                                                        history.getBoothAllocationId())
+                                                && "이중 배정 정정".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 }

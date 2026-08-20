@@ -209,7 +209,12 @@ class RecruitmentNoticeServiceTest {
                         argThat(
                                 (RecruitmentNoticeHistory history) ->
                                         history.getActionType()
-                                                == RecruitmentNoticeActionType.CREATE));
+                                                        == RecruitmentNoticeActionType.CREATE
+                                                && Long.valueOf(99L)
+                                                        .equals(history.getRecruitmentNoticeId())
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     private static void withId(Object entity, Long id) throws ReflectiveOperationException {
@@ -251,7 +256,12 @@ class RecruitmentNoticeServiceTest {
                         argThat(
                                 (RecruitmentNoticeHistory history) ->
                                         history.getActionType()
-                                                == RecruitmentNoticeActionType.UPDATE));
+                                                        == RecruitmentNoticeActionType.UPDATE
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
@@ -280,7 +290,12 @@ class RecruitmentNoticeServiceTest {
                         argThat(
                                 (RecruitmentNoticeHistory history) ->
                                         history.getActionType()
-                                                == RecruitmentNoticeActionType.PUBLISH));
+                                                        == RecruitmentNoticeActionType.PUBLISH
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"OPEN\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
@@ -307,8 +322,12 @@ class RecruitmentNoticeServiceTest {
                 .save(
                         argThat(
                                 (RecruitmentNoticeHistory history) ->
-                                        history.getActionType()
-                                                == RecruitmentNoticeActionType.CLOSE));
+                                        history.getActionType() == RecruitmentNoticeActionType.CLOSE
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"OPEN\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"CLOSED\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
