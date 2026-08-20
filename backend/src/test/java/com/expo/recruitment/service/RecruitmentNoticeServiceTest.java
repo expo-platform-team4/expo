@@ -17,6 +17,8 @@ import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
 import com.expo.recruitment.dto.UpdateRecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNotice;
+import com.expo.recruitment.entity.RecruitmentNoticeActionType;
+import com.expo.recruitment.entity.RecruitmentNoticeHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
@@ -202,6 +204,17 @@ class RecruitmentNoticeServiceTest {
         assertThat(reservation2.getRecruitmentNoticeId())
                 .as("공고 생성 후 딸린 예약이 전부 이 공고에 연결돼야 한다")
                 .isEqualTo(99L);
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeActionType.CREATE
+                                                && Long.valueOf(99L)
+                                                        .equals(history.getRecruitmentNoticeId())
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     private static void withId(Object entity, Long id) throws ReflectiveOperationException {
@@ -222,7 +235,7 @@ class RecruitmentNoticeServiceTest {
         UpdateRecruitmentNoticeRequest request =
                 new UpdateRecruitmentNoticeRequest("새 제목", "새 내용", null, null, T1, T2);
 
-        assertThatThrownBy(() -> service.update(1L, request))
+        assertThatThrownBy(() -> service.update(1L, ADMIN_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_EDITABLE);
@@ -235,9 +248,20 @@ class RecruitmentNoticeServiceTest {
         UpdateRecruitmentNoticeRequest request =
                 new UpdateRecruitmentNoticeRequest("새 제목", "새 내용", null, null, T1, T2);
 
-        RecruitmentNoticeResponse response = service.update(1L, request);
+        RecruitmentNoticeResponse response = service.update(1L, ADMIN_ID, request);
 
         assertThat(response.title()).isEqualTo("새 제목");
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeActionType.UPDATE
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
@@ -246,7 +270,7 @@ class RecruitmentNoticeServiceTest {
         notice.publish();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        assertThatThrownBy(() -> service.publish(1L))
+        assertThatThrownBy(() -> service.publish(1L, ADMIN_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_PUBLISHABLE);
@@ -257,10 +281,21 @@ class RecruitmentNoticeServiceTest {
         RecruitmentNotice notice = draftNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        RecruitmentNoticeResponse response = service.publish(1L);
+        RecruitmentNoticeResponse response = service.publish(1L, ADMIN_ID);
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
         assertThat(response.publishedAt()).isNotNull();
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeActionType.PUBLISH
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"DRAFT\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"OPEN\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
@@ -268,7 +303,7 @@ class RecruitmentNoticeServiceTest {
         RecruitmentNotice notice = draftNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        assertThatThrownBy(() -> service.close(1L))
+        assertThatThrownBy(() -> service.close(1L, ADMIN_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_CLOSABLE);
@@ -280,9 +315,19 @@ class RecruitmentNoticeServiceTest {
         notice.publish();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
-        RecruitmentNoticeResponse response = service.close(1L);
+        RecruitmentNoticeResponse response = service.close(1L, ADMIN_ID);
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.CLOSED);
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType() == RecruitmentNoticeActionType.CLOSE
+                                                && ADMIN_ID.equals(history.getProcessedByAdminId())
+                                                && "{\"status\": \"OPEN\"}"
+                                                        .equals(history.getBeforeData())
+                                                && "{\"status\": \"CLOSED\"}"
+                                                        .equals(history.getAfterData())));
     }
 
     @Test
