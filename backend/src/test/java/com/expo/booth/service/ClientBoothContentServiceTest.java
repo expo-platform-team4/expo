@@ -228,6 +228,33 @@ class ClientBoothContentServiceTest {
     }
 
     @Test
+    void getMineByAllocationRejectsWhenNotOwned() {
+        when(boothContentRepository.findByBoothAllocationIdAndClientUserId(
+                        ALLOCATION_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getMineByAllocation(ALLOCATION_ID, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_FOUND);
+    }
+
+    @Test
+    void getMineByAllocationSucceedsWhenDraft() {
+        BoothContent content = content();
+        when(boothContentRepository.findByBoothAllocationIdAndClientUserId(
+                        ALLOCATION_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(boothContentFileRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
+                .thenReturn(List.of());
+
+        var response = service.getMineByAllocation(ALLOCATION_ID, CLIENT_USER_ID);
+
+        assertThat(response.companyDisplayName()).isEqualTo("회사");
+        assertThat(response.status().name()).isEqualTo("DRAFT");
+    }
+
+    @Test
     void addFileSucceeds() {
         BoothContent content = content();
         withId(content, CONTENT_ID);

@@ -61,6 +61,17 @@ public class ClientBoothContentController {
                         clientBoothContentService.getMine(contentId, principal.getMemberId())));
     }
 
+    @Operation(summary = "배정 ID로 내 부스 콘텐츠 조회 (상태 무관)")
+    @GetMapping("/by-allocation/{boothAllocationId}")
+    public ResponseEntity<ApiResponse<BoothContentResponse>> getMineByAllocation(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long boothAllocationId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        clientBoothContentService.getMineByAllocation(
+                                boothAllocationId, principal.getMemberId())));
+    }
+
     @Operation(summary = "부스 콘텐츠 본문 수정")
     @PutMapping("/{contentId}")
     public ResponseEntity<ApiResponse<BoothContentResponse>> update(
