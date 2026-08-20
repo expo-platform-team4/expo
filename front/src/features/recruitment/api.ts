@@ -136,16 +136,57 @@ export type VirtualVenue = {
   updatedAt: string
 }
 
-/**
- * `GET /api/virtual-venues` — 가상 장소 목록. 공개.
- *
- * **주의.** 장소 하위의 홀·구역 목록 조회(`/api/admin/virtual-venues/{id}/halls`,
- * `/api/admin/venue-halls/{hallId}/zones`)는 `ADMIN` 전용이라 CLIENT 가 부를 수 없다
- * (`SecurityConfig` 의 `/api/admin/**` → `hasRole("ADMIN")`). 공고 생성 요청 폼에서 희망
- * 전시관·구역은 ID 직접 입력으로만 받는다 — Function.md 7절 원칙에 따라 화면은 만들되
- * 이 제약을 힌트 문구로 명시한다.
- */
+/** `GET /api/virtual-venues` — 가상 장소 목록. 공개. */
 export const listVirtualVenues = async (): Promise<VirtualVenue[]> => {
   const { data } = await api.get<ApiEnvelope<VirtualVenue[]>>('/virtual-venues')
+  return data.data
+}
+
+/** 홀. `VenueHallResponse` 와 필드가 대응한다. */
+export type VenueHall = {
+  id: number
+  venueId: number
+  hallCode: string
+  name: string
+  width: number | null
+  depth: number | null
+  layoutFileId: number | null
+  operationalStatus: OperationalStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * `GET /api/virtual-venues/{venueId}/halls` — 장소 내 홀 목록. 공개.
+ *
+ * 전에는 홀·구역 목록 조회가 `/api/admin/**` 전용이라 CLIENT 가 부를 수 없어 공고 생성 요청
+ * 폼에서 ID 직접 입력을 받았다(이슈 #107). `PublicVenueHallController`/`PublicVenueZoneController`
+ * 로 공개 엔드포인트가 추가되어(PR #110) 이제 실제 드롭다운으로 고를 수 있다.
+ */
+export const listVenueHalls = async (virtualVenueId: number): Promise<VenueHall[]> => {
+  const { data } = await api.get<ApiEnvelope<VenueHall[]>>(
+    `/virtual-venues/${virtualVenueId}/halls`
+  )
+  return data.data
+}
+
+/** 구역. `VenueZoneResponse` 와 필드가 대응한다. */
+export type VenueZone = {
+  id: number
+  hallId: number
+  zoneCode: string
+  name: string
+  maxBoothCount: number
+  width: number | null
+  depth: number | null
+  layoutFileId: number | null
+  operationalStatus: OperationalStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/** `GET /api/venue-halls/{hallId}/zones` — 홀 내 구역 목록. 공개. */
+export const listVenueZones = async (hallId: number): Promise<VenueZone[]> => {
+  const { data } = await api.get<ApiEnvelope<VenueZone[]>>(`/venue-halls/${hallId}/zones`)
   return data.data
 }

@@ -8,6 +8,8 @@ import {
   getPublicRecruitmentNotice,
   listMyRecruitmentNoticeRequests,
   listPublicRecruitmentNotices,
+  listVenueHalls,
+  listVenueZones,
   listVirtualVenues,
 } from './api'
 import { recruitmentKeys } from './queryKeys'
@@ -63,4 +65,20 @@ export const useVirtualVenues = () =>
   useQuery({
     queryKey: recruitmentKeys.virtualVenues(),
     queryFn: listVirtualVenues,
+  })
+
+/** 선택한 가상 장소의 홀 목록. 장소를 고르기 전에는 부르지 않는다(`enabled`). */
+export const useVenueHalls = (virtualVenueId: number | null) =>
+  useQuery({
+    queryKey: recruitmentKeys.venueHalls(virtualVenueId ?? 0),
+    queryFn: () => listVenueHalls(virtualVenueId as number),
+    enabled: virtualVenueId !== null,
+  })
+
+/** 선택한 홀의 구역 목록. 홀을 고르기 전에는 부르지 않는다(`enabled`). */
+export const useVenueZones = (hallId: number | null) =>
+  useQuery({
+    queryKey: recruitmentKeys.venueZones(hallId ?? 0),
+    queryFn: () => listVenueZones(hallId as number),
+    enabled: hallId !== null,
   })

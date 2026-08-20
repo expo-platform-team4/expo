@@ -6,4 +6,7 @@ export const recruitmentKeys = {
   requests: () => [...recruitmentKeys.all, 'requests'] as const,
   requestDetail: (requestId: number) => [...recruitmentKeys.all, 'request', requestId] as const,
   virtualVenues: () => [...recruitmentKeys.all, 'virtual-venues'] as const,
+  venueHalls: (virtualVenueId: number) =>
+    [...recruitmentKeys.all, 'venue-halls', virtualVenueId] as const,
+  venueZones: (hallId: number) => [...recruitmentKeys.all, 'venue-zones', hallId] as const,
 }

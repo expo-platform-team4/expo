@@ -3,22 +3,25 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 
 import { Button, Card, CardTitle, Input, LoadingBlock, Select, Textarea } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 
-import { useCreateRecruitmentNoticeRequest, useVirtualVenues } from '../hooks'
+import {
+  useCreateRecruitmentNoticeRequest,
+  useVenueHalls,
+  useVenueZones,
+  useVirtualVenues,
+} from '../hooks'
 import { createNoticeRequestSchema, type CreateNoticeRequestFormValues } from '../schemas'
 
 /**
  * `/client/recruitment-notice-requests/new`. Function.md 3절 — "새 요청 작성". CLIENT 전용.
  *
- * `CreateRecruitmentNoticeRequestRequest` 를 그대로 채우는 실제 폼이다. 가상 장소는
- * `GET /api/virtual-venues`(공개)로 고를 수 있지만, 그 하위 홀·구역 목록 조회는 ADMIN
- * 전용이라(`recruitment/api.ts` 의 `listVirtualVenues` 주석 참고) 전시관·구역은 숫자 ID
- * 직접 입력으로 받는다 — Function.md 7절 "API 부재를 화면에 명시한다" 원칙에 따라 힌트
- * 문구로 그 사실을 알린다.
+ * `CreateRecruitmentNoticeRequestRequest` 를 그대로 채우는 실제 폼이다. 가상 장소 → 전시관(홀)
+ * → 구역 순으로 실제 드롭다운을 연쇄시킨다(PR #110 로 공개 홀·구역 목록 API 가 생겨서 이제
+ * 가능하다 — 전에는 ADMIN 전용이라 숫자 ID 직접 입력을 받았다).
  */
 const ClientRecruitmentNoticeRequestFormPage = () => {
   const router = useRouter()
@@ -29,6 +32,8 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
   const {
     register,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<CreateNoticeRequestFormValues>({
     resolver: zodResolver(createNoticeRequestSchema),
@@ -41,11 +46,21 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
       eventEndAt: '',
       virtualVenueId: '',
       venueHallId: '',
-      venueZoneIds: '',
+      venueZoneIds: [],
       targetCompanyCount: '',
       requestedBoothConfig: '',
     },
   })
+
+  const selectedVirtualVenueId = useWatch({ control, name: 'virtualVenueId' })
+  const selectedHallId = useWatch({ control, name: 'venueHallId' })
+
+  const { data: venueHalls, isPending: hallsPending } = useVenueHalls(
+    selectedVirtualVenueId ? Number(selectedVirtualVenueId) : null
+  )
+  const { data: venueZones, isPending: zonesPending } = useVenueZones(
+    selectedHallId ? Number(selectedHallId) : null
+  )
 
   const onSubmit = (values: CreateNoticeRequestFormValues) => {
     setFormError(null)
@@ -59,7 +74,7 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
         eventEndAt: new Date(values.eventEndAt).toISOString(),
         virtualVenueId: Number(values.virtualVenueId),
         venueHallId: Number(values.venueHallId),
-        venueZoneIds: values.venueZoneIds.split(',').map((part) => Number(part.trim())),
+        venueZoneIds: values.venueZoneIds.map(Number),
         targetCompanyCount: Number(values.targetCompanyCount),
         requestedBoothConfig: values.requestedBoothConfig || undefined,
       },
@@ -111,7 +126,12 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
             <Select
               label="희망 가상 장소"
               error={errors.virtualVenueId?.message}
-              {...register('virtualVenueId')}
+              {...register('virtualVenueId', {
+                onChange: () => {
+                  setValue('venueHallId', '')
+                  setValue('venueZoneIds', [])
+                },
+              })}
             >
               <option value="">선택해 주세요</option>
               {virtualVenues?.map((venue) => (
@@ -123,19 +143,48 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
             </Select>
           )}
 
-          <Input
-            label="희망 전시관(홀) ID"
-            hint="홀 목록 조회는 관리자 전용 API 라 화면에서 고를 수 없습니다. 주최사 담당자에게 확인한 ID를 입력해 주세요."
+          <Select
+            label="희망 전시관(홀)"
+            disabled={!selectedVirtualVenueId}
+            hint={!selectedVirtualVenueId ? '먼저 가상 장소를 선택해 주세요.' : undefined}
             error={errors.venueHallId?.message}
-            {...register('venueHallId')}
-          />
-          <Input
-            label="희망 구역 ID (쉼표로 구분, 하나 이상)"
-            placeholder="예: 12,13"
-            hint="구역 목록 조회도 관리자 전용 API 라 화면에서 고를 수 없습니다."
+            {...register('venueHallId', {
+              onChange: () => setValue('venueZoneIds', []),
+            })}
+          >
+            <option value="">
+              {hallsPending && selectedVirtualVenueId ? '불러오는 중…' : '선택해 주세요'}
+            </option>
+            {venueHalls?.map((hall) => (
+              <option key={hall.id} value={hall.id}>
+                {hall.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="희망 구역 (여러 개 선택 가능)"
+            multiple
+            size={4}
+            disabled={!selectedHallId}
+            hint={
+              !selectedHallId
+                ? '먼저 전시관(홀)을 선택해 주세요.'
+                : 'Ctrl(⌘) 클릭으로 여러 구역을 고를 수 있습니다.'
+            }
             error={errors.venueZoneIds?.message}
             {...register('venueZoneIds')}
-          />
+          >
+            {zonesPending && selectedHallId ? (
+              <option disabled>불러오는 중…</option>
+            ) : (
+              venueZones?.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name} · 최대 {zone.maxBoothCount}부스
+                </option>
+              ))
+            )}
+          </Select>
           <Input
             label="목표 참가 기업 수"
             inputMode="numeric"
