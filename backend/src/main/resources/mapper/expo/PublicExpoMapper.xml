@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.expo.repository.PublicExpoMapper">
+
+    <!--
+        뷰가 이미 visibility_status = 'PUBLIC' 으로 걸러 준다. 여기서 다시 거르지 않는다 —
+        조건이 두 군데로 갈리면 한쪽만 고쳤을 때 비공개 박람회가 새어 나간다.
+    -->
+    <select id="findCards" resultType="com.expo.expo.dto.PublicExpoCardRow">
+        SELECT expo_id,
+               title,
+               event_start_at,
+               event_end_at,
+               region_code,
+               minimum_price,
+               available_quantity,
+               display_sales_status,
+               thumbnail_file_id
+        FROM v_public_expo_cards
+        <where>
+            <if test="query.regionCode != null and query.regionCode != ''">
+                AND region_code = #{query.regionCode}
+            </if>
+            <!--
+                ILIKE 는 PostgreSQL 전용이다(대소문자 무시 LIKE). 이 저장소는 PostgreSQL
+                전용으로 가기로 했다 — db/migration/README.md 참고.
+                키워드는 파라미터 바인딩 뒤에 이어 붙여 % 가 값으로 들어가게 한다.
+            -->
+            <if test="query.keyword != null and query.keyword != ''">
+                AND title ILIKE '%' || #{query.keyword} || '%'
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="query.sort == 'POPULAR'">
+                popularity_score DESC, event_start_at ASC
+            </when>
+            <otherwise>
+                event_start_at ASC
+            </otherwise>
+        </choose>
+        , expo_id ASC
+    </select>
+
+    <!--
+        소개글(description)은 뷰에 없어서 expos 를 직접 읽는다. 뷰와 INNER JOIN 하는 것이
+        공개 여부 확인을 겸한다 — 비공개 박람회는 뷰에 없으므로 조인에서 떨어진다.
+    -->
+    <select id="findDetail" resultType="com.expo.expo.dto.PublicExpoDetailRow">
+        SELECT e.id            AS expo_id,
+               e.title         AS title,
+               e.description   AS description,
+               e.region_code   AS region_code,
+               e.event_start_at,
+               e.event_end_at,
+               e.sales_start_at,
+               e.sales_end_at,
+               e.event_status,
+               c.display_sales_status,
+               c.minimum_price,
+               c.available_quantity
+        FROM expos e
+        JOIN v_public_expo_cards c ON c.expo_id = e.id
+        WHERE e.id = #{expoId}
+    </select>
+
+</mapper>

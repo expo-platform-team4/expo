@@ -44,8 +44,23 @@ SELECT e.id                                        AS expo_id,
        -- 인기순 정렬 기준. 명세는 "판매량·주문량 기반 계산"까지만 정하고 있어
        -- 가중치는 임의로 잡았다. 운영하며 조정할 값이다.
        COALESCE(pr.sold_quantity, 0) * 1.0
-           + COALESCE(orr.order_count, 0) * 0.5    AS popularity_score
+           + COALESCE(orr.order_count, 0) * 0.5    AS popularity_score,
+       th.file_id                                  AS thumbnail_file_id
 FROM expos e
 LEFT JOIN product_rollup pr  ON pr.expo_id  = e.id
 LEFT JOIN order_rollup   orr ON orr.expo_id = e.id
+-- 대표 이미지 한 장. 여러 장이 THUMBNAIL 로 남아 있어도 화면에는 하나만 쓰므로
+-- LATERAL + LIMIT 1 로 미리 접는다. 그냥 조인하면 박람회 행이 이미지 수만큼 늘어난다.
+-- 삭제·격리된 파일은 내려받기가 404 라 여기서도 빼야 한다 — 안 그러면 카드에 깨진
+-- 이미지가 뜬다.
+LEFT JOIN LATERAL (
+    SELECT ei.file_id
+    FROM expo_images ei
+    JOIN file_metadata fm ON fm.id = ei.file_id
+    WHERE ei.expo_id = e.id
+      AND ei.image_type = 'THUMBNAIL'
+      AND fm.file_status = 'ACTIVE'
+    ORDER BY ei.sort_order, ei.id
+    LIMIT 1
+) th ON TRUE
 WHERE e.visibility_status = 'PUBLIC';

@@ -189,7 +189,13 @@ public enum ErrorCode {
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 허용 범위를 넘었습니다."),
     FILE_CONTENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
     FILE_READ_FAILED(HttpStatus.BAD_REQUEST, "업로드한 파일을 읽지 못했습니다."),
-    FILE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "파일 저장소에 연결하지 못했습니다.");
+    FILE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "파일 저장소에 연결하지 못했습니다."),
+
+    // --- 박람회 이미지 · 자료 ---
+    EXPO_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "박람회에 연결된 자료를 찾을 수 없습니다."),
+    EXPO_CONTENT_DUPLICATE_FILE(HttpStatus.CONFLICT, "이미 연결된 파일입니다."),
+    EXPO_CONTENT_FILE_NOT_PUBLIC(HttpStatus.BAD_REQUEST, "공개 파일만 박람회에 연결할 수 있습니다."),
+    EXPO_CONTENT_NOT_AN_IMAGE(HttpStatus.BAD_REQUEST, "이미지 파일이 아닙니다.");
 
     private final HttpStatus status;
     private final String message;
