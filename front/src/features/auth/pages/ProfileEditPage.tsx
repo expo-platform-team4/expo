@@ -1,0 +1,328 @@
+'use client'
+
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+
+import { Badge, Button, Card, CardTitle, ErrorState, Input, LoadingBlock } from '@/components/ui'
+import { getErrorMessage } from '@/lib/errorMessage'
+
+import {
+  useChangeNickname,
+  useChangePassword,
+  useMyProfile,
+  useNicknameAvailability,
+  useWithdraw,
+} from '../hooks'
+import { useAvailabilityHint } from '../useAvailabilityHint'
+import {
+  changePasswordSchema,
+  nicknameChangeSchema,
+  withdrawalSchema,
+  type ChangePasswordFormValues,
+  type NicknameChangeFormValues,
+  type WithdrawalFormValues,
+} from '../schemas'
+
+/** `/mypage/profile`. 사이드바의 "프로필 수정" 링크가 여기로 온다. */
+const ProfileEditPage = () => {
+  const { data: profile, isPending, isError, error, refetch } = useMyProfile()
+
+  if (isError) {
+    return <ErrorState error={error} onRetry={() => refetch()} />
+  }
+  if (isPending || !profile) {
+    return <LoadingBlock label="프로필을 불러오는 중입니다" />
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <ProfileHeaderCard email={profile.email} currentNickname={profile.nickname} />
+      <ChangePasswordSection />
+      <WithdrawalSection />
+    </div>
+  )
+}
+
+/**
+ * 프로필 사진 + 닉네임을 한 카드에 나란히 둔다.
+ *
+ * 사진은 S3 업로드 방향(직접 업로드 vs presigned URL 등, docs/s3-presigned-url.md 참고)이
+ * 아직 정해지지 않아 자리만 두고 비활성 상태다. 닉네임은 평소엔 텍스트로만 보이다가
+ * "수정" 버튼을 눌러야 입력칸 + 중복확인 버튼이 나온다 — 화면에 상시 노출된 입력칸이
+ * 없으면 실수로 건드릴 일도 없다.
+ */
+const ProfileHeaderCard = ({
+  email,
+  currentNickname,
+}: {
+  email: string
+  currentNickname: string
+}) => {
+  const [editing, setEditing] = useState(false)
+  const changeNicknameMutation = useChangeNickname()
+  const nicknameAvailability = useAvailabilityHint(useNicknameAvailability())
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    reset,
+    formState: { errors },
+  } = useForm<NicknameChangeFormValues>({
+    resolver: zodResolver(nicknameChangeSchema),
+    defaultValues: { nickname: currentNickname },
+  })
+
+  const startEditing = () => {
+    reset({ nickname: currentNickname })
+    nicknameAvailability.reset()
+    setSuccessMessage(null)
+    setEditing(true)
+  }
+
+  const cancelEditing = () => {
+    reset({ nickname: currentNickname })
+    nicknameAvailability.reset()
+    setEditing(false)
+  }
+
+  const onSubmit = (values: NicknameChangeFormValues) => {
+    changeNicknameMutation.mutate(values.nickname, {
+      onSuccess: () => {
+        setSuccessMessage('닉네임이 변경되었습니다.')
+        setEditing(false)
+      },
+    })
+  }
+
+  return (
+    <Card>
+      <CardTitle>프로필</CardTitle>
+      <div className="flex items-center gap-4">
+        {/* 사진 등록은 아직 준비 중이라 버튼은 비활성 상태로만 둔다. */}
+        <div className="bg-surface-container-high text-on-surface-variant flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-xs">
+          준비 중
+        </div>
+
+        <div className="flex-1">
+          <p className="text-body-sm text-on-surface-variant">{email}</p>
+
+          {!editing ? (
+            <div className="mt-1 flex items-center gap-3">
+              <p className="text-title-md text-on-surface font-semibold">{currentNickname}</p>
+              <Button type="button" variant="ghost" size="sm" onClick={startEditing}>
+                수정
+              </Button>
+            </div>
+          ) : (
+            <form className="mt-2 flex flex-col gap-2" onSubmit={handleSubmit(onSubmit)} noValidate>
+              <div className="flex items-start gap-2">
+                <div className="flex-1">
+                  <Input
+                    label="닉네임"
+                    error={errors.nickname?.message}
+                    hint={
+                      nicknameAvailability.hint?.ok ? nicknameAvailability.hint.message : undefined
+                    }
+                    {...register('nickname')}
+                  />
+                  {nicknameAvailability.hint?.ok === false && (
+                    <p className="text-label-sm text-error mt-1">
+                      {nicknameAvailability.hint.message}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-6"
+                  loading={nicknameAvailability.checking}
+                  onClick={() => nicknameAvailability.check(getValues('nickname'))}
+                >
+                  중복확인
+                </Button>
+              </div>
+              {changeNicknameMutation.isError && (
+                <p className="text-label-sm text-error">
+                  {getErrorMessage(changeNicknameMutation.error)}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" loading={changeNicknameMutation.isPending}>
+                  저장
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={cancelEditing}>
+                  취소
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {!editing && successMessage && (
+            <Badge variant="success" className="mt-2">
+              {successMessage}
+            </Badge>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/**
+ * 로그인 상태에서의 비밀번호 변경. 처음엔 버튼만 보이고, 누르면 현재/새/새 비밀번호 확인
+ * 세 칸이 펼쳐진다. 이메일 토큰 재설정("비밀번호를 잊어버렸을 때")과는 다른 화면이다 —
+ * 그건 로그인 페이지의 "비밀번호 찾기"에서 별도로 제공한다.
+ */
+const ChangePasswordSection = () => {
+  const changePasswordMutation = useChangePassword()
+  const [expanded, setExpanded] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ChangePasswordFormValues>({ resolver: zodResolver(changePasswordSchema) })
+
+  const onSubmit = (values: ChangePasswordFormValues) => {
+    changePasswordMutation.mutate(values, {
+      onSuccess: () => {
+        setSuccessMessage('비밀번호가 변경되었습니다.')
+        reset()
+        setExpanded(false)
+      },
+    })
+  }
+
+  return (
+    <Card>
+      <CardTitle>비밀번호 변경</CardTitle>
+
+      {!expanded ? (
+        <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded(true)}>
+          비밀번호 변경
+        </Button>
+      ) : (
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Input
+            label="현재 비밀번호"
+            type="password"
+            autoComplete="current-password"
+            autoFocus
+            error={errors.currentPassword?.message}
+            {...register('currentPassword')}
+          />
+          <Input
+            label="새 비밀번호"
+            type="password"
+            autoComplete="new-password"
+            error={errors.newPassword?.message}
+            {...register('newPassword')}
+          />
+          <Input
+            label="새 비밀번호 확인"
+            type="password"
+            autoComplete="new-password"
+            error={errors.newPasswordConfirm?.message}
+            {...register('newPasswordConfirm')}
+          />
+          {changePasswordMutation.isError && (
+            <p className="text-label-sm text-error">
+              {getErrorMessage(changePasswordMutation.error)}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" loading={changePasswordMutation.isPending}>
+              변경하기
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded(false)}>
+              취소
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {!expanded && successMessage && (
+        <Badge variant="success" className="mt-2">
+          {successMessage}
+        </Badge>
+      )}
+    </Card>
+  )
+}
+
+/**
+ * 회원 탈퇴. "탈퇴하기"를 누르면 비밀번호 입력칸이 펼쳐지고, 거기서 다시 제출하면
+ * `window.confirm` 으로 "정말 탈퇴하시겠습니까?" 를 한 번 더 물은 뒤에야 실제로 탈퇴 처리한다.
+ */
+const WithdrawalSection = () => {
+  const router = useRouter()
+  const withdrawMutation = useWithdraw()
+  const [expanded, setExpanded] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<WithdrawalFormValues>({ resolver: zodResolver(withdrawalSchema) })
+
+  const onSubmit = (values: WithdrawalFormValues) => {
+    const confirmed = window.confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')
+    if (!confirmed) return
+
+    withdrawMutation.mutate(values.password, {
+      onSuccess: () => router.replace('/login'),
+    })
+  }
+
+  return (
+    <Card className="border-error-container border">
+      <CardTitle className="text-error">회원 탈퇴</CardTitle>
+      <p className="text-body-sm text-on-surface-variant">
+        탈퇴하면 다시 로그인할 수 없습니다. 예매·발권 기록은 삭제되지 않고 그대로 남습니다.
+      </p>
+
+      {!expanded ? (
+        <Button
+          type="button"
+          variant="danger"
+          size="sm"
+          className="mt-3"
+          onClick={() => setExpanded(true)}
+        >
+          탈퇴하기
+        </Button>
+      ) : (
+        <form className="mt-3 flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Input
+            label="현재 비밀번호"
+            type="password"
+            autoComplete="current-password"
+            autoFocus
+            error={errors.password?.message}
+            {...register('password')}
+          />
+          {withdrawMutation.isError && (
+            <p className="text-label-sm text-error">{getErrorMessage(withdrawMutation.error)}</p>
+          )}
+          <div className="flex gap-2">
+            <Button type="submit" variant="danger" loading={withdrawMutation.isPending}>
+              탈퇴하기
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setExpanded(false)}>
+              취소
+            </Button>
+          </div>
+        </form>
+      )}
+    </Card>
+  )
+}
+
+export default ProfileEditPage
