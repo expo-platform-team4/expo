@@ -6,10 +6,10 @@ import { Badge, Button, ErrorState, Spinner } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 import { formatDateTime } from '@/lib/date'
 
-import type { BoothContent, BoothContentStatus } from '../api'
+import type { BoothContentStatus } from '../api'
 import {
   useCreateBoothContent,
-  usePublishedBoothContent,
+  useMyBoothContent,
   useSubmitBoothContentForReview,
   useUpdateBoothContent,
 } from '../hooks'
@@ -60,25 +60,14 @@ const toFormValues = (content: {
  * 부스 소개 콘텐츠 섹션. 배정 상태가 `ASSIGNED` 인 부스 카드에서만 렌더링된다
  * (`BoothCard`) — 콘텐츠 작성은 확정 배정 건에만 가능하다(백엔드 `BOOTH_ALLOCATION_NOT_ASSIGNED`).
  *
- * **알려진 배경 API 갭.** 배정 ID 로 "내 콘텐츠"(공개 여부 무관)를 조회하는 API 가 없다 —
- * 공개(PUBLISHED) 콘텐츠만 `GET /api/public/booth-contents/by-allocation/{id}` 로 볼 수 있고,
- * 초안·검수중·보완요청 콘텐츠는 `contentId` 를 알아야만 조회·수정할 수 있는데 그 ID 를
- * 배정 ID 로 찾는 방법이 없다(`api.ts` 의 `getPublishedBoothContent` 주석 참고). 그래서 이
- * 컴포넌트는 **이번 세션에서 만들거나 불러온 콘텐츠만** 계속 편집할 수 있다 — 작성/수정
- * 화면을 새로고침하면(아직 공개 전) 다시 "작성하기" 상태로 보이고, 재작성을 시도하면 서버가
- * 409 를 준다. 이 경우 에러 메시지에 그 사실을 함께 안내한다. 근본 해결은 백엔드에
- * "배정 ID 로 내 콘텐츠 조회" API 추가가 필요하다(작업 보고에서 이슈로 남긴다).
+ * `useMyBoothContent` 로 마운트 시 배정 ID 기준 내 콘텐츠를 상태 무관하게 불러온다(이슈 #111
+ * 로 추가된 `GET /api/client/booth-contents/by-allocation/{id}`). 새로고침해도 기존 콘텐츠를
+ * 다시 찾을 수 있다 — 예전에는 이 API 가 없어 세션 로컬 상태로만 "방금 만든 콘텐츠"를
+ * 기억했다.
  */
 export const BoothContentSection = ({ allocationId }: { allocationId: number }) => {
-  const {
-    data: publishedContent,
-    isPending,
-    isError,
-    error,
-    refetch,
-  } = usePublishedBoothContent(allocationId)
+  const { data: content, isPending, isError, error, refetch } = useMyBoothContent(allocationId)
 
-  const [sessionContent, setSessionContent] = useState<BoothContent | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -106,66 +95,50 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
     createMutation.mutate(
       { boothAllocationId: allocationId, payload: values },
       {
-        onSuccess: (content) => {
-          setSessionContent(content)
-          setShowCreateForm(false)
-        },
-        onError: (err) => {
-          const message = getErrorMessage(err)
-          const isDuplicate = message.includes('이미 해당 배정에 등록된')
-          setActionError(
-            isDuplicate
-              ? `${message} 이미 작성된 콘텐츠는 공개(승인)되기 전까지 이 화면에서 다시 불러올 수 없습니다(알려진 제약). 공개 후 이 카드에서 미리보기로 확인할 수 있습니다.`
-              : message
-          )
-        },
-      }
-    )
-  }
-
-  const handleUpdate = (values: BoothContentFormValues) => {
-    if (!sessionContent) return
-    setActionError(null)
-    updateMutation.mutate(
-      { contentId: sessionContent.id, payload: values },
-      {
-        onSuccess: (content) => setSessionContent(content),
+        onSuccess: () => setShowCreateForm(false),
         onError: (err) => setActionError(getErrorMessage(err)),
       }
     )
   }
 
-  const handleSubmitForReview = () => {
-    if (!sessionContent) return
+  const handleUpdate = (values: BoothContentFormValues) => {
+    if (!content) return
     setActionError(null)
-    submitMutation.mutate(sessionContent.id, {
-      onSuccess: (content) => setSessionContent(content),
-      onError: (err) => setActionError(getErrorMessage(err)),
-    })
+    updateMutation.mutate(
+      { contentId: content.id, allocationId, payload: values },
+      { onError: (err) => setActionError(getErrorMessage(err)) }
+    )
   }
 
-  // 1) 이번 세션에서 만들었거나 불러온 콘텐츠가 있다 — 그 상태에 맞춰 편집/읽기 전용을 보여준다.
-  if (sessionContent) {
-    const editable = EDITABLE_STATUSES.includes(sessionContent.status)
+  const handleSubmitForReview = () => {
+    if (!content) return
+    setActionError(null)
+    submitMutation.mutate(
+      { contentId: content.id, allocationId },
+      { onError: (err) => setActionError(getErrorMessage(err)) }
+    )
+  }
+
+  // 1) 내 콘텐츠가 있다 — 상태에 맞춰 편집 폼 또는 읽기 전용 미리보기를 보여준다.
+  if (content) {
+    const editable = EDITABLE_STATUSES.includes(content.status)
     return (
       <div className="border-outline-variant mt-4 border-t pt-4">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h4 className="text-label-md text-on-surface font-semibold">부스 소개 콘텐츠</h4>
-          <Badge variant={STATUS_VARIANT[sessionContent.status]}>
-            {STATUS_LABEL[sessionContent.status]}
-          </Badge>
+          <Badge variant={STATUS_VARIANT[content.status]}>{STATUS_LABEL[content.status]}</Badge>
         </div>
 
-        {sessionContent.status === 'CORRECTION_REQUESTED' && sessionContent.correctionMessage && (
+        {content.status === 'CORRECTION_REQUESTED' && content.correctionMessage && (
           <p className="bg-error-container text-on-error-container text-body-md mb-3 rounded px-3 py-2">
-            보완 요청 사유: {sessionContent.correctionMessage}
+            보완 요청 사유: {content.correctionMessage}
           </p>
         )}
 
         {editable ? (
           <>
             <BoothContentForm
-              defaultValues={toFormValues(sessionContent)}
+              defaultValues={toFormValues(content)}
               onSubmit={handleUpdate}
               submitting={updateMutation.isPending}
               submitLabel="저장"
@@ -188,17 +161,17 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
           </>
         ) : (
           <ReadOnlyContentPreview
-            title={sessionContent.title}
-            companyDisplayName={sessionContent.companyDisplayName}
-            companyDescription={sessionContent.companyDescription}
-            boothDescription={sessionContent.boothDescription}
-            productDescription={sessionContent.productDescription}
+            title={content.title}
+            companyDisplayName={content.companyDisplayName}
+            companyDescription={content.companyDescription}
+            boothDescription={content.boothDescription}
+            productDescription={content.productDescription}
             footnote={
-              sessionContent.status === 'UNDER_REVIEW'
+              content.status === 'UNDER_REVIEW'
                 ? '관리자 승인을 기다리고 있습니다.'
-                : sessionContent.status === 'PUBLISHED' && sessionContent.publishedAt
-                  ? `공개일: ${formatDateTime(sessionContent.publishedAt)}`
-                  : sessionContent.status === 'HIDDEN'
+                : content.status === 'PUBLISHED' && content.publishedAt
+                  ? `공개일: ${formatDateTime(content.publishedAt)}`
+                  : content.status === 'HIDDEN'
                     ? '관리자가 노출을 중지했습니다.'
                     : undefined
             }
@@ -208,27 +181,7 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
     )
   }
 
-  // 2) 세션에서 만든 건 없지만, 이미 공개(PUBLISHED)된 콘텐츠가 있다 — 미리보기만 보여준다.
-  if (publishedContent) {
-    return (
-      <div className="border-outline-variant mt-4 border-t pt-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h4 className="text-label-md text-on-surface font-semibold">부스 소개 콘텐츠</h4>
-          <Badge variant="success">공개됨</Badge>
-        </div>
-        <ReadOnlyContentPreview
-          title={publishedContent.title}
-          companyDisplayName={publishedContent.companyDisplayName}
-          companyDescription={publishedContent.companyDescription}
-          boothDescription={publishedContent.boothDescription}
-          productDescription={publishedContent.productDescription}
-          footnote={`공개일: ${formatDateTime(publishedContent.publishedAt)}`}
-        />
-      </div>
-    )
-  }
-
-  // 3) 콘텐츠가 없다 — 새로 작성하는 폼을 연다.
+  // 2) 콘텐츠가 없다 — 새로 작성하는 폼을 연다.
   return (
     <div className="border-outline-variant mt-4 border-t pt-4">
       <div className="mb-3 flex items-center justify-between gap-2">

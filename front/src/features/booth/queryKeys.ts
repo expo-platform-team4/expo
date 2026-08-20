@@ -6,4 +6,5 @@ export const boothKeys = {
     [...boothKeys.all, 'allocation', allocationId] as const,
   publishedContent: (allocationId: number) =>
     [...boothKeys.all, 'published-content', allocationId] as const,
+  myContent: (allocationId: number) => [...boothKeys.all, 'my-content', allocationId] as const,
 }

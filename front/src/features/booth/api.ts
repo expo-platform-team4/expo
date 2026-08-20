@@ -123,6 +123,32 @@ export const submitBoothContentForReview = async (contentId: number): Promise<Bo
   return data.data
 }
 
+/**
+ * `GET /api/client/booth-contents/by-allocation/{allocationId}` — 배정 ID 로 **내** 콘텐츠를
+ * 상태 무관(DRAFT·UNDER_REVIEW·PUBLISHED·CORRECTION_REQUESTED·HIDDEN)하게 조회한다. 로그인 필요.
+ *
+ * 이슈 #111 로 추가된 엔드포인트 — 전에는 `contentId` 를 이미 알아야 조회할 수 있어, 콘텐츠를
+ * 만든 뒤 새로고침하면 다시 찾을 방법이 없었다(재작성 시도는 409 `DUPLICATE_BOOTH_CONTENT`).
+ * 없으면 404 → `null`. 공개(`getPublishedBoothContent`)와는 반대로 소유자 본인만 보는
+ * "내 콘텐츠 원본"이라 상태를 가리지 않는다 — 방문객에게 보여줄 공개 미리보기는 여전히
+ * `getPublishedBoothContent` 를 쓴다.
+ */
+export const getMyBoothContentByAllocation = async (
+  allocationId: number
+): Promise<BoothContent | null> => {
+  try {
+    const { data } = await api.get<ApiEnvelope<BoothContent>>(
+      `/client/booth-contents/by-allocation/${allocationId}`
+    )
+    return data.data
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return null
+    }
+    throw error
+  }
+}
+
 /** 공개(PUBLISHED)된 부스 콘텐츠. `com.expo.booth.dto.PublicBoothContentResponse` 와 대응한다. */
 export type PublishedBoothContent = {
   id: number
@@ -137,17 +163,10 @@ export type PublishedBoothContent = {
 
 /**
  * `GET /api/public/booth-contents/by-allocation/{allocationId}` — 배정 ID 로 공개된 콘텐츠를 조회한다.
- * 로그인이 필요 없다.
+ * 로그인이 필요 없다. **PUBLISHED 상태만** 돌려준다 — 방문객에게 보여줄 공개 미리보기용이다.
+ * 소유자 본인이 상태 무관하게 자기 콘텐츠를 다시 찾을 때는 `getMyBoothContentByAllocation` 을 쓴다.
  *
- * **PUBLISHED 상태만** 돌려준다. DRAFT·UNDER_REVIEW·CORRECTION_REQUESTED·HIDDEN 상태의 내 콘텐츠를
- * 이 API 로는 볼 수 없다 — 백엔드에 "배정 ID 로 소유자 콘텐츠 조회"(공개 여부 무관) API 가 없다.
- * `getMine(contentId)`(`GET /api/client/booth-contents/{contentId}`)는 있지만 `contentId` 를
- * 이미 알아야 부를 수 있고, 그 ID 를 배정 ID 로 찾는 목록·조회 API 가 없다. 그래서 이 화면은
- * "공개된 콘텐츠는 미리보기, 아직 없으면 새로 작성"만 지원한다 — 작성 후 새로고침하면(공개 전)
- * 다시 이 화면에서 그 콘텐츠를 불러올 수 없고, 재작성을 시도하면 409(DUPLICATE_BOOTH_CONTENT)를
- * 받는다. 이 갭은 백엔드 이슈로 별도 기록한다(작업 보고 참고).
- *
- * 없으면(아직 공개 전) 404 → `null` 로 다룬다. 목록 화면이 이걸 "에러"가 아니라 "콘텐츠 없음"
+ * 없으면(아직 공개 전) 404 → `null` 로 다룬다. 화면이 이걸 "에러"가 아니라 "콘텐츠 없음"
  * 상태로 렌더링해야 하기 때문이다.
  */
 export const getPublishedBoothContent = async (
