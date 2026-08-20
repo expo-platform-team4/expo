@@ -57,18 +57,19 @@ CLIENT 와 ADMIN 은 겹치는 경로가 있다 — 백엔드가 `/api/client/**
 
 전부 [Sidebar(light) 셸](Style.md)을 쓴다.
 
-| 화면                | ID               | 라우트                                                         | 무엇을 하는가                             |
-| ------------------- | ---------------- | -------------------------------------------------------------- | ----------------------------------------- |
-| 클라이언트 대시보드 | `0ae4be64`       | `/client/dashboard`                                            | 요약 지표 (박람회·부스·모집공고 집계)     |
-| 내 박람회           | `f83a3d68`       | `/client/expos`                                                | 내가 연 박람회 목록 + 매출 요약           |
-| 박람회 개최 신청    | `13484d75`       | `/client/expos/new`                                            | **API 없음** (이슈 #107) — "준비 중" 표시 |
-| 모집공고 요청 관리  | `fe000d47`       | `/client/recruitment-notice-requests`                          | 내 요청 목록·상세                         |
-| 공고 생성 요청      | `533717af`       | `/client/recruitment-notice-requests/new`                      | 새 요청 작성                              |
-| 참여 신청 내역      | `79d848ba`       | `/client/participations`                                       | 내가 신청한 부스 참여 목록                |
-| 정산 리포트         | `3ad4a13d`       | `/client/settlements` (목록) `/client/settlements/{id}` (상세) | 티켓/부스 구분 리포트                     |
-| **체크인 현황**     | 대응 디자인 없음 | `/client/check-in`                                             | 오늘 입장 현황. 5초 폴링. 아래 5절        |
-| **QR 스캔**         | 대응 디자인 없음 | `/client/check-in/scan`                                        | 카메라 + 코드 수동 입력                   |
-| **체크인 이력**     | 대응 디자인 없음 | `/client/check-in/history`                                     | 성공/실패 필터                            |
+| 화면                | ID               | 라우트                                                         | 무엇을 하는가                         |
+| ------------------- | ---------------- | -------------------------------------------------------------- | ------------------------------------- |
+| 클라이언트 대시보드 | `0ae4be64`       | `/client/dashboard`                                            | 요약 지표 (박람회·부스·모집공고 집계) |
+| 내 박람회           | `f83a3d68`       | `/client/expos`                                                | 내가 연 박람회 목록 + 매출 요약       |
+| 박람회 개최 신청    | `13484d75`       | `/client/expos/new`                                            | 개최 신청 작성·임시저장 (이슈 #116)   |
+| 이미지·자료 관리    | 대응 디자인 없음 | `/client/expos/[expoId]/content`                               | 대표 이미지·팜플렛 업로드 (이슈 #93)  |
+| 모집공고 요청 관리  | `fe000d47`       | `/client/recruitment-notice-requests`                          | 내 요청 목록·상세                     |
+| 공고 생성 요청      | `533717af`       | `/client/recruitment-notice-requests/new`                      | 새 요청 작성                          |
+| 참여 신청 내역      | `79d848ba`       | `/client/participations`                                       | 내가 신청한 부스 참여 목록            |
+| 정산 리포트         | `3ad4a13d`       | `/client/settlements` (목록) `/client/settlements/{id}` (상세) | 티켓/부스 구분 리포트                 |
+| **체크인 현황**     | 대응 디자인 없음 | `/client/check-in`                                             | 오늘 입장 현황. 5초 폴링. 아래 5절    |
+| **QR 스캔**         | 대응 디자인 없음 | `/client/check-in/scan`                                        | 카메라 + 코드 수동 입력               |
+| **체크인 이력**     | 대응 디자인 없음 | `/client/check-in/history`                                     | 성공/실패 필터                        |
 
 ---
 
