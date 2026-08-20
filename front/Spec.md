@@ -13,12 +13,10 @@ API 계약, 인증, 에러 처리, 라우팅 규칙. **암묵지를 남기지 �
 실패  { "success": false, "data": null,    "message": "이미 사용 중인 이메일입니다." }
 ```
 
-`data` 가 `null` 이면 그 필드는 응답 JSON 에서 **아예 빠진다**(`success`/`message` 만 온다).
-`data === undefined` 체크가 아니라 **`'data' in response` 체크가 필요할 수 있다**는 뜻이다.
-
 **`message` 는 이미 사용자에게 보여줄 수 있는 한국어 문장이다.** 백엔드 `ErrorCode` 가
 그렇게 설계돼 있다. 실패 시 이 문자열을 그대로 토스트·인라인 에러에 쓴다 — 프론트에서
-에러 코드를 다시 한국어로 매핑하지 않는다.
+에러 코드를 다시 한국어로 매핑하지 않는다. 꺼내는 건 `src/lib/errorMessage.ts` 의
+`getErrorMessage()` 하나로 통일한다.
 
 ```ts
 type ApiResponse<T> = {
@@ -27,6 +25,37 @@ type ApiResponse<T> = {
   message?: string
 }
 ```
+
+### 1-1. **값이 `null` 인 필드는 응답에서 아예 빠진다** ← 자주 틀리는 곳
+
+백엔드가 `spring.jackson.default-property-inclusion: non_null` 이다. 그래서 `data` 뿐 아니라
+**모든 중첩 필드**가 같은 규칙을 따른다 — 값이 없으면 `"field": null` 이 아니라 **키 자체가
+없다.**
+
+```jsonc
+// 송금 전 정산. remittedAmount·remittedAt·remittanceStatus 가 통째로 없다
+{ "settlementId": 3, "status": "CALCULATED", "remittanceDueAmount": 1154000.0 }
+```
+
+**그래서 프론트 타입은 `| null` 이 아니라 선택 필드(`?`)로 쓴다.**
+
+```ts
+remittedAmount?: number     // ✅ 실제로 오는 모양
+remittedAmount: number | null  // ❌ 이렇게 쓰면 아래 사고가 난다
+```
+
+`| null` 로 선언하면 `x !== null` 검사가 `undefined` 를 그대로 통과시킨다:
+
+```ts
+// remittedAmount 가 undefined 인데 !== null 은 true → formatCurrency(undefined) 로 터진다
+settlement.remittedAmount !== null ? formatCurrency(settlement.remittedAmount) : '-'
+```
+
+실제로 이 한 줄 때문에 정산 상세 화면이 통째로 죽었다(송금 전 정산은 100% 재현).
+`?` 로 선언해 두면 같은 코드가 **타입체크에서 먼저 걸린다** — 런타임까지 가지 않는다.
+
+값의 유무를 판정할 때는 `!= null`(느슨한 비교, `null`·`undefined` 둘 다 걸림)이나 truthy
+검사를 쓴다. `!== null`·`=== null` 은 API 데이터에 쓰지 않는다.
 
 ---
 

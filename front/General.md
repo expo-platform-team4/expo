@@ -25,25 +25,34 @@ ADMIN    관리자. 심사·승인·정산 확정을 한다
 비회원(로그인하지 않은 방문자)도 티켓을 살 수 있다 — 주문번호와 비밀번호로 나중에 조회한다.
 
 백엔드는 완성돼 있다. Spring Boot 4 · Java 21 · PostgreSQL 18, 엔드포인트 133개.
-프론트는 **뼈대만 있고 화면이 거의 없다.** 이 문서들은 그 화면을 채우는 작업의 규칙이다.
+프론트도 **Function.md 가 정의한 화면을 전부 채웠다**(라우트 38개). 남은 것은 백엔드 API 가
+없어 "준비 중" 으로 둔 화면 몇 개뿐이다 —
+[이슈 #107](https://github.com/expo-platform-team4/expo/issues/107).
 
 ---
 
 ## 2. 기술 스택
 
-| 용도            | 쓰는 것                           | 버전                                      |
-| --------------- | --------------------------------- | ----------------------------------------- |
-| 프레임워크      | Next.js (App Router)              | 16.2.12                                   |
-| 런타임          | React                             | 19.2.4                                    |
-| 스타일          | Tailwind CSS                      | v4 (CSS-first, `tailwind.config.js` 없음) |
-| 서버 상태·캐싱  | TanStack Query                    | 5.101.4                                   |
-| 클라이언트 상태 | Zustand                           | 5.0.14                                    |
-| 폼              | React Hook Form + Zod             | 7.84 / 4.4                                |
-| HTTP            | axios (`src/lib/api.ts` 인스턴스) | 1.19                                      |
-| 결제            | Toss Payments SDK                 | 2.7.1                                     |
-| QR              | qrcode.react                      | 4.2.0                                     |
-| 패키지 매니저   | Bun                               | —                                         |
-| Node            | **24 고정**                       | `.nvmrc`                                  |
+| 용도            | 쓰는 것                             | 버전                                      |
+| --------------- | ----------------------------------- | ----------------------------------------- |
+| 프레임워크      | Next.js (App Router)                | 16.2.12                                   |
+| 런타임          | React                               | 19.2.4                                    |
+| 스타일          | Tailwind CSS                        | v4 (CSS-first, `tailwind.config.js` 없음) |
+| 서버 상태·캐싱  | TanStack Query                      | 5.101.4                                   |
+| 클라이언트 상태 | Zustand                             | 5.0.14                                    |
+| 폼              | React Hook Form + Zod               | 7.84 / 4.4                                |
+| HTTP            | axios (`src/lib/api.ts` 인스턴스)   | 1.19                                      |
+| 아이콘          | lucide-react                        | 1.33                                      |
+| 클래스 조합     | clsx + tailwind-merge (`lib/cn.ts`) | 2.1 / 3.6                                 |
+| QR 생성         | qrcode.react                        | 4.2.0                                     |
+| QR 해독(스캔)   | jsqr                                | 1.4.0                                     |
+| 패키지 매니저   | Bun                                 | —                                         |
+| Node            | **24 고정**                         | `.nvmrc`                                  |
+
+**결제 SDK 는 넣지 않았다.** 백엔드에 결제 도메인이 없어(`payment` 패키지가
+`package-info.java` 뿐) 붙일 대상이 없다. 주문 생성까지만 실제로 연결하고 그 뒤는 화면에서
+"결제 연동 준비 중" 으로 명시한다 — 동작하지 않는 결제 위젯을 만들지 않는다
+([이슈 #107](https://github.com/expo-platform-team4/expo/issues/107)).
 
 **Node 26 을 쓰면 안 된다.** Next 16 의 `rewrites()` 가 전부 500 으로 깨져 `/api` 프록시가
 통째로 죽는다(`front/AGENTS.md` 에 재현 방법이 있다).
@@ -74,8 +83,11 @@ src/
     layout/                 공통 셸 3종 (Style.md 참고)
   lib/
     api.ts                  axios 인스턴스. 새로 만들지 않는다
-    auth.ts                 토큰 저장·인증 상태 (신설 예정, Spec.md 참고)
-    date.ts                 날짜 포맷 유틸
+    auth.ts                 토큰 저장·인증 상태 (Zustand persist, Spec.md 3절)
+    cn.ts                   clsx + tailwind-merge 조합기
+    date.ts                 날짜 포맷 (formatDate / formatDateTime)
+    currency.ts             원화 포맷 (formatCurrency)
+    errorMessage.ts         서버 message 추출 (getErrorMessage)
 ```
 
 **라우트 파일은 한 줄로 끝난다.**
@@ -87,19 +99,17 @@ export { default } from '@/features/checkin/pages/TicketViewPage'
 
 로직을 `app/` 에 두지 않는다. 라우트가 늘어도 `features/` 구조는 그대로 유지된다.
 
-**네 파일 규칙은 예외 없이 지킨다.** `features/checkin` 이 유일한 실구현이라 그 모양을
-그대로 따른다 — `api.ts`(94줄) 에 fetch 함수와 에러 변환, `hooks.ts` 에 `useQuery` 래핑,
-`queryKeys.ts` 에 키 팩토리, `pages/TicketViewPage.tsx` 에 UI. 이 경계를 섞지 않는다.
-컴포넌트 안에서 axios 를 직접 부르지 않는다.
+**네 파일 규칙은 예외 없이 지킨다.** `api.ts` 에 fetch 함수와 타입, `hooks.ts` 에
+`useQuery`/`useMutation` 래핑, `queryKeys.ts` 에 키 팩토리, `pages/` 에 UI. 이 경계를 섞지
+않는다. **컴포넌트 안에서 axios 를 직접 부르지 않는다.**
+
+모듈이 커지면 도메인별로 파일을 쪼개도 된다 — `features/admin` 이 화면 7개를 담느라
+`categoryApi.ts`·`settlementApi.ts` 처럼 나눠 두었다. 네 종류의 책임 구분만 지키면 된다.
 
 ### 모듈 ↔ 화면 대응
 
-`docs/screen-api-map.md` 7절이 확정한 목록이다. 새 모듈 셋을 만든다.
-
-```
-settlement   정산 리포트(주최사) · 정산 관리(관리자)
-admin        관리자 대시보드 · 카테고리 관리 · 알림 이력
-```
+현재 모듈과 담당 화면은 [`docs/screen-api-map.md`](../docs/screen-api-map.md) 5절에 있다.
+`venue` 만 대응 화면이 없어 스텁으로 남아 있다.
 
 `booth` 모듈은 배너 화면을 담지 않는다 — 배너는 이번 범위에서 **제외**다
 ([이슈 #103](https://github.com/expo-platform-team4/expo/issues/103)).
