@@ -2,6 +2,7 @@ package com.expo.booth.controller;
 
 import com.expo.booth.dto.BoothAllocationResponse;
 import com.expo.booth.dto.CancelBoothAllocationRequest;
+import com.expo.booth.dto.ReassignBoothAllocationRequest;
 import com.expo.booth.service.BoothAllocationService;
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
@@ -20,8 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 관리자용 부스 확정 배정 조회·취소. */
-@Tag(name = "Admin Booth Allocation", description = "관리자 부스 확정 배정 조회·취소")
+/** 관리자용 부스 확정 배정 조회·취소·재배정. */
+@Tag(name = "Admin Booth Allocation", description = "관리자 부스 확정 배정 조회·취소·재배정")
 @RestController
 @RequestMapping("/api/admin/booth-allocations")
 public class AdminBoothAllocationController {
@@ -56,5 +57,20 @@ public class AdminBoothAllocationController {
                 ApiResponse.ok(
                         boothAllocationService.cancel(
                                 allocationId, principal.getMemberId(), request.reason())));
+    }
+
+    @Operation(summary = "부스 확정 배정 재배정 (이중 배정 등 운영상 정정, 다른 부스 상품으로 이동)")
+    @PostMapping("/{allocationId}/reassign")
+    public ResponseEntity<ApiResponse<BoothAllocationResponse>> reassign(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long allocationId,
+            @Valid @RequestBody ReassignBoothAllocationRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        boothAllocationService.reassign(
+                                allocationId,
+                                request.boothProductId(),
+                                principal.getMemberId(),
+                                request.reason())));
     }
 }

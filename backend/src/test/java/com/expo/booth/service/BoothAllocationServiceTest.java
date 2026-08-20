@@ -2,6 +2,7 @@ package com.expo.booth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,22 +15,27 @@ import com.expo.booth.entity.BoothContent;
 import com.expo.booth.entity.BoothContentStatus;
 import com.expo.booth.entity.BoothManagementActionType;
 import com.expo.booth.entity.BoothManagementHistory;
+import com.expo.booth.entity.BoothProduct;
+import com.expo.booth.entity.BoothSalesStatus;
 import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
+import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-/** {@link BoothAllocationService} 의 조회·취소 규칙을 확인한다. */
+/** {@link BoothAllocationService} 의 조회·취소·재배정 규칙을 확인한다. */
 class BoothAllocationServiceTest {
 
     private static final Long ALLOCATION_ID = 1L;
@@ -38,9 +44,13 @@ class BoothAllocationServiceTest {
     private static final Long ORDER_ID = 4L;
     private static final Long BOOTH_PRODUCT_ID = 5L;
     private static final Long ADMIN_ID = 6L;
+    private static final Long NEW_BOOTH_PRODUCT_ID = 7L;
+    private static final Long NOTICE_ID = 8L;
+    private static final Long BOOTH_ID = 9L;
 
     private BoothAllocationRepository boothAllocationRepository;
     private BoothContentRepository boothContentRepository;
+    private BoothProductRepository boothProductRepository;
     private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private BoothAllocationService service;
 
@@ -48,11 +58,13 @@ class BoothAllocationServiceTest {
     void setUp() {
         boothAllocationRepository = mock(BoothAllocationRepository.class);
         boothContentRepository = mock(BoothContentRepository.class);
+        boothProductRepository = mock(BoothProductRepository.class);
         boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new BoothAllocationService(
                         boothAllocationRepository,
                         boothContentRepository,
+                        boothProductRepository,
                         boothManagementHistoryRepository,
                         new BoothAllocationConverter());
     }
@@ -69,6 +81,16 @@ class BoothAllocationServiceTest {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private BoothProduct product(BoothSalesStatus status) {
+        BoothProduct product =
+                BoothProduct.create(
+                        NOTICE_ID, BOOTH_ID, BigDecimal.valueOf(100000), null, true, null);
+        if (status != BoothSalesStatus.AVAILABLE) {
+            product.changeSalesStatus(status);
+        }
+        return product;
     }
 
     @Test
@@ -223,5 +245,121 @@ class BoothAllocationServiceTest {
                                 (BoothManagementHistory history) ->
                                         history.getActionType()
                                                 == BoothManagementActionType.CONTENT_HIDDEN));
+    }
+
+    @Test
+    void reassignRejectsWhenAllocationNotFound() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND);
+    }
+
+    @Test
+    void reassignRejectsWhenAllocationNotAssigned() {
+        BoothAllocation canceled = allocation();
+        canceled.cancel("이전 취소");
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceled));
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_REASSIGNABLE);
+    }
+
+    @Test
+    void reassignRejectsWhenNewProductNotFound() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    void reassignRejectsWhenNewProductNotAvailable() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(product(BoothSalesStatus.SOLD)));
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_AVAILABLE);
+    }
+
+    /** 동시에 같은 상품으로 재배정하려는 요청은 사전 검사를 통과해도 DB 유니크 제약으로 최종 차단돼야 한다. */
+    @Test
+    void reassignTranslatesUniqueConstraintViolationToProductNotAvailable() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(product(BoothSalesStatus.AVAILABLE)));
+        when(boothProductRepository.findById(BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(product(BoothSalesStatus.SOLD)));
+        when(boothAllocationRepository.saveAndFlush(any()))
+                .thenThrow(
+                        new DataIntegrityViolationException(
+                                "duplicate key value violates unique constraint"
+                                        + " \"booth_allocations_booth_product_id_key\""));
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_AVAILABLE);
+    }
+
+    @Test
+    void reassignSucceeds() {
+        BoothAllocation allocation = allocation();
+        BoothProduct previousProduct = product(BoothSalesStatus.SOLD);
+        BoothProduct newProduct = product(BoothSalesStatus.AVAILABLE);
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(newProduct));
+        when(boothProductRepository.findById(BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(previousProduct));
+
+        var response = service.reassign(ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정");
+
+        assertThat(response.boothProductId()).isEqualTo(NEW_BOOTH_PRODUCT_ID);
+        assertThat(previousProduct.getSalesStatus()).isEqualTo(BoothSalesStatus.AVAILABLE);
+        assertThat(newProduct.getSalesStatus()).isEqualTo(BoothSalesStatus.SOLD);
+        verify(boothManagementHistoryRepository)
+                .save(
+                        argThat(
+                                (BoothManagementHistory history) ->
+                                        history.getActionType()
+                                                        == BoothManagementActionType
+                                                                .INFORMATION_UPDATED
+                                                && ALLOCATION_ID.equals(
+                                                        history.getBoothAllocationId())
+                                                && "이중 배정 정정".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 }
