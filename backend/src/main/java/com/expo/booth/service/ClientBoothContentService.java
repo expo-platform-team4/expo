@@ -108,6 +108,17 @@ public class ClientBoothContentService {
         return toResponseWithFiles(getOwnedEntity(contentId, clientUserId));
     }
 
+    /** 배정 ID로 내 부스 콘텐츠 조회. 상태와 무관하게(초안 포함) 작성 중인 콘텐츠를 다시 찾을 때 쓴다. */
+    @Transactional(readOnly = true)
+    public BoothContentResponse getMineByAllocation(Long boothAllocationId, Long clientUserId) {
+        BoothContent content =
+                boothContentRepository
+                        .findByBoothAllocationIdAndClientUserId(boothAllocationId, clientUserId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_FOUND));
+        return toResponseWithFiles(content);
+    }
+
     /** 공개된 부스 콘텐츠 조회. 참여를 검토하는 방문자가 배정 ID로 조회한다. 내부 필드는 뺀 응답을 돌려준다. */
     @Transactional(readOnly = true)
     public PublicBoothContentResponse getPublished(Long boothAllocationId) {
