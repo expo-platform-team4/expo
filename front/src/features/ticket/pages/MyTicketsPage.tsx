@@ -60,8 +60,13 @@ const MyTicketsPage = () => {
 
 const ExpoTicketCard = ({ group }: { group: MemberTicketGroup }) => {
   const [index, setIndex] = useState(0)
-  const ticket = group.tickets[index]
-  const hasMultiple = group.tickets.length > 1
+  const ticketCount = group.tickets.length
+  // 카드는 expoId 로 유지되는데, refetch 로 마지막으로 보던 티켓이 목록에서 빠질 수 있다
+  // (예: 취소 처리). index 를 그대로 쓰면 undefined 를 가리켜 아래에서 터진다 — 항상
+  // 현재 목록 범위 안으로 잘라서 쓴다.
+  const activeIndex = Math.min(index, ticketCount - 1)
+  const ticket = group.tickets[activeIndex]
+  const hasMultiple = ticketCount > 1
 
   return (
     <Card>
@@ -75,7 +80,7 @@ const ExpoTicketCard = ({ group }: { group: MemberTicketGroup }) => {
           </p>
           {hasMultiple && (
             <p className="text-body-sm text-on-surface-variant mt-1">
-              티켓 {index + 1} / {group.tickets.length}
+              티켓 {activeIndex + 1} / {ticketCount}
             </p>
           )}
         </div>
@@ -85,7 +90,7 @@ const ExpoTicketCard = ({ group }: { group: MemberTicketGroup }) => {
             <button
               type="button"
               aria-label="이전 티켓"
-              onClick={() => setIndex((i) => (i - 1 + group.tickets.length) % group.tickets.length)}
+              onClick={() => setIndex((activeIndex - 1 + ticketCount) % ticketCount)}
               className="text-on-surface-variant hover:text-on-surface"
             >
               <ChevronLeft aria-hidden />
@@ -98,7 +103,7 @@ const ExpoTicketCard = ({ group }: { group: MemberTicketGroup }) => {
             <button
               type="button"
               aria-label="다음 티켓"
-              onClick={() => setIndex((i) => (i + 1) % group.tickets.length)}
+              onClick={() => setIndex((activeIndex + 1) % ticketCount)}
               className="text-on-surface-variant hover:text-on-surface"
             >
               <ChevronRight aria-hidden />
