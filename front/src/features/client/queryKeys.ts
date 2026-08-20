@@ -1,2 +1,7 @@
-// TODO: client 도메인 React Query 캐시 키
-export {}
+export const clientKeys = {
+  dashboardProfile: ['client', 'dashboard-profile'] as const,
+  myExpos: ['client', 'my-expos'] as const,
+  myConfirmedBooths: ['client', 'my-confirmed-booths'] as const,
+  myRecruitmentResults: ['client', 'my-recruitment-results'] as const,
+  settlements: (page: number) => ['client', 'settlements', page] as const,
+}
