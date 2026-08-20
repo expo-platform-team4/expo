@@ -9,4 +9,6 @@ export const ticketKeys = {
   all: ['ticket'] as const,
   purchasableTicketProducts: (expoId: number) =>
     [...ticketKeys.all, 'purchasableTicketProducts', expoId] as const,
+  myOrders: () => [...ticketKeys.all, 'myOrders'] as const,
+  myTickets: () => [...ticketKeys.all, 'myTickets'] as const,
 }
