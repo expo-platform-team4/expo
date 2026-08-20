@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.expo.booth.converter.BoothAllocationConverter;
 import com.expo.booth.entity.BoothAllocation;
+import com.expo.booth.entity.BoothContent;
+import com.expo.booth.entity.BoothContentStatus;
 import com.expo.booth.entity.BoothManagementActionType;
 import com.expo.booth.entity.BoothManagementHistory;
 import com.expo.booth.repository.BoothAllocationRepository;
@@ -16,6 +19,7 @@ import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +59,16 @@ class BoothAllocationServiceTest {
 
     private BoothAllocation allocation() {
         return BoothAllocation.create(APPLICATION_ID, ORDER_ID, BOOTH_PRODUCT_ID, CLIENT_USER_ID);
+    }
+
+    private static void withId(Object entity, Long id) {
+        try {
+            Field field = entity.getClass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
@@ -157,5 +171,57 @@ class BoothAllocationServiceTest {
                                                 && "이중 배정 정정".equals(history.getReason())
                                                 && ADMIN_ID.equals(
                                                         history.getProcessedByAdminId())));
+    }
+
+    /** 공개 상태인 콘텐츠는 배정 취소 시 같이 숨겨져야 한다 - 안 그러면 공개 사이트에 계속 떠 있게 된다. */
+    @Test
+    void cancelHidesPublishedContent() {
+        BoothAllocation allocation = allocation();
+        BoothContent content =
+                BoothContent.create(ALLOCATION_ID, CLIENT_USER_ID, "회사", "제목", null, null, null);
+        withId(content, 10L);
+        content.submitForReview();
+        content.approve(ADMIN_ID);
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
+        when(boothContentRepository.findByBoothAllocationId(ALLOCATION_ID))
+                .thenReturn(Optional.of(content));
+
+        service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정");
+
+        assertThat(content.getStatus()).isEqualTo(BoothContentStatus.HIDDEN);
+        verify(boothManagementHistoryRepository)
+                .save(
+                        argThat(
+                                (BoothManagementHistory history) ->
+                                        history.getActionType()
+                                                        == BoothManagementActionType.CONTENT_HIDDEN
+                                                && Long.valueOf(10L)
+                                                        .equals(history.getBoothContentId())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
+    }
+
+    /** 아직 공개 전(DRAFT 등)인 콘텐츠는 배정을 취소해도 숨김 처리할 게 없다. */
+    @Test
+    void cancelDoesNotHideUnpublishedContent() {
+        BoothAllocation allocation = allocation();
+        BoothContent content =
+                BoothContent.create(ALLOCATION_ID, CLIENT_USER_ID, "회사", "제목", null, null, null);
+        withId(content, 10L);
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
+        when(boothContentRepository.findByBoothAllocationId(ALLOCATION_ID))
+                .thenReturn(Optional.of(content));
+
+        service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정");
+
+        assertThat(content.getStatus()).isEqualTo(BoothContentStatus.DRAFT);
+        verify(boothManagementHistoryRepository, never())
+                .save(
+                        argThat(
+                                (BoothManagementHistory history) ->
+                                        history.getActionType()
+                                                == BoothManagementActionType.CONTENT_HIDDEN));
     }
 }
