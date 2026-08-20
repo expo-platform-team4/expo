@@ -132,7 +132,9 @@ const TicketQr = ({ ticket }: { ticket: MemberTicket }) => (
       달라지고, 좌우로 넘길 때 카드가 흔들리는 것처럼 보인다.
     */}
     <p className="text-body-sm text-on-surface-variant h-5 whitespace-nowrap">
-      {ticket.status === 'CHECKED_IN' && ticket.checkedInAt ? formatDateTime(ticket.checkedInAt) : ''}
+      {ticket.status === 'CHECKED_IN' && ticket.checkedInAt
+        ? formatDateTime(ticket.checkedInAt)
+        : ''}
     </p>
   </div>
 )
