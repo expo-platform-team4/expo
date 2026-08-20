@@ -25,6 +25,24 @@ const ALLOCATION_STATUS_VARIANT: Record<
   REASSIGNED: 'info',
 }
 
+/** 부스 주문 상태 라벨. `booth_orders.status` CHECK 제약과 같은 값 집합. */
+const BOOTH_ORDER_STATUS_LABEL: Record<string, string> = {
+  PENDING_PAYMENT: '결제 대기',
+  PAYMENT_COMPLETED: '결제 완료',
+  FAILED: '결제 실패',
+  CANCELED: '취소됨',
+  EXPIRED: '기간 만료',
+}
+
+/** 결제 상태 라벨. `booth_payments.status` CHECK 제약과 같은 값 집합. */
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  READY: '결제 준비',
+  IN_PROGRESS: '결제 진행 중',
+  APPROVED: '승인 완료',
+  CANCELED: '취소됨',
+  FAILED: '실패',
+}
+
 /** 참여 신청 상태 라벨. `features/participation/pages/ClientParticipationListPage.tsx` 와 같은 값 집합. */
 const applicationStatusLabel = (status: string): string => {
   switch (status) {
@@ -73,21 +91,36 @@ export const BoothCard = ({ booth }: { booth: MyConfirmedBooth }) => {
         </Badge>
       </div>
 
+      {/*
+        min-w-0 이 없으면 PAYMENT_COMPLETED 같은 긴 상태값이 그리드 칸을 밀고 나가
+        옆 칸 글자와 겹친다(실제로 겹쳤다). 라벨을 한국어로 바꿔 길이를 줄이면서
+        방어적으로 함께 걸어 둔다.
+      */}
       <dl className="text-body-md text-on-surface mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <div>
+        <div className="min-w-0">
           <dt className="text-label-sm text-on-surface-variant">참여 신청 상태</dt>
           <dd>{applicationStatusLabel(booth.applicationStatus)}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-label-sm text-on-surface-variant">부스 주문 상태</dt>
-          <dd>{booth.boothOrderStatus ?? '-'}</dd>
+          <dd>
+            {booth.boothOrderStatus
+              ? (BOOTH_ORDER_STATUS_LABEL[booth.boothOrderStatus] ?? booth.boothOrderStatus)
+              : '-'}
+          </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-label-sm text-on-surface-variant">결제 상태</dt>
           <dd>
-            {booth.paymentStatus ?? '-'}
-            {booth.paidAt ? ` · ${formatDateTime(booth.paidAt)}` : ''}
+            {booth.paymentStatus
+              ? (PAYMENT_STATUS_LABEL[booth.paymentStatus] ?? booth.paymentStatus)
+              : '-'}
           </dd>
+          {booth.paidAt && (
+            <dd className="text-label-sm text-on-surface-variant">
+              {formatDateTime(booth.paidAt)}
+            </dd>
+          )}
         </div>
       </dl>
 
