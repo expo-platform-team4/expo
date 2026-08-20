@@ -10,9 +10,20 @@
 -- 뷰 둘(v_member_mypage_orders, R__03 / v_admin_payment_refund_status, R__15)을 잠깐
 -- 지웠다가 ALTER 뒤 정의를 그대로 복사해 되살린다. 두 R__ 파일 자체는 건드리지 않는다 —
 -- 그 파일들이 여전히 정본이고, 이 마이그레이션의 재현 정의는 그 시점의 스냅샷일 뿐이다.
+--
+-- DROP 에 IF EXISTS 가 붙은 이유 — Flyway 는 **버전 마이그레이션(V)을 전부 돌린 뒤에야
+-- 반복 마이그레이션(R__)을 돌린다.** 두 뷰는 R__03·R__15 만 만들기 때문에, 빈 DB(CI 의
+-- Testcontainers, 새로 받은 팀원)에서는 이 파일이 실행되는 시점에 뷰가 **아직 없다.**
+-- IF EXISTS 없이 DROP 하면 42P01("view does not exist")로 마이그레이션이 실패한다.
+-- 이미 R__ 가 한 번 돌아 뷰가 있는 DB(개발 중인 로컬)에서는 그냥 성공해서 안 보이던
+-- 버그다 — 실제로 로컬은 통과하고 CI 만 32개 테스트가 깨져서 발견했다.
+--
+-- 아래 CREATE VIEW 는 두 경우 모두에 필요하다. 빈 DB 에서는 이 파일이 만든 뒤 R__ 가
+-- CREATE OR REPLACE 로 같은 정의를 덮어쓰고, 뷰가 이미 있던 DB 에서는 R__ 체크섬이
+-- 그대로라 Flyway 가 R__ 를 건너뛰므로 이 파일이 되살리지 않으면 뷰가 사라진 채 남는다.
 
-DROP VIEW v_member_mypage_orders;
-DROP VIEW v_admin_payment_refund_status;
+DROP VIEW IF EXISTS v_member_mypage_orders;
+DROP VIEW IF EXISTS v_admin_payment_refund_status;
 
 ALTER TABLE ticket_orders
     ALTER COLUMN order_number TYPE VARCHAR(50);
