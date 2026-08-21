@@ -200,6 +200,14 @@ const ChangePasswordSection = () => {
     })
   }
 
+  // react-hook-form 은 언마운트된 필드 값을 기본적으로 유지한다 — 취소하고 다시 열면
+  // 방금 입력했던 비밀번호가 그대로 남아 있으면 안 되니 폼과 mutation 상태를 같이 지운다.
+  const cancel = () => {
+    reset()
+    changePasswordMutation.reset()
+    setExpanded(false)
+  }
+
   return (
     <Card>
       <CardTitle>비밀번호 변경</CardTitle>
@@ -241,7 +249,7 @@ const ChangePasswordSection = () => {
             <Button type="submit" size="sm" loading={changePasswordMutation.isPending}>
               변경하기
             </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded(false)}>
+            <Button type="button" variant="secondary" size="sm" onClick={cancel}>
               취소
             </Button>
           </div>
@@ -269,6 +277,7 @@ const WithdrawalSection = () => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<WithdrawalFormValues>({ resolver: zodResolver(withdrawalSchema) })
 
@@ -279,6 +288,13 @@ const WithdrawalSection = () => {
     withdrawMutation.mutate(values.password, {
       onSuccess: () => router.replace('/login'),
     })
+  }
+
+  // 비밀번호 변경 섹션과 같은 이유 — 취소 후 다시 열었을 때 입력했던 비밀번호가 남아있지 않게 한다.
+  const cancel = () => {
+    reset()
+    withdrawMutation.reset()
+    setExpanded(false)
   }
 
   return (
@@ -315,7 +331,7 @@ const WithdrawalSection = () => {
             <Button type="submit" variant="danger" loading={withdrawMutation.isPending}>
               탈퇴하기
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setExpanded(false)}>
+            <Button type="button" variant="secondary" onClick={cancel}>
               취소
             </Button>
           </div>
