@@ -125,3 +125,59 @@ export const searchGuestOrder = async (
   )
   return data.data
 }
+
+// ---------------------------------------------------------------------------
+// 마이페이지 — 예매 내역 · 나의 티켓 (A-API-019~022, `member` 도메인
+// `MemberOrderController`·`MemberTicketController` 와 짝이다)
+// ---------------------------------------------------------------------------
+
+/** 백엔드 `MemberOrderResponse` 와 짝이다. 목록·상세를 나누지 않는다 — 항목 하나가 곧 상세다. */
+export type MemberOrder = {
+  orderId: number
+  orderNumber: string
+  expoId: number | null
+  expoTitle: string | null
+  orderStatus: TicketOrderStatus
+  paymentStatus: string | null
+  refundStatus: string | null
+  totalQuantity: number
+  ticketSubtotalAmount: number
+  bookingFeeRate: number
+  bookingFeeAmount: number
+  totalAmount: number
+  refundable: boolean
+  createdAt: string
+}
+
+/** `GET /api/users/me/orders` — 로그인한 회원 본인의 주문 최신순 전체. */
+export const fetchMyOrders = async (): Promise<MemberOrder[]> => {
+  const { data } = await api.get<ApiEnvelope<MemberOrder[]>>('/users/me/orders')
+  return data.data
+}
+
+/** 백엔드 `MemberTicketResponse` 와 짝이다. */
+export type MemberTicket = {
+  orderId: number
+  issuedTicketId: number
+  ticketCode: string
+  status: 'ISSUED' | 'CHECKED_IN' | 'CANCELED' | 'INVALIDATED'
+  checkedInAt: string | null
+  /** QR 원문. 입장에 쓸 수 없는 티켓(CANCELED·INVALIDATED)이면 null. */
+  qrPayload: string | null
+  orderItemQuantity: number
+}
+
+/** 백엔드 `MemberTicketGroupResponse` 와 짝이다. 박람회 1개 = 카드 1개. */
+export type MemberTicketGroup = {
+  expoId: number
+  expoTitle: string
+  eventStartAt: string
+  eventEndAt: string
+  tickets: MemberTicket[]
+}
+
+/** `GET /api/users/me/tickets` — 로그인한 회원 본인의 발권 티켓을 박람회별로 묶어 전체. */
+export const fetchMyTickets = async (): Promise<MemberTicketGroup[]> => {
+  const { data } = await api.get<ApiEnvelope<MemberTicketGroup[]>>('/users/me/tickets')
+  return data.data
+}

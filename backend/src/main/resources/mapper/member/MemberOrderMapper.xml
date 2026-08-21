@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.member.repository.MemberOrderMapper">
+
+    <select id="findByMemberUserId" resultType="com.expo.member.dto.MemberOrderResponse">
+        SELECT order_id,
+               order_number,
+               expo_id,
+               expo_title,
+               order_status,
+               payment_status,
+               refund_status,
+               total_quantity,
+               ticket_subtotal_amount,
+               booking_fee_rate,
+               booking_fee_amount,
+               total_amount,
+               refundable,
+               created_at
+        FROM v_member_mypage_orders
+        WHERE member_user_id = #{memberUserId}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>
