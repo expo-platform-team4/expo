@@ -46,6 +46,10 @@ app:
   qr:
     # HMAC-SHA256 키라 32자 이상이어야 한다 (@Size).
     token-secret: dGVzdC1vbmx5LXFyLXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24tdXNl
+  file:
+    # 위에서 spring.cloud.aws.s3.enabled=false 라 테스트에는 S3Client 빈이 없다.
+    # S3Mock 컨테이너를 하나 더 띄우는 대신 메모리 구현을 끼운다.
+    storage: memory
 
 logging:
   level:

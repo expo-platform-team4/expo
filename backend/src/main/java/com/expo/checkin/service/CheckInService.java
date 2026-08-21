@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>거절도 결과다</h2>
  *
- * 다섯 갈래 중 넷은 입장 거절이지만 <b>예외가 아니다.</b> 스캐너 화면이 이유를 구분해 보여줘야 하고, 거절도 이력으로 남겨야 하기 때문이다.
+ * 다섯 갈래 중 넷은 입장 거절이지만 <b>예외가 아니다.</b> 스캐너 화면이 이유를 구분해 보여줘야 하고, 거절도 이력으로 남겨야 하기 때문이다. 위조·미등록 QR 도 마찬가지로 남긴다 — 가리킬 티켓이 없어 {@code issued_ticket_id} 는 비어 있다(이슈 #73).
  */
 @Slf4j
 @Service
@@ -39,16 +39,19 @@ public class CheckInService {
     private final CheckInHistoryRepository checkInHistoryRepository;
     private final ExpoHostVerifier expoHostVerifier;
     private final TokenHasher tokenHasher;
+    private final RowLockTimeout rowLockTimeout;
 
     public CheckInService(
             IssuedTicketRepository issuedTicketRepository,
             CheckInHistoryRepository checkInHistoryRepository,
             ExpoHostVerifier expoHostVerifier,
-            TokenHasher tokenHasher) {
+            TokenHasher tokenHasher,
+            RowLockTimeout rowLockTimeout) {
         this.issuedTicketRepository = issuedTicketRepository;
         this.checkInHistoryRepository = checkInHistoryRepository;
         this.expoHostVerifier = expoHostVerifier;
         this.tokenHasher = tokenHasher;
+        this.rowLockTimeout = rowLockTimeout;
     }
 
     /**
@@ -64,7 +67,10 @@ public class CheckInService {
         Optional<IssuedTicket> found =
                 isBlank(qrPayload)
                         ? Optional.empty()
-                        : issuedTicketRepository.findByQrTokenHash(tokenHasher.hash(qrPayload));
+                        : rowLockTimeout.runWithTimeout(
+                                () ->
+                                        issuedTicketRepository.findByQrTokenHash(
+                                                tokenHasher.hash(qrPayload)));
 
         return process(found, expoId, clientUserId, CheckInMethod.QR, requestIp);
     }
@@ -83,7 +89,8 @@ public class CheckInService {
         Optional<IssuedTicket> found =
                 isBlank(ticketCode)
                         ? Optional.empty()
-                        : issuedTicketRepository.findByTicketCode(ticketCode.trim());
+                        : rowLockTimeout.runWithTimeout(
+                                () -> issuedTicketRepository.findByTicketCode(ticketCode.trim()));
 
         return process(found, expoId, clientUserId, CheckInMethod.MANUAL_CODE, requestIp);
     }
@@ -103,8 +110,22 @@ public class CheckInService {
         Instant now = Instant.now();
 
         if (found.isEmpty()) {
-            // 가리킬 티켓이 없어 check_in_histories 에 남길 수 없다 (issued_ticket_id 가 NOT NULL).
-            // 위조 시도일 수 있으므로 로그로는 반드시 남긴다. IP 는 마스킹한다 - docs/logging.md 7절.
+            // 가리킬 티켓이 없어도 이력에 남긴다 (이슈 #73). 반복 시도가 공격 탐지 신호인데
+            // 로그의 IP 는 마스킹되어 있어(docs/logging.md 7절) "같은 출처에서 몇 번" 을 셀 수
+            // 없다. 이력에는 request_ip 원문이 들어가므로 SQL 로 집계할 수 있다.
+            //
+            // 스캔값 자체는 남기지 않는다. 스캐너가 읽은 임의의 문자열이라 무엇이 들어올지
+            // 모르고, 추적에 필요한 것은 "언제 어디서 몇 번" 이지 내용이 아니다.
+            checkInHistoryRepository.save(
+                    CheckInHistory.record(
+                            null,
+                            expoId,
+                            clientUserId,
+                            method,
+                            CheckInResult.INVALID_TOKEN,
+                            now,
+                            requestIp,
+                            null));
             log.warn(
                     "체크인 실패 (일치하는 티켓 없음) expoId={} method={} ip={}",
                     expoId,

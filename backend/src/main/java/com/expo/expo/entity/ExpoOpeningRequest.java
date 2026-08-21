@@ -2,6 +2,9 @@ package com.expo.expo.entity;
 
 import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
 import com.expo.expo.exception.ExpoStateException;
+import com.expo.common.entity.BaseTimeEntity;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

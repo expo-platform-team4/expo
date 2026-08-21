@@ -9,11 +9,15 @@ import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
 import com.expo.venue.dto.VenueAvailabilityResponse;
+import com.expo.venue.dto.VenueReservationHistoryResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
+import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class VenueReservationService {
 
     private final VenueReservationRepository venueReservationRepository;
+    private final VenueReservationHistoryRepository venueReservationHistoryRepository;
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private final RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
     private final VirtualVenueRepository virtualVenueRepository;
@@ -40,6 +45,7 @@ public class VenueReservationService {
 
     public VenueReservationService(
             VenueReservationRepository venueReservationRepository,
+            VenueReservationHistoryRepository venueReservationHistoryRepository,
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
             RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
             VirtualVenueRepository virtualVenueRepository,
@@ -47,6 +53,7 @@ public class VenueReservationService {
             VenueZoneRepository venueZoneRepository,
             VenueReservationConverter venueReservationConverter) {
         this.venueReservationRepository = venueReservationRepository;
+        this.venueReservationHistoryRepository = venueReservationHistoryRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
         this.virtualVenueRepository = virtualVenueRepository;
@@ -101,6 +108,12 @@ public class VenueReservationService {
                                                 confirmedByAdminId);
                                 VenueReservation saved =
                                         venueReservationRepository.saveAndFlush(reservation);
+                                venueReservationHistoryRepository.save(
+                                        VenueReservationHistory.create(
+                                                saved.getId(),
+                                                VenueReservationActionType.CONFIRMED,
+                                                null,
+                                                confirmedByAdminId));
                                 return venueReservationConverter.toResponse(saved);
                             })
                     .toList();
@@ -138,9 +151,13 @@ public class VenueReservationService {
         return venueReservationConverter.toResponse(reservation);
     }
 
-    /** 박람회 취소 시 확정 장소 예약 해제. */
+    /**
+     * 관리자 직권 장소 예약 해제.
+     *
+     * <p>권한이 걸린 변경이라 처리 관리자·사유를 감사 이력({@code venue_reservation_histories})에 남긴다.
+     */
     @Transactional
-    public VenueReservationResponse release(Long reservationId) {
+    public VenueReservationResponse release(Long reservationId, Long adminId, String reason) {
         VenueReservation reservation =
                 venueReservationRepository
                         .findById(reservationId)
@@ -150,7 +167,23 @@ public class VenueReservationService {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
         reservation.release();
+        venueReservationHistoryRepository.save(
+                VenueReservationHistory.create(
+                        reservation.getId(), VenueReservationActionType.RELEASED, reason, adminId));
         return venueReservationConverter.toResponse(reservation);
+    }
+
+    /** 장소 예약별 확정·해제 이력 조회. 최신순. */
+    @Transactional(readOnly = true)
+    public List<VenueReservationHistoryResponse> listHistory(Long reservationId) {
+        if (!venueReservationRepository.existsById(reservationId)) {
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+        }
+        return venueReservationHistoryRepository
+                .findAllByVenueReservationIdOrderByCreatedAtDescIdDesc(reservationId)
+                .stream()
+                .map(venueReservationConverter::toHistoryResponse)
+                .toList();
     }
 
     /** 장소·홀·구역·기간 예약 가능 여부 조회. */

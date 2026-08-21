@@ -3,6 +3,7 @@ package com.expo.venue.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -18,11 +19,15 @@ import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
 import com.expo.venue.dto.CreateVenueReservationRequest;
 import com.expo.venue.dto.VenueAvailabilityResponse;
+import com.expo.venue.dto.VenueReservationHistoryResponse;
 import com.expo.venue.dto.VenueReservationResponse;
 import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationActionType;
+import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
@@ -48,6 +53,7 @@ class VenueReservationServiceTest {
     private static final Instant END = Instant.parse("2026-10-05T00:00:00Z");
 
     private VenueReservationRepository venueReservationRepository;
+    private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
     private VirtualVenueRepository virtualVenueRepository;
@@ -58,6 +64,7 @@ class VenueReservationServiceTest {
     @BeforeEach
     void setUp() {
         venueReservationRepository = mock(VenueReservationRepository.class);
+        venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeRequestZoneRepository = mock(RecruitmentNoticeRequestZoneRepository.class);
         virtualVenueRepository = mock(VirtualVenueRepository.class);
@@ -66,6 +73,7 @@ class VenueReservationServiceTest {
         service =
                 new VenueReservationService(
                         venueReservationRepository,
+                        venueReservationHistoryRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeRequestZoneRepository,
                         virtualVenueRepository,
@@ -173,6 +181,14 @@ class VenueReservationServiceTest {
                         });
         assertThat(responses.stream().map(VenueReservationResponse::venueZoneId))
                 .containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
+        verify(venueReservationHistoryRepository, times(2))
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.CONFIRMED
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
     }
 
     /**
@@ -274,7 +290,7 @@ class VenueReservationServiceTest {
     void releaseRejectsWhenReservationNotFound() {
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.release(1L))
+        assertThatThrownBy(() -> service.release(1L, ADMIN_ID, "정책 위반"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
@@ -286,7 +302,7 @@ class VenueReservationServiceTest {
         reservation.release();
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        assertThatThrownBy(() -> service.release(1L))
+        assertThatThrownBy(() -> service.release(1L, ADMIN_ID, "정책 위반"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
@@ -297,9 +313,46 @@ class VenueReservationServiceTest {
         VenueReservation reservation = confirmedReservation();
         when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
-        VenueReservationResponse response = service.release(1L);
+        VenueReservationResponse response = service.release(1L, ADMIN_ID, "정책 위반");
 
         assertThat(response.status()).isEqualTo(VenueReservationStatus.RELEASED);
+        verify(venueReservationHistoryRepository)
+                .save(
+                        argThat(
+                                (VenueReservationHistory history) ->
+                                        history.getActionType()
+                                                        == VenueReservationActionType.RELEASED
+                                                && "정책 위반".equals(history.getReason())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
+    }
+
+    @Test
+    void listHistoryRejectsWhenNotFound() {
+        when(venueReservationRepository.existsById(1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.listHistory(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+    }
+
+    @Test
+    void listHistoryReturnsConvertedHistories() {
+        when(venueReservationRepository.existsById(1L)).thenReturn(true);
+        VenueReservationHistory history =
+                VenueReservationHistory.create(
+                        1L, VenueReservationActionType.RELEASED, "정책 위반", ADMIN_ID);
+        when(venueReservationHistoryRepository
+                        .findAllByVenueReservationIdOrderByCreatedAtDescIdDesc(1L))
+                .thenReturn(List.of(history));
+
+        List<VenueReservationHistoryResponse> responses = service.listHistory(1L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).actionType()).isEqualTo(VenueReservationActionType.RELEASED);
+        assertThat(responses.get(0).reason()).isEqualTo("정책 위반");
+        assertThat(responses.get(0).processedByAdminId()).isEqualTo(ADMIN_ID);
     }
 
     @Test

@@ -88,6 +88,26 @@ public class User extends BaseTimeEntity {
         this.lastLoginAt = at;
     }
 
+    /** 마이페이지에서 닉네임을 변경한다 (A-API-016). 중복·형식 검증은 서비스 계층에서 끝낸 뒤 호출한다. */
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    /** 비밀번호 재설정 등으로 비밀번호 해시를 교체한다 (A-API-014). 이미 BCrypt로 인코딩된 값을 받는다. */
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
+    /**
+     * 회원 탈퇴 처리한다 (A-API-018). 소프트 삭제 — 행을 지우지 않고 상태만 바꾼다.
+     *
+     * <p>이미 탈퇴한 계정을 다시 탈퇴시키는 건 호출하는 쪽(서비스 계층)이 막는다. 여기서는 상태 전이 자체만 책임진다.
+     */
+    public void withdraw(Instant at) {
+        this.accountStatus = AccountStatus.WITHDRAWN;
+        this.withdrawnAt = at;
+    }
+
     public Long getId() {
         return id;
     }

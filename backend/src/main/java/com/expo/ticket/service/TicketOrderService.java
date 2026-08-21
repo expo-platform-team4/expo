@@ -158,7 +158,9 @@ public class TicketOrderService {
                         .phoneNumber(request.phoneNumber())
                         .build();
 
-        GuestOrder saveGuestOrder = guestOrderInfoRepository.save(guestOrder);
+        // saveAndFlush 로 즉시 INSERT 한다. GuestOrder.java 상단 Javadoc 참고 — 그냥 save() 로는
+        // 커밋 시점 auto-flush 가 이 엔티티를 누락해 guest_order_infos 행이 저장되지 않았다.
+        GuestOrder saveGuestOrder = guestOrderInfoRepository.saveAndFlush(guestOrder);
 
         Instant expireAt = Instant.now().plus(Duration.ofMinutes(10));
 

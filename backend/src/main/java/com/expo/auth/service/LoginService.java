@@ -14,6 +14,7 @@ import com.expo.jwt.JwtProperties;
 import com.expo.jwt.JwtTokenProvider;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -150,9 +151,14 @@ public class LoginService {
             throw new BusinessException(ErrorCode.WITHDRAWN_ACCOUNT);
         }
 
-        // 재발급 성공 → last_used_at 갱신 후 refresh_tokens UPDATE.
-        refreshToken.recordUsage(now);
-        refreshTokenRepository.save(refreshToken);
+        // 재발급 성공 → last_used_at 갱신. 단순 save() 대신 "revoked_at IS NULL일 때만" 이라는 조건을
+        // WHERE 절에 포함한 원자적 UPDATE를 쓴다. 위에서 조회한 뒤 이 시점 사이에 로그아웃(A-API-012)이
+        // 먼저 커밋해 토큰을 폐기했다면, save()는 그 revoked_at을 다시 null로 덮어써버릴 수 있지만
+        // 이 UPDATE는 0행에 적용되어 실패한다 (재발급-로그아웃 경합 방지).
+        int updated = refreshTokenRepository.markUsedIfActive(refreshToken.getId(), now);
+        if (updated == 0) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
 
         // 새 Access Token(JWT) 발급. Refresh Token은 그대로 (재발급 API에서는 새로 만들지 않음).
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole());
@@ -160,5 +166,23 @@ public class LoginService {
         // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
         // Access Token 재발급이 성공했을 때 클라이언트에 돌려줄 응답 DTO
         return new TokenReissueResponse(accessToken, jwtProperties.getAccessTokenExpireMinutes());
+    }
+
+    /**
+     * 전체 기기 로그아웃 (A-API-012).
+     *
+     * <p>이 사용자 명의로 발급된, 아직 폐기되지 않은 Refresh Token을 전부 폐기(revoked_at 채움)한다. Access
+     * Token은 Stateless JWT라 서버에서 즉시 무효화할 수 없다 — 클라이언트가 토큰을 버리고, 만료 시간이 지나면
+     * 자연히 못 쓰게 된다.
+     */
+    @Transactional
+    public void logout(Long userId) {
+        Instant now = Instant.now();
+        List<RefreshToken> activeTokens =
+                refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId);
+        for (RefreshToken token : activeTokens) {
+            token.revoke(now);
+        }
+        refreshTokenRepository.saveAll(activeTokens);
     }
 }

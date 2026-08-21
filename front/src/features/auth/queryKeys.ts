@@ -1,2 +1,3 @@
-// TODO: auth 도메인 React Query 캐시 키
-export {}
+export const authKeys = {
+  profile: ['auth', 'profile'] as const,
+}

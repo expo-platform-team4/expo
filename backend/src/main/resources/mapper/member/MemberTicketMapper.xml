@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.member.repository.MemberTicketMapper">
+
+    <select id="findByMemberUserId" resultType="com.expo.member.dto.MemberTicketRow">
+        SELECT order_id,
+               issued_ticket_id,
+               ticket_code,
+               status,
+               checked_in_at,
+               expo_id,
+               expo_title,
+               secure_qr_access,
+               event_start_at,
+               event_end_at,
+               order_item_quantity
+        FROM v_member_mypage_tickets
+        WHERE member_user_id = #{memberUserId}
+        ORDER BY event_start_at DESC, issued_ticket_id ASC
+    </select>
+
+</mapper>
