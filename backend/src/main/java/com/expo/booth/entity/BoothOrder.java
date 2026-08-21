@@ -93,6 +93,11 @@ public class BoothOrder extends BaseTimeEntity {
         this.status = BoothOrderStatus.CANCELED;
     }
 
+    /** 결제 대기 시간(15분)을 넘겨 시스템이 만료 처리. */
+    public void expire() {
+        this.status = BoothOrderStatus.EXPIRED;
+    }
+
     /** 결제 승인 완료. */
     public void markPaid() {
         this.status = BoothOrderStatus.PAYMENT_COMPLETED;

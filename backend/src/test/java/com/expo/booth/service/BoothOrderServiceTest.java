@@ -3,6 +3,7 @@ package com.expo.booth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,9 +25,11 @@ import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -240,6 +243,16 @@ class BoothOrderServiceTest {
                 .isEqualTo(ErrorCode.BOOTH_ORDER_NOT_FOUND);
     }
 
+    private static void withId(Object entity, Long id) {
+        try {
+            Field field = entity.getClass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(entity, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private BoothOrder pendingOrder() {
         return BoothOrder.create(
                 APPLICATION_ID,
@@ -301,5 +314,48 @@ class BoothOrderServiceTest {
         assertThat(reservation.getStatus()).isEqualTo(BoothReservationStatus.RELEASED);
         assertThat(product.getSalesStatus()).isEqualTo(BoothSalesStatus.AVAILABLE);
         assertThat(application.getStatus().name()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void expireDueReleasesReservationRevertsProductAndApplication() {
+        BoothOrder order = pendingOrder();
+        withId(order, ORDER_ID);
+        BoothProduct product = availableProduct();
+        product.reserve();
+        ParticipationApplication application = draftApplication(BOOTH_PRODUCT_ID);
+        application.startPayment(ORDER_ID);
+        BoothReservation reservation =
+                BoothReservation.create(BOOTH_PRODUCT_ID, ORDER_ID, CLIENT_USER_ID, Instant.now());
+
+        when(boothOrderRepository.findAllByStatusAndExpiresAtBefore(
+                        eq(BoothOrderStatus.PENDING_PAYMENT), any()))
+                .thenReturn(List.of(order));
+        when(boothReservationRepository.findFirstByBoothOrderIdAndStatus(
+                        ORDER_ID, BoothReservationStatus.ACTIVE))
+                .thenReturn(Optional.of(reservation));
+        when(boothProductRepository.findById(BOOTH_PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(application));
+
+        var result = service.expireDue();
+
+        assertThat(result.expiredCount()).isEqualTo(1);
+        assertThat(result.expired().get(0).orderId()).isEqualTo(ORDER_ID);
+        assertThat(order.getStatus().name()).isEqualTo("EXPIRED");
+        assertThat(reservation.getStatus()).isEqualTo(BoothReservationStatus.RELEASED);
+        assertThat(product.getSalesStatus()).isEqualTo(BoothSalesStatus.AVAILABLE);
+        assertThat(application.getStatus().name()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void expireDueReturnsEmptyWhenNoneDue() {
+        when(boothOrderRepository.findAllByStatusAndExpiresAtBefore(
+                        eq(BoothOrderStatus.PENDING_PAYMENT), any()))
+                .thenReturn(List.of());
+
+        var result = service.expireDue();
+
+        assertThat(result.expiredCount()).isZero();
+        assertThat(result.expired()).isEmpty();
     }
 }

@@ -1,6 +1,7 @@
 package com.expo.booth.service;
 
 import com.expo.booth.converter.BoothOrderConverter;
+import com.expo.booth.dto.BoothOrderExpirationResult;
 import com.expo.booth.dto.BoothOrderResponse;
 import com.expo.booth.entity.BoothOrder;
 import com.expo.booth.entity.BoothOrderStatus;
@@ -20,6 +21,7 @@ import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -163,7 +165,47 @@ public class BoothOrderService {
             throw new BusinessException(ErrorCode.BOOTH_ORDER_NOT_CANCELABLE);
         }
         order.cancel();
+        releaseReservationAndRevertProduct(orderId, order);
+        participationApplicationRepository
+                .findByIdAndClientUserId(order.getApplicationId(), clientUserId)
+                .ifPresent(ParticipationApplication::cancelPayment);
 
+        return boothOrderConverter.toResponse(order);
+    }
+
+    /**
+     * 결제 대기 시간(15분)을 넘긴 주문을 일괄 만료 처리한다. 취소와 마찬가지로 임시 확보를 풀고 부스 상품·신청서를 되돌리지만,
+     * 본인 확인 없이 시스템이 만료 시각만 보고 처리한다는 점이 다르다.
+     *
+     * <p>여러 번 호출해도 안전하다 — 이미 처리된 주문은 더 이상 {@code PENDING_PAYMENT} 가 아니므로 다시 조회되지
+     * 않는다. 다중 인스턴스에서의 중복 실행 방지 장치가 없어 아직 스케줄러는 붙이지 않았다({@code
+     * InternalSettlementController} 와 동일한 판단).
+     */
+    @Transactional
+    public BoothOrderExpirationResult expireDue() {
+        List<BoothOrder> dueOrders =
+                boothOrderRepository.findAllByStatusAndExpiresAtBefore(
+                        BoothOrderStatus.PENDING_PAYMENT, Instant.now());
+        List<BoothOrderExpirationResult.Expired> expired =
+                dueOrders.stream().map(this::expireOne).toList();
+        return new BoothOrderExpirationResult(expired.size(), expired);
+    }
+
+    private BoothOrderExpirationResult.Expired expireOne(BoothOrder order) {
+        order.expire();
+        releaseReservationAndRevertProduct(order.getId(), order);
+        participationApplicationRepository
+                .findById(order.getApplicationId())
+                .ifPresent(ParticipationApplication::cancelPayment);
+        return new BoothOrderExpirationResult.Expired(
+                order.getId(), order.getOrderNumber(), order.getApplicationId());
+    }
+
+    /**
+     * 이 주문이 실제로 갖고 있던 활성 예약을 찾아 해제했을 때만 부스 상품을 되돌린다. 상품 상태만 보고 되돌리면, 이 주문의 예약이
+     * 이미 만료·해제된 뒤 다른 주문이 같은 상품을 새로 예약한 경우 그 새 예약을 엉뚱하게 풀어버릴 수 있다.
+     */
+    private void releaseReservationAndRevertProduct(Long orderId, BoothOrder order) {
         boolean releasedOwnReservation =
                 boothReservationRepository
                         .findFirstByBoothOrderIdAndStatus(orderId, BoothReservationStatus.ACTIVE)
@@ -180,12 +222,6 @@ public class BoothOrderService {
                     .filter(product -> product.getSalesStatus() == BoothSalesStatus.RESERVED)
                     .ifPresent(BoothProduct::cancelReservation);
         }
-
-        participationApplicationRepository
-                .findByIdAndClientUserId(order.getApplicationId(), clientUserId)
-                .ifPresent(ParticipationApplication::cancelPayment);
-
-        return boothOrderConverter.toResponse(order);
     }
 
     private BoothOrder getOwnedEntity(Long orderId, Long clientUserId) {

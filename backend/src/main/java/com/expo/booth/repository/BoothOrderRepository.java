@@ -1,7 +1,10 @@
 package com.expo.booth.repository;
 
 import com.expo.booth.entity.BoothOrder;
+import com.expo.booth.entity.BoothOrderStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -17,4 +20,7 @@ public interface BoothOrderRepository extends JpaRepository<BoothOrder, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM BoothOrder o WHERE o.id = :id")
     Optional<BoothOrder> findByIdForUpdate(@Param("id") Long id);
+
+    /** 만료 시각이 지났는데 아직 정리되지 않은 주문. 만료 일괄 처리 대상 조회용. */
+    List<BoothOrder> findAllByStatusAndExpiresAtBefore(BoothOrderStatus status, Instant expiresAt);
 }
