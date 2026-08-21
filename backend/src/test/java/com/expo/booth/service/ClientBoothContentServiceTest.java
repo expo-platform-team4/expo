@@ -67,6 +67,8 @@ class ClientBoothContentServiceTest {
                         new ExternalLinkConverter());
         when(externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
                 .thenReturn(List.of());
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
     }
 
     private BoothAllocation allocation() {
@@ -156,6 +158,25 @@ class ClientBoothContentServiceTest {
                 .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
     }
 
+    /** 배정이 관리자 직권으로 취소된 뒤에는, 콘텐츠 자체가 초안 상태라도 더는 수정할 수 없어야 한다. */
+    @Test
+    void updateRejectsWhenAllocationCanceled() {
+        BoothContent content = content();
+        BoothAllocation canceledAllocation = allocation();
+        canceledAllocation.cancel("이중 배정 정정");
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceledAllocation));
+        UpdateBoothContentRequest request =
+                new UpdateBoothContentRequest("새 회사", "새 제목", null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.update(CONTENT_ID, request, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+    }
+
     @Test
     void updateSucceedsWhenDraft() {
         BoothContent content = content();
@@ -182,6 +203,26 @@ class ClientBoothContentServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_CONTENT_NOT_SUBMITTABLE);
+    }
+
+    /**
+     * 배정이 취소된 뒤에는 검수 요청도 막아야 한다 - 안 그러면 취소된 배정의 콘텐츠가 관리자 승인을 거쳐 새로 공개될 수
+     * 있다.
+     */
+    @Test
+    void submitForReviewRejectsWhenAllocationCanceled() {
+        BoothContent content = content();
+        BoothAllocation canceledAllocation = allocation();
+        canceledAllocation.cancel("이중 배정 정정");
+        when(boothContentRepository.findByIdAndClientUserId(CONTENT_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(content));
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceledAllocation));
+
+        assertThatThrownBy(() -> service.submitForReview(CONTENT_ID, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
     }
 
     /** 검수 요청만으로는 바로 공개되지 않고, 관리자 승인 전 상태(UNDER_REVIEW)로만 넘어가야 한다. */
