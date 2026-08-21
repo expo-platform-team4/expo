@@ -16,6 +16,8 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -35,6 +37,7 @@ public class BoothOrderService {
     private final BoothReservationRepository boothReservationRepository;
     private final BoothProductRepository boothProductRepository;
     private final ParticipationApplicationRepository participationApplicationRepository;
+    private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final BoothOrderConverter boothOrderConverter;
 
     public BoothOrderService(
@@ -42,17 +45,22 @@ public class BoothOrderService {
             BoothReservationRepository boothReservationRepository,
             BoothProductRepository boothProductRepository,
             ParticipationApplicationRepository participationApplicationRepository,
+            RecruitmentNoticeRepository recruitmentNoticeRepository,
             BoothOrderConverter boothOrderConverter) {
         this.boothOrderRepository = boothOrderRepository;
         this.boothReservationRepository = boothReservationRepository;
         this.boothProductRepository = boothProductRepository;
         this.participationApplicationRepository = participationApplicationRepository;
+        this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.boothOrderConverter = boothOrderConverter;
     }
 
     /**
      * 부스 상품 주문 생성. 신청서가 초안 상태이고 부스 상품을 선택해뒀어야 하며, 그 상품이 구매 가능한 상태여야 한다. 생성과 동시에 부스
      * 상품을 임시 확보한다.
+     *
+     * <p>신청서 작성 이후 공고가 조기 마감·취소됐을 수 있어, 신청서 상태만으로는 걸러지지 않는다 - 여기서 공고가 아직
+     * 게시(OPEN) 중인지 다시 확인한다.
      */
     @Transactional
     public BoothOrderResponse create(Long applicationId, Long clientUserId) {
@@ -65,6 +73,14 @@ public class BoothOrderService {
                                                 ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
         if (application.getStatus() != ParticipationApplicationStatus.DRAFT) {
             throw new BusinessException(ErrorCode.BOOTH_ORDER_NOT_ALLOWED);
+        }
+        boolean noticeOpen =
+                recruitmentNoticeRepository
+                        .findById(application.getRecruitmentNoticeId())
+                        .map(notice -> notice.getStatus() == RecruitmentNoticeStatus.OPEN)
+                        .orElse(false);
+        if (!noticeOpen) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
         Long boothProductId = application.getSelectedBoothProductId();
         if (boothProductId == null) {

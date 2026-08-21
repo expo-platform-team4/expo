@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,8 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import com.expo.recruitment.entity.RecruitmentNotice;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -36,11 +39,13 @@ class BoothOrderServiceTest {
     private static final Long BOOTH_PRODUCT_ID = 3L;
     private static final Long ORDER_ID = 4L;
     private static final Long NOTICE_ID = 5L;
+    private static final Long ADMIN_ID = 6L;
 
     private BoothOrderRepository boothOrderRepository;
     private BoothReservationRepository boothReservationRepository;
     private BoothProductRepository boothProductRepository;
     private ParticipationApplicationRepository participationApplicationRepository;
+    private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private BoothOrderService service;
 
     @BeforeEach
@@ -49,13 +54,30 @@ class BoothOrderServiceTest {
         boothReservationRepository = mock(BoothReservationRepository.class);
         boothProductRepository = mock(BoothProductRepository.class);
         participationApplicationRepository = mock(ParticipationApplicationRepository.class);
+        recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         service =
                 new BoothOrderService(
                         boothOrderRepository,
                         boothReservationRepository,
                         boothProductRepository,
                         participationApplicationRepository,
+                        recruitmentNoticeRepository,
                         new BoothOrderConverter());
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(openNotice()));
+    }
+
+    private RecruitmentNotice openNotice() {
+        RecruitmentNotice notice =
+                RecruitmentNotice.create(
+                        100L,
+                        200L,
+                        "제목",
+                        "내용",
+                        Instant.now(),
+                        Instant.now().plus(Duration.ofDays(1)),
+                        ADMIN_ID);
+        notice.publish();
+        return notice;
     }
 
     private ParticipationApplication draftApplication(Long boothProductId) {
@@ -98,6 +120,33 @@ class BoothOrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_ORDER_NOT_ALLOWED);
+    }
+
+    /**
+     * 신청서를 만든 뒤 공고가 조기 마감·취소돼도 신청서 자체는 계속 DRAFT 로 남아있을 수 있다. 신청서 상태만 보면
+     * 주문·결제를 계속 진행할 수 있어 보이므로, 공고 상태를 다시 확인해서 막아야 한다.
+     */
+    @Test
+    void createRejectsWhenNoticeNotOpen() {
+        RecruitmentNotice draftNotice =
+                RecruitmentNotice.create(
+                        100L,
+                        200L,
+                        "제목",
+                        "내용",
+                        Instant.now(),
+                        Instant.now().plus(Duration.ofDays(1)),
+                        ADMIN_ID);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(draftNotice));
+        when(participationApplicationRepository.findByIdAndClientUserId(
+                        APPLICATION_ID, CLIENT_USER_ID))
+                .thenReturn(Optional.of(draftApplication(BOOTH_PRODUCT_ID)));
+
+        assertThatThrownBy(() -> service.create(APPLICATION_ID, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
+        verify(boothProductRepository, never()).findById(any());
     }
 
     @Test
