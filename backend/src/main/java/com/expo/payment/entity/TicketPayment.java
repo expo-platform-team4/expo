@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "ticket_payments")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TicketPayments extends BaseTimeEntity {
+public class TicketPayment extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,14 +67,14 @@ public class TicketPayments extends BaseTimeEntity {
     private String idempotencyKey;
 
     /** 결제 요청을 READY 상태로 생성한다. */
-    public static TicketPayments create(
+    public static TicketPayment create(
             Long ticketOrderId,
             String pgOrderId,
             BigDecimal requestedAmount,
             BigDecimal ticketSubtotalAmount,
             BigDecimal bookingFeeAmount,
             String idempotencyKey) {
-        TicketPayments payment = new TicketPayments();
+        TicketPayment payment = new TicketPayment();
         payment.ticketOrderId = ticketOrderId;
         payment.pgOrderId = pgOrderId;
         payment.requestedAmount = requestedAmount;

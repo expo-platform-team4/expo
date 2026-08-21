@@ -103,6 +103,7 @@ public enum ErrorCode {
     BOOTH_ALLOCATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 배정입니다."),
     BOOTH_ALLOCATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 취소된 배정입니다."),
     BOOTH_ALLOCATION_NOT_ASSIGNED(HttpStatus.CONFLICT, "확정 배정 상태에서만 부스 콘텐츠를 작성할 수 있습니다."),
+    PAYMENT_RESERVATION_NOT_FOUND(HttpStatus.CONFLICT, "결제 가능한 재고 예약을 찾을 수 없습니다."),
 
     // --- 부스 콘텐츠 ---
     BOOTH_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠입니다."),
