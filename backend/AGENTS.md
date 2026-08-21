@@ -51,6 +51,20 @@ Jackson 3 는 `spring.jackson.serialization.write-dates-as-timestamps` 같은 �
 [`src/main/resources/db/migration/README.md`](src/main/resources/db/migration/README.md) 에 있다.
 **마이그레이션을 건드리기 전에 반드시 읽는다.**
 
+## 새 API 경로를 만들 때
+
+`SecurityConfig` 의 기본값은 **`anyRequest().authenticated()`** 다. 규칙을 적지 않은 경로는 401 이 난다.
+
+- 역할이 필요한 경로면 `/api/admin/**` · `/api/client/**` · `/api/member/**` · `/api/users/**`
+  중 맞는 접두어 아래에 만든다. 그러면 규칙을 따로 안 적어도 된다
+- **인증 없이 열어야 하면 `SecurityConfig` 에 직접 올린다.** 메서드까지 좁혀서 적는다
+  (읽기만 열 생각으로 경로만 열면 같은 경로의 쓰기까지 열린다)
+
+기본값은 원래 `permitAll` 이었다. 그 시절에는 규칙을 깜빡하면 조용히 공개됐다 — 컴파일도
+기동도 테스트도 통과해서 아무도 몰랐다. 실제로 `POST /api/orders/member` 가 인증 없이
+호출 가능했고 `@AuthenticationPrincipal` 이 `null` 이라 500 이 났다 (이슈 #94).
+`SecurityDefaultDenyTest` 가 이 기본값이 되돌아가는 것을 막는다.
+
 ## 로깅
 
 - 로거는 `@Slf4j` 로만 만든다. `LoggerFactory.getLogger` 직접 호출은 Checkstyle 이 막는다
