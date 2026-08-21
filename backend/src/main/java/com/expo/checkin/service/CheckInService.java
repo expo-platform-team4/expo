@@ -39,16 +39,19 @@ public class CheckInService {
     private final CheckInHistoryRepository checkInHistoryRepository;
     private final ExpoHostVerifier expoHostVerifier;
     private final TokenHasher tokenHasher;
+    private final RowLockTimeout rowLockTimeout;
 
     public CheckInService(
             IssuedTicketRepository issuedTicketRepository,
             CheckInHistoryRepository checkInHistoryRepository,
             ExpoHostVerifier expoHostVerifier,
-            TokenHasher tokenHasher) {
+            TokenHasher tokenHasher,
+            RowLockTimeout rowLockTimeout) {
         this.issuedTicketRepository = issuedTicketRepository;
         this.checkInHistoryRepository = checkInHistoryRepository;
         this.expoHostVerifier = expoHostVerifier;
         this.tokenHasher = tokenHasher;
+        this.rowLockTimeout = rowLockTimeout;
     }
 
     /**
@@ -64,7 +67,10 @@ public class CheckInService {
         Optional<IssuedTicket> found =
                 isBlank(qrPayload)
                         ? Optional.empty()
-                        : issuedTicketRepository.findByQrTokenHash(tokenHasher.hash(qrPayload));
+                        : rowLockTimeout.runWithTimeout(
+                                () ->
+                                        issuedTicketRepository.findByQrTokenHash(
+                                                tokenHasher.hash(qrPayload)));
 
         return process(found, expoId, clientUserId, CheckInMethod.QR, requestIp);
     }
@@ -83,7 +89,8 @@ public class CheckInService {
         Optional<IssuedTicket> found =
                 isBlank(ticketCode)
                         ? Optional.empty()
-                        : issuedTicketRepository.findByTicketCode(ticketCode.trim());
+                        : rowLockTimeout.runWithTimeout(
+                                () -> issuedTicketRepository.findByTicketCode(ticketCode.trim()));
 
         return process(found, expoId, clientUserId, CheckInMethod.MANUAL_CODE, requestIp);
     }

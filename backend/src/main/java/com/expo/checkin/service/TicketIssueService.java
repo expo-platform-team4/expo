@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TicketIssueService {
 
     /** 주문 상태가 이 값일 때만 발권한다. {@code ticket_orders.status} 의 CHECK 값이다. */
@@ -60,26 +62,8 @@ public class TicketIssueService {
     private final QrTokenGenerator qrTokenGenerator;
     private final AccessTokenGenerator accessTokenGenerator;
     private final TokenHasher tokenHasher;
+    private final RowLockTimeout rowLockTimeout;
     private final ApplicationEventPublisher eventPublisher;
-
-    public TicketIssueService(
-            TicketIssuanceMapper ticketIssuanceMapper,
-            IssuedTicketRepository issuedTicketRepository,
-            TicketAccessTokenRepository ticketAccessTokenRepository,
-            TicketCodeGenerator ticketCodeGenerator,
-            QrTokenGenerator qrTokenGenerator,
-            AccessTokenGenerator accessTokenGenerator,
-            TokenHasher tokenHasher,
-            ApplicationEventPublisher eventPublisher) {
-        this.ticketIssuanceMapper = ticketIssuanceMapper;
-        this.issuedTicketRepository = issuedTicketRepository;
-        this.ticketAccessTokenRepository = ticketAccessTokenRepository;
-        this.ticketCodeGenerator = ticketCodeGenerator;
-        this.qrTokenGenerator = qrTokenGenerator;
-        this.accessTokenGenerator = accessTokenGenerator;
-        this.tokenHasher = tokenHasher;
-        this.eventPublisher = eventPublisher;
-    }
 
     /**
      * 주문의 구매 수량만큼 입장권을 발급하고, QR 확인 링크용 접근 토큰을 하나 만든다.
@@ -132,7 +116,11 @@ public class TicketIssueService {
      * 명시해 두었다.
      */
     private TicketIssuanceOrder loadPaidOrder(Long ticketOrderId) {
-        TicketIssuanceOrder order = ticketIssuanceMapper.findOrderForIssuance(ticketOrderId);
+        // FOR UPDATE 로 주문 행을 잠근다. 대기 상한이 없으면 앞선 트랜잭션이 멈췄을 때
+        // 결제 웹훅 재시도가 무한정 쌓인다 (이슈 #74).
+        TicketIssuanceOrder order =
+                rowLockTimeout.runWithTimeout(
+                        () -> ticketIssuanceMapper.findOrderForIssuance(ticketOrderId));
         if (order == null) {
             throw new BusinessException(ErrorCode.TICKET_ORDER_NOT_FOUND);
         }

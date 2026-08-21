@@ -200,6 +200,11 @@ public enum ErrorCode {
     MEMBER_WITHDRAWAL_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다."),
 
+    // --- 동시성 ---
+    // 행 잠금 대기가 상한을 넘었다(이슈 #74). 요청이 잘못된 것이 아니라 지금 겹친 것이라
+    // 409 다 — 클라이언트가 그대로 다시 보내면 성공할 수 있다.
+    RESOURCE_BUSY(HttpStatus.CONFLICT, "다른 처리가 진행 중입니다. 잠시 후 다시 시도해 주세요."),
+
     // --- 파일 ---
     // 권한이 없는 비공개 파일도 이 코드로 돌려준다. 403 으로 구분해 주면 ID 를 훑어
     // 남의 파일이 존재하는지 알아낼 수 있다.

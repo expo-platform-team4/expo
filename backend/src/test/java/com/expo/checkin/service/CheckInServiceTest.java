@@ -17,6 +17,7 @@ import com.expo.checkin.repository.CheckInHistoryRepository;
 import com.expo.checkin.repository.IssuedTicketRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.support.PassthroughRowLockTimeout;
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.Optional;
@@ -59,7 +60,8 @@ class CheckInServiceTest {
                         issuedTicketRepository,
                         checkInHistoryRepository,
                         expoHostVerifier,
-                        tokenHasher);
+                        tokenHasher,
+                        new PassthroughRowLockTimeout());
     }
 
     /** 발권이 만드는 것과 같은 모양의 티켓. QR 원문도 실제와 같은 방식으로 만든다. */
