@@ -151,12 +151,17 @@ expo/
 루트 패키지는 `com.expo` 다. 진입점 `ExpoApplication` 이 이 패키지에 있으므로
 컴포넌트 스캔과 MyBatis 매퍼 스캔이 하위 도메인 전체를 자동으로 훑는다. 도메인을 추가해도 스캔 설정은 손대지 않는다.
 
-### 집합체 도메인 (17개)
+### 집합체 도메인 (18개)
 
 ```
 auth  member  expo  banner  ticket  order  payment  refund  checkin
 notification  settlement  client  admin  recruitment  participation  venue  booth
+file
 ```
+
+`file` 은 업로드 파일의 저장소 연동과 `file_metadata` 를 맡는다. 11개 테이블이 FK 12개로 그 테이블을
+가리켜서, 도메인마다 따로 만들면 응답 형식과 권한 규칙이 그 수만큼 갈라진다. 파일을 **쓰는** 쪽
+(박람회 이미지, 부스 콘텐츠, 정산 리포트)은 업로드 결과인 `fileId` 만 자기 테이블에 담는다.
 
 각 도메인은 **예외 없이** 아래 8개 하위 패키지를 갖는다.
 

@@ -187,7 +187,23 @@ public enum ErrorCode {
     // --- 회원 마이페이지 ---
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."),
     MEMBER_WITHDRAWAL_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
-    CURRENT_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다.");
+    CURRENT_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다."),
+
+    // --- 파일 ---
+    // 권한이 없는 비공개 파일도 이 코드로 돌려준다. 403 으로 구분해 주면 ID 를 훑어
+    // 남의 파일이 존재하는지 알아낼 수 있다.
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
+    FILE_EMPTY(HttpStatus.BAD_REQUEST, "빈 파일은 업로드할 수 없습니다."),
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기가 허용 범위를 넘었습니다."),
+    FILE_CONTENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 형식입니다."),
+    FILE_READ_FAILED(HttpStatus.BAD_REQUEST, "업로드한 파일을 읽지 못했습니다."),
+    FILE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "파일 저장소에 연결하지 못했습니다."),
+
+    // --- 박람회 이미지 · 자료 ---
+    EXPO_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "박람회에 연결된 자료를 찾을 수 없습니다."),
+    EXPO_CONTENT_DUPLICATE_FILE(HttpStatus.CONFLICT, "이미 연결된 파일입니다."),
+    EXPO_CONTENT_FILE_NOT_PUBLIC(HttpStatus.BAD_REQUEST, "공개 파일만 박람회에 연결할 수 있습니다."),
+    EXPO_CONTENT_NOT_AN_IMAGE(HttpStatus.BAD_REQUEST, "이미지 파일이 아닙니다.");
 
     private final HttpStatus status;
     private final String message;

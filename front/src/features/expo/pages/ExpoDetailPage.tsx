@@ -1,3 +1,6 @@
+/* eslint-disable @next/next/no-img-element -- 이미지 경로가 /api/files/{id}/content 라
+   Next 이미지 최적화 서버를 한 번 더 태울 이유가 없다. 저장소의 다른 이미지(SidebarShell 의
+   아바타)도 같은 이유로 <img> 를 쓴다. */
 'use client'
 
 import Link from 'next/link'
@@ -14,26 +17,32 @@ import {
   PageHeader,
 } from '@/components/ui'
 import { useAuthStore } from '@/lib/auth'
-import { formatDateTime } from '@/lib/date'
+import { formatCurrency } from '@/lib/currency'
+import { formatDate, formatDateTime } from '@/lib/date'
 
-import type { PurchasableTicketProduct } from '../api'
-import { usePurchasableTicketProducts } from '../hooks'
+import {
+  EXPO_FILE_PURPOSE_LABEL,
+  type ExpoDetail,
+  type ExpoFile,
+  type PurchasableTicketProduct,
+  SALES_STATUS_LABEL,
+} from '../api'
+import { useExpoDetail, usePurchasableTicketProducts } from '../hooks'
 
 /**
  * `/expos/{expoId}` — 박람회 상세. Function.md 2절 "박람회 정보 + 구매 가능 티켓 상품 목록".
  *
- * **박람회 자체(제목·소개·일정·장소)를 조회하는 공개 API 가 없다**(이슈 #107) — 그래서
- * "박람회 소개" 영역은 준비 중으로 둔다. 실제로 붙는 것은 구매 가능한 티켓 상품 목록
- * (`GET /api/expos/{expoId}/ticket-products/purchasable`) 뿐이다. 이 엔드포인트는
- * expoId 를 이미 안다는 전제로만 호출 가능해서, 목록 화면(`ExpoListPage`)에서 여기로 올
- * 방법은 없고 주소를 직접 아는 경우에만 열린다.
+ * 박람회 정보는 `GET /api/expos/{expoId}`, 티켓은
+ * `GET /api/expos/{expoId}/ticket-products/purchasable` 로 각각 받는다. 둘을 따로 두는
+ * 이유는 티켓 재고가 훨씬 자주 바뀌어 캐시 수명이 다르기 때문이다.
  */
 const ExpoDetailPage = () => {
   const params = useParams<{ expoId: string }>()
   const parsedExpoId = Number(params.expoId)
   const expoId = Number.isInteger(parsedExpoId) && parsedExpoId > 0 ? parsedExpoId : null
 
-  const { data, isPending, error, refetch } = usePurchasableTicketProducts(expoId)
+  const detailQuery = useExpoDetail(expoId)
+  const ticketsQuery = usePurchasableTicketProducts(expoId)
   const accessToken = useAuthStore((state) => state.accessToken)
 
   if (expoId === null) {
@@ -45,19 +54,32 @@ const ExpoDetailPage = () => {
     )
   }
 
+  if (detailQuery.isError) {
+    return (
+      <div>
+        <PageHeader title="박람회 상세" />
+        <ErrorState error={detailQuery.error} onRetry={() => detailQuery.refetch()} />
+      </div>
+    )
+  }
+
+  if (detailQuery.isPending) {
+    return <LoadingBlock label="박람회 정보를 불러오는 중입니다" />
+  }
+
+  const expo = detailQuery.data
+
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title={`박람회 #${expoId}`}
-        description="박람회 소개는 아직 준비 중입니다. 아래에서 구매 가능한 티켓을 확인하세요."
-      />
+      <ExpoHero expo={expo} />
 
-      <section aria-label="박람회 소개">
-        <EmptyState
-          notReady
-          title="박람회 소개"
-          description="박람회 소개·일정·장소 정보를 보여주는 API 가 아직 연결되지 않았습니다."
-        />
+      <section aria-label="박람회 소개" className="flex flex-col gap-4">
+        <h2 className="text-title-lg text-on-background font-semibold">박람회 소개</h2>
+        <Card>
+          <p className="text-body-md text-on-surface whitespace-pre-line">{expo.description}</p>
+        </Card>
+        <ExpoGallery expo={expo} />
+        <ExpoFileList files={expo.files} />
       </section>
 
       <section aria-label="구매 가능한 티켓" className="flex flex-col gap-4">
@@ -75,18 +97,18 @@ const ExpoDetailPage = () => {
           </div>
         </div>
 
-        {isPending ? (
+        {ticketsQuery.isPending ? (
           <LoadingBlock label="티켓 정보를 불러오는 중입니다" />
-        ) : error ? (
-          <ErrorState error={error} onRetry={refetch} />
-        ) : data.length === 0 ? (
+        ) : ticketsQuery.error ? (
+          <ErrorState error={ticketsQuery.error} onRetry={ticketsQuery.refetch} />
+        ) : ticketsQuery.data.length === 0 ? (
           <EmptyState
             title="구매 가능한 티켓이 없습니다"
             description="현재 판매 중인 티켓 상품이 없습니다."
           />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
-            {data.map((product) => (
+            {ticketsQuery.data.map((product) => (
               <li key={product.ticketProductId}>
                 <TicketProductCard product={product} />
               </li>
@@ -95,6 +117,101 @@ const ExpoDetailPage = () => {
         )}
       </section>
     </div>
+  )
+}
+
+/** 제목 위에 대표 이미지를 크게 깐다. 없으면 이미지 영역 자체를 넣지 않는다. */
+const ExpoHero = ({ expo }: { expo: ExpoDetail }) => {
+  const thumbnail = expo.images.find((image) => image.imageType === 'THUMBNAIL')
+
+  return (
+    <div className="flex flex-col gap-4">
+      {thumbnail && (
+        <div className="bg-surface-variant aspect-[16/6] w-full overflow-hidden rounded-md">
+          <img
+            src={thumbnail.url}
+            alt={thumbnail.altText ?? ''}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
+
+      <PageHeader
+        title={expo.title}
+        description={`${formatDate(expo.eventStartAt)} ~ ${formatDate(expo.eventEndAt)} · ${expo.regionCode}`}
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={expo.displaySalesStatus === 'ON_SALE' ? 'success' : 'neutral'}>
+          {SALES_STATUS_LABEL[expo.displaySalesStatus]}
+        </Badge>
+        {expo.minimumPrice !== undefined && (
+          <span className="text-title-md text-on-surface font-semibold">
+            {formatCurrency(expo.minimumPrice)}~
+          </span>
+        )}
+        <span className="text-body-sm text-on-surface-variant">
+          잔여 {expo.availableQuantity}매
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** 대표 이미지는 위에 이미 크게 나오므로 갤러리에서는 뺀다. */
+const ExpoGallery = ({ expo }: { expo: ExpoDetail }) => {
+  const gallery = expo.images.filter((image) => image.imageType !== 'THUMBNAIL')
+  if (gallery.length === 0) {
+    return null
+  }
+
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {gallery.map((image) => (
+        <li key={image.id} className="bg-surface-variant aspect-[3/2] overflow-hidden rounded">
+          <img
+            src={image.url}
+            alt={image.altText ?? ''}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * 소개 자료·팜플렛.
+ *
+ * 새 탭으로 연다 — PDF 는 브라우저가 그대로 그려 주고, 내려받기를 원하면 그 화면에서
+ * 저장하면 된다. 백엔드가 이미지가 아닌 파일에 `Content-Disposition: attachment` 를
+ * 붙이므로 실제로는 저장 대화상자가 뜬다.
+ */
+const ExpoFileList = ({ files }: { files: ExpoFile[] }) => {
+  if (files.length === 0) {
+    return null
+  }
+
+  return (
+    <Card className="flex flex-col gap-2">
+      <CardTitle>소개 자료</CardTitle>
+      <ul className="flex flex-col gap-2">
+        {files.map((file) => (
+          <li key={file.id} className="flex flex-wrap items-center gap-2">
+            <Badge variant="neutral">{EXPO_FILE_PURPOSE_LABEL[file.filePurpose]}</Badge>
+            <a
+              href={file.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-secondary text-body-md font-medium underline"
+            >
+              {file.title ?? '자료 내려받기'}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 
@@ -108,9 +225,7 @@ const TicketProductCard = ({ product }: { product: PurchasableTicketProduct }) =
         {soldOut ? <Badge variant="neutral">품절</Badge> : <Badge variant="success">판매중</Badge>}
       </div>
       <p className="text-body-md text-on-surface-variant">{product.description}</p>
-      <p className="text-title-lg text-on-surface font-semibold">
-        {product.price.toLocaleString('ko-KR')}원
-      </p>
+      <p className="text-title-lg text-on-surface font-semibold">{formatCurrency(product.price)}</p>
       <p className="text-label-md text-on-surface-variant">
         판매기간 {formatDateTime(product.salesStartAt)} ~ {formatDateTime(product.salesEndAt)}
       </p>

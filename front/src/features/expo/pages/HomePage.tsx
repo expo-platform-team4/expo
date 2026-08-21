@@ -1,39 +1,68 @@
+'use client'
+
 import Link from 'next/link'
 
-import { EmptyState, PageHeader } from '@/components/ui'
+import { Button, EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/ui'
+
+import { ExpoCardItem } from '../components/ExpoCardItem'
+import { useExpoCards } from '../hooks'
+
+/** 홈에 띄울 카드 수. 한 줄(데스크톱 3칸)이 두 줄로 딱 떨어진다. */
+const FEATURED_COUNT = 6
 
 /**
  * `/` — 홈. Function.md 2절 "진입점. 박람회 추천·배너".
  *
- * 배너는 이번 범위에서 제외다(이슈 #103). 박람회 추천도 나열할 원본이 없다 — 공개
- * 박람회 목록·추천 API 자체가 없어서다(이슈 #107). 둘 다 조용히 빈 화면으로 두지 않고
- * "준비 중" 을 명시한다(Function.md 7절 원칙).
+ * 추천은 목록 API 의 인기순 상위를 그대로 쓴다(`sort=POPULAR`). 인기 점수는 뷰가
+ * 판매량·주문량으로 계산한다 — 별도 추천 엔진이 있는 것이 아니다.
+ *
+ * 배너는 여전히 범위 밖이다(이슈 #103).
  */
-const HomePage = () => (
-  <div className="flex flex-col gap-10">
-    <PageHeader
-      title="박람회 예약·티켓 플랫폼"
-      description="다양한 박람회를 둘러보고 티켓을 예매해 보세요."
-    />
+const HomePage = () => {
+  const { data, isPending, isError, error, refetch } = useExpoCards({ sort: 'POPULAR' })
 
-    <section aria-label="배너">
-      <EmptyState notReady title="배너" description="배너 영역은 아직 연결되지 않았습니다." />
-    </section>
-
-    <section aria-label="박람회 추천" className="flex flex-col gap-4">
-      <h2 className="text-title-lg text-on-background font-semibold">추천 박람회</h2>
-      <EmptyState
-        notReady
-        title="추천 박람회"
-        description="박람회 추천 목록은 아직 연결되지 않았습니다. 박람회 목록에서 전체 목록을 확인해 주세요."
-        action={
-          <Link href="/expos" className="text-secondary text-label-md font-semibold">
-            박람회 목록 보기 →
-          </Link>
-        }
+  return (
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title="박람회 예약·티켓 플랫폼"
+        description="다양한 박람회를 둘러보고 티켓을 예매해 보세요."
       />
-    </section>
-  </div>
-)
+
+      <section aria-label="배너">
+        <EmptyState notReady title="배너" description="배너 영역은 아직 연결되지 않았습니다." />
+      </section>
+
+      <section aria-label="박람회 추천" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-title-lg text-on-background font-semibold">추천 박람회</h2>
+          <Link href="/expos">
+            <Button variant="secondary" size="sm">
+              전체 목록
+            </Button>
+          </Link>
+        </div>
+
+        {isError ? (
+          <ErrorState error={error} onRetry={() => refetch()} />
+        ) : isPending ? (
+          <LoadingBlock label="박람회를 불러오는 중입니다" />
+        ) : data.length === 0 ? (
+          <EmptyState
+            title="아직 공개된 박람회가 없습니다"
+            description="박람회가 개설되면 여기에서 가장 먼저 보실 수 있습니다."
+          />
+        ) : (
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {data.slice(0, FEATURED_COUNT).map((expo) => (
+              <li key={expo.expoId}>
+                <ExpoCardItem expo={expo} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
 
 export default HomePage

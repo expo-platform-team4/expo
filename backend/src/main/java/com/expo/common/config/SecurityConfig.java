@@ -5,6 +5,7 @@ import com.expo.jwt.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -95,6 +96,19 @@ public class SecurityConfig {
                                         // 마이페이지(회원·클라이언트 공통) — MEMBER 또는 CLIENT
                                         .requestMatchers("/api/users/**")
                                         .hasAnyRole("MEMBER", "CLIENT")
+                                        // 파일 내려받기·메타데이터 — 인증 없이 허용한다.
+                                        // 프론트 인증이 Authorization 헤더라 <img src> 가
+                                        // 토큰을 실을 수 없어서, 공개 이미지를 그리려면
+                                        // 열려 있어야 한다. 비공개 파일을 막는 일은
+                                        // FileService 가 파일마다 판정한다.
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/files/*",
+                                                "/api/files/*/content")
+                                        .permitAll()
+                                        // 업로드·삭제는 로그인한 사용자만
+                                        .requestMatchers("/api/files/**")
+                                        .authenticated()
                                         // 위에 해당하지 않는 나머지 URL — 인증 없이 허용 (필요 시 authenticated()로 변경)
                                         .anyRequest()
                                         .permitAll())

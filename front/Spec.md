@@ -59,6 +59,33 @@ settlement.remittedAmount !== null ? formatCurrency(settlement.remittedAmount) :
 
 ---
 
+### 1-2. **파일 업로드는 `Content-Type` 을 지워야 한다** ← 자주 틀리는 곳
+
+`src/lib/api.ts` 의 axios 인스턴스가 기본 헤더로 `Content-Type: application/json` 을 박아
+둔다. JSON 요청에는 편하지만 **`FormData` 를 보낼 때 그대로 두면 몸통은 multipart 인데
+헤더만 JSON 이라고 말하게 된다.** 백엔드는 415 를 낸다.
+
+```txt
+Content-Type 'application/json' is not supported.
+```
+
+헤더를 `null` 로 넘겨 지우면 브라우저가 `multipart/form-data` 와 경계 문자열(boundary)을
+스스로 붙인다. **직접 `'multipart/form-data'` 를 적지 않는다** — 그러면 boundary 가 빠져
+서버가 몸통을 파싱하지 못한다.
+
+```ts
+await api.post('/files', form, {
+  params: { purpose },
+  headers: { 'Content-Type': null }, // ✅ 브라우저가 boundary 까지 붙인다
+  timeout: 60_000, // 기본 10초는 20MB 짜리에 모자란다
+})
+```
+
+이 사고는 **curl 로는 절대 재현되지 않는다**(curl 은 인스턴스 기본 헤더를 모른다).
+업로드는 반드시 화면에서 실제로 파일을 골라 확인한다.
+
+---
+
 ## 2. 페이지네이션 — 응답 모양이 통일돼 있다
 
 목록 API(정산·알림 이력·감사 로그 등)는 전부 같은 봉투를 쓴다.

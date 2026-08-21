@@ -17,6 +17,14 @@ spring:
   jpa:
     open-in-view: false
 
+  # 파일 업로드 한도. Spring 기본값은 1MB 라 그대로 두면 20MB 짜리 팜플렛이
+  # 컨트롤러에 닿기도 전에 거절된다. 용도별 실제 한도는 FilePurpose 가 갖고 있고
+  # 여기 값은 그중 가장 큰 것보다 조금 넉넉해야 한다.
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
   flyway:
     locations: classpath:db/migration
     # 마이그레이션 경로가 오타 등으로 사라지면 기동을 막는다.
@@ -61,6 +69,11 @@ app:
     client-key: ${TOSS_CLIENT_KEY:}
     secret-key: ${TOSS_SECRET_KEY:}
     api-base-url: https://api.tosspayments.com
+
+  file:
+    # s3     = 객체 저장소에 올린다 (기본). 로컬은 docker-compose 의 S3Mock 을 가리킨다
+    # memory = 프로세스 메모리에 담는다. 테스트 전용이며 재기동하면 사라진다
+    storage: ${FILE_STORAGE:s3}
 
   s3:
     bucket: ${AWS_S3_BUCKET:expo-local}

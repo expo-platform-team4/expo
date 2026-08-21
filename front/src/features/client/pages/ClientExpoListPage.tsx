@@ -125,6 +125,23 @@ const ClientExpoListPage = () => {
                     판매 기간 {formatDate(expo.salesStartAt)} ~ {formatDate(expo.salesEndAt)} · 등록
                     티켓 상품 {expo.ticketProductCount.toLocaleString('ko-KR')}종
                   </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => router.push(`/client/expos/${expo.expoId}/content`)}
+                    >
+                      이미지·자료 관리
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => router.push(`/expos/${expo.expoId}`)}
+                    >
+                      공개 화면 보기
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="border-outline-variant min-w-[220px] rounded-md border px-4 py-3">

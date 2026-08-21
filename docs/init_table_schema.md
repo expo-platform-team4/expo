@@ -114,8 +114,17 @@ v16 PDF 는 표 렌더링이 군데군데 깨져 있다. 셀을 이탈해 인쇄
 | `file_size` | BIGINT | NOT NULL, CHECK >= 0 | 파일 크기(Byte) |
 | `checksum` | VARCHAR(128) | NULL | 파일 무결성 확인값 |
 | `file_status` | VARCHAR(20) | NOT NULL, CHECK | `ACTIVE`, `DELETED`, `QUARANTINED` |
+| `access_level` | VARCHAR(20) | NOT NULL DEFAULT `PRIVATE`, CHECK | `PUBLIC`, `PRIVATE` |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 생성 일시 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT CURRENT_TIMESTAMP | 수정 일시 |
+
+> **`access_level` 은 V1 에 없던 컬럼이다** (`V202608201437`, 이슈 #93).
+> `file_status` 는 파일이 살아 있느냐이지 누가 볼 수 있느냐가 아니라서, 파일 하나를 인증 없이 내줘도 되는지
+> 판정할 근거가 테이블에 없었다. 참조 테이블에서 역추적하는 방법은 FK 가 12개라 현실적이지 않고,
+> 아무 데서도 참조되지 않는 파일은 판정 자체가 불가능하다. 기본값은 막는 쪽인 `PRIVATE` 이다.
+>
+> 값은 업로드 용도가 정한다 — 박람회 이미지·팜플렛처럼 방문객에게 보여 주는 것은 `PUBLIC`,
+> 정산 리포트는 `PRIVATE`. 용도별 규칙은 `com.expo.file.entity.FilePurpose` 에 모여 있다.
 
 이 테이블을 참조하는 곳 — **11개 테이블, FK 12개**. `USERS.profile_image_file_id`,
 `VIRTUAL_VENUES.map_file_id`, `VENUE_HALLS.layout_file_id`, `VENUE_ZONES.layout_file_id`,
