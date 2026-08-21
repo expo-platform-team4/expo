@@ -13,6 +13,7 @@ import com.expo.refund.entity.TicketRefund;
 import com.expo.refund.repository.TicketRefundRepository;
 import com.expo.ticket.entity.TicketOrder;
 import com.expo.ticket.entity.TicketOrderStatus;
+import com.expo.ticket.entity.TicketOrdererType;
 import com.expo.ticket.repository.TicketOrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,8 +36,26 @@ public class TicketRefundRequestService {
         TicketOrder order =
                 ticketOrderRepository
                         .findByIdForUpdate(orderId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_ORDER_ACCESS_DENIED));
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.TICKET_ORDER_ACCESS_DENIED));
         ticketOrderAccessVerifier.verifyMemberOrderAccess(order, principal);
+        return createRefundRequest(order, reason);
+    }
+
+    @Transactional
+    public TicketRefundResponse requestGuestRefund(Long orderId, String reason) {
+        TicketOrder order =
+                ticketOrderRepository
+                        .findByIdForUpdate(orderId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED));
+        if (order.getOrdererType() != TicketOrdererType.GUEST) {
+            throw new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED);
+        }
+        return createRefundRequest(order, reason);
+    }
+
+    private TicketRefundResponse createRefundRequest(TicketOrder order, String reason) {
         validateRefundableOrder(order);
 
         if (ticketRefundRepository.findByTicketOrderId(order.getId()).isPresent()) {
@@ -45,7 +64,10 @@ public class TicketRefundRequestService {
         TicketPayment payment =
                 ticketPaymentRepository
                         .findByTicketOrderId(order.getId())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.REFUND_PAYMENT_NOT_COMPLETED));
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.REFUND_PAYMENT_NOT_COMPLETED));
         if (payment.getStatus() != TicketPaymentStatus.DONE) {
             throw new BusinessException(ErrorCode.REFUND_PAYMENT_NOT_COMPLETED);
         }
