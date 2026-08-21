@@ -19,4 +19,13 @@ public class TicketOrderAccessVerifier {
             throw new BusinessException(ErrorCode.TICKET_ORDER_ACCESS_DENIED);
         }
     }
+
+    /** 회원 전용 기능에서 회원 주문의 소유자를 검증한다. */
+    public void verifyMemberOrderAccess(TicketOrder order, AuthPrincipal principal) {
+        if (order.getOrdererType() != TicketOrdererType.MEMBER
+                || principal == null
+                || !order.getMemberUserId().equals(principal.getMemberId())) {
+            throw new BusinessException(ErrorCode.TICKET_ORDER_ACCESS_DENIED);
+        }
+    }
 }
