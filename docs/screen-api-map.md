@@ -35,8 +35,9 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 티켓 예매 (비회원) | `2fd025bd` | `/orders/guest?expoId=` | `ticket` | `POST /api/orders/guest` | 주문 ✅ / 결제 ⚠️ |
 | 비회원 주문 조회 | `119d7f0f` | `/orders/guest/search` | `ticket` | `POST /api/orders/search/guest` | ✅ |
 | 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/[orderNumber]` | `ticket` | 위 검색 API 재사용 | 조회 ✅ / 환불 ⚠️ |
-| 예매 내역 | `50b7de2e` | `/mypage/orders` | `ticket` | 회원 주문 목록 **없음** | ⚠️ |
-| 나의 티켓 | `66513a65` | `/mypage/tickets` | `ticket` | 회원 티켓 목록 **없음** | ⚠️ |
+| 예매 내역 | `50b7de2e` | `/mypage/orders` | `ticket` | `GET /api/users/me/orders` | ✅ |
+| 나의 티켓 | `66513a65` | `/mypage/tickets` | `ticket` | `GET /api/users/me/tickets` | ✅ |
+| 프로필 수정 | 대응 없음 | `/mypage/profile` | `auth` | 닉네임·비밀번호 변경, 회원 탈퇴 | ✅ |
 | 공고 모집 목록 | `b516ae29` | `/recruitment-notices` | `recruitment` | `GET /api/recruitment-notices` | ✅ |
 | 공고 참여 신청 | `1921eb04` | `/recruitment-notices/[noticeId]` | `recruitment` · `participation` | `GET /api/recruitment-notices/{id}` · `POST /api/client/participation-applications` | ✅ |
 | SMS 링크 QR 확인 | 대응 없음 | `/tickets?token=` | `checkin` | `GET /api/public/tickets?token=` | ✅ |
@@ -105,14 +106,18 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 
 | 화면 | 없는 API | 메모 |
 |-|-|-|
-| 예매 내역 · 나의 티켓 | 회원 본인 주문·티켓 목록 | 토큰 기반 `/tickets?token=` 과는 별개다 |
-| 박람회 개최 신청 · 승인 관리 | 개최 신청 생성·심사 | 주최사/관리자 양쪽 화면이 함께 막혀 있다 |
 | 결제 완료 · 환불 | 결제·환불 도메인 전체 | `payment`·`refund` 패키지가 `package-info.java` 뿐이다. **주문을 `PAID` 로 만드는 경로가 없어** 발권·정산·체크인이 실데이터로는 SQL 시드 없이 막힌다 |
 
-> **해소됨 (2026-08-20)** — 홈·박람회 목록·박람회 상세(헤더)는 `GET /api/expos`,
-> `GET /api/expos/{expoId}` 가 생기면서 준비 중을 벗었다. 예상대로 `v_public_expo_cards`
-> 뷰 위에 컨트롤러·매퍼만 얹으면 되는 일이었다. 박람회 개최 신청·승인 관리는 이슈 #116 에서
-> 따로 해소했다.
+> **이슈 #107 은 대부분 해소됐다. 남은 것은 위 표 한 줄(결제·환불)뿐이다.**
+>
+> | 무엇 | 어떻게 |
+> |-|-|
+> | 홈 · 박람회 목록 · 박람회 상세(헤더) | `GET /api/expos`, `GET /api/expos/{expoId}` (2026-08-20) |
+> | 예매 내역 · 나의 티켓 | `GET /api/users/me/orders`, `/tickets` (PR #118) |
+> | 박람회 개최 신청 · 승인 관리 | 이슈 #116 (PR #117) |
+>
+> 공개 박람회 목록은 예상대로 `v_public_expo_cards` 뷰 위에 컨트롤러·매퍼만 얹으면 되는
+> 일이었다.
 
 ### 배너 (3개 화면)
 
@@ -193,9 +198,9 @@ Admin(dark)     관리자 전체                                  다크 사이�
 
 ## 8. 남은 일
 
-1. **이슈 #107 의 남은 API** — 공개 박람회 목록·상세는 해소됐다(2026-08-20). 남은 것은
-   회원 본인 주문·티켓 목록과 **결제 완료 경로**다. 특히 주문을 `PAID` 로 만드는 길이
-   없어서 발권·정산·체크인이 여전히 SQL 시드에 의존한다.
+1. **결제 완료 경로** — 이슈 #107 에서 유일하게 남은 항목이다. 주문을 `PAID` 로 만드는
+   길이 없어서 발권·정산·체크인이 여전히 SQL 시드에 의존한다. `payment`·`refund` 패키지가
+   `package-info.java` 뿐이다.
 2. **장소 예약 확정 화면** — 3절 주 참고. 지금은 API 직접 호출이 필요하다.
 3. **OAuth2 콜백 계약 확정** — 1절 주 참고.
 4. **`venue` 모듈** — 대응 화면이 없어 스텁으로 둔다. 장소 카탈로그 관리 화면이 생기면 채운다.
