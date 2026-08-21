@@ -3,6 +3,7 @@ package com.expo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 애플리케이션 진입점.
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * 훑는다. 도메인을 추가할 때 스캔 설정을 따로 손댈 필요가 없다.
  */
 @EnableJpaAuditing
+@EnableScheduling
 @SpringBootApplication
 public class ExpoApplication {
 
