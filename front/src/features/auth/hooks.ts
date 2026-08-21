@@ -47,6 +47,20 @@ export const useConfirmPhoneVerification = () =>
     }) => authApi.confirmPhoneVerification(verificationId, verificationCode),
   })
 
+export const useRequestEmailVerification = () =>
+  useMutation({ mutationFn: authApi.requestEmailVerification })
+
+export const useConfirmEmailVerification = () =>
+  useMutation({
+    mutationFn: ({
+      verificationId,
+      verificationCode,
+    }: {
+      verificationId: number
+      verificationCode: string
+    }) => authApi.confirmEmailVerification(verificationId, verificationCode),
+  })
+
 /**
  * 로그아웃. Spec.md 3-4 절 — 액세스 토큰은 stateless 라 서버가 즉시 무효화하지 않는다.
  * API 성공/실패와 무관하게 `onSettled` 에서 항상 store 를 비운다.

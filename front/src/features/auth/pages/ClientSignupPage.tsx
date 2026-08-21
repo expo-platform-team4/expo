@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { Button, Card, CardTitle, Checkbox, Input } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 
+import { EmailVerificationField } from '../components/EmailVerificationField'
 import { PhoneVerificationField } from '../components/PhoneVerificationField'
 import {
   useBusinessNumberAvailability,
@@ -18,12 +19,13 @@ import {
 import { clientSignupSchema, type ClientSignupFormValues } from '../schemas'
 import { useAvailabilityHint } from '../useAvailabilityHint'
 
-/** `/signup/client`. Function.md 2절 — "사업자등록번호 검증 포함". */
+/** `/signup/client`. Function.md 2절 — "사업자등록번호 검증 포함". 이메일 인증도 가입을 막는다. */
 const ClientSignupPage = () => {
   const router = useRouter()
   const signupMutation = useSignupClient()
   const [formError, setFormError] = useState<string | null>(null)
   const [phoneVerified, setPhoneVerified] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
 
   const emailAvailability = useAvailabilityHint(useEmailAvailability())
   const nicknameAvailability = useAvailabilityHint(useNicknameAvailability())
@@ -33,6 +35,8 @@ const ClientSignupPage = () => {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ClientSignupFormValues>({
     resolver: zodResolver(clientSignupSchema),
@@ -42,6 +46,7 @@ const ClientSignupPage = () => {
       passwordConfirm: '',
       nickname: '',
       phoneNumber: '',
+      emailVerificationToken: '',
       companyName: '',
       businessNumber: '',
       serviceTermsAgreed: false,
@@ -49,6 +54,8 @@ const ClientSignupPage = () => {
       marketingAgreed: false,
     },
   })
+
+  const emailValue = watch('email')
 
   const onSubmit = (values: ClientSignupFormValues) => {
     setFormError(null)
@@ -76,6 +83,14 @@ const ClientSignupPage = () => {
             {...register('email', {
               onBlur: (event) => emailAvailability.check(event.target.value),
             })}
+          />
+          <EmailVerificationField
+            email={emailValue}
+            emailHasError={Boolean(errors.email)}
+            onVerified={(token) => {
+              setValue('emailVerificationToken', token ?? '', { shouldValidate: true })
+              setEmailVerified(Boolean(token))
+            }}
           />
           <Input
             label="비밀번호"
@@ -153,13 +168,17 @@ const ClientSignupPage = () => {
             type="submit"
             size="lg"
             loading={signupMutation.isPending}
-            disabled={!phoneVerified}
+            disabled={!phoneVerified || !emailVerified}
           >
             가입하기
           </Button>
-          {!phoneVerified && (
+          {(!phoneVerified || !emailVerified) && (
             <p className="text-label-sm text-on-surface-variant text-center">
-              휴대폰 인증을 완료해 주세요.
+              {!emailVerified && !phoneVerified
+                ? '이메일과 휴대폰 인증을 완료해 주세요.'
+                : !emailVerified
+                  ? '이메일 인증을 완료해 주세요.'
+                  : '휴대폰 인증을 완료해 주세요.'}
             </p>
           )}
         </form>

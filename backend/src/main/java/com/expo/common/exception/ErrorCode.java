@@ -29,6 +29,12 @@ public enum ErrorCode {
     PHONE_VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "인증번호가 만료되었습니다."),
     PHONE_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않습니다."),
 
+    // --- 이메일 본인인증 ---
+    EMAIL_VERIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "유효하지 않은 인증 요청입니다."),
+    EMAIL_VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "인증코드가 만료되었습니다."),
+    EMAIL_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증코드가 일치하지 않습니다."),
+    EMAIL_VERIFICATION_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "이메일 인증을 다시 진행해 주세요."),
+
     // --- 비밀번호 재설정 ---
     PASSWORD_RESET_TOKEN_NOT_FOUND(HttpStatus.BAD_REQUEST, "유효하지 않은 재설정 토큰입니다."),
     PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "재설정 토큰이 만료되었습니다."),

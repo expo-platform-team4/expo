@@ -37,6 +37,12 @@ public record ClientSignupRequest(
                 @NotBlank(message = "휴대폰 번호는 필수입니다.")
                 @Pattern(regexp = "^01[016789]\\d{7,8}$", message = "휴대폰 번호 형식이 올바르지 않습니다.")
                 String phoneNumber,
+        @Schema(
+                        description =
+                                "이메일 인증 완료 토큰 (POST /api/auth/email-verifications/confirm 응답값)",
+                        example = "7f3c2a1b-9d4e-5f6a-8b7c-1d2e3f4a5b6c")
+                @NotBlank(message = "이메일 인증을 완료해 주세요.")
+                String emailVerificationToken,
 
         // ----- 기업 정보 -----
         @Schema(description = "정식 기업명", example = "주식회사 에스포틱")

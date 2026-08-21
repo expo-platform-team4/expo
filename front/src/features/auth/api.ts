@@ -32,6 +32,8 @@ export type SignupMemberPayload = {
   passwordConfirm: string
   nickname: string
   phoneNumber: string
+  /** `POST /api/auth/email-verifications/confirm` 응답의 `signupVerificationToken`. */
+  emailVerificationToken: string
   serviceTermsAgreed: boolean
   privacyPolicyAgreed: boolean
   marketingAgreed: boolean
@@ -131,6 +133,44 @@ export const confirmPhoneVerification = async (
 ): Promise<PhoneVerificationConfirmResult> => {
   const { data } = await api.post<ApiEnvelope<PhoneVerificationConfirmResult>>(
     '/auth/phone-verifications/confirm',
+    { verificationId, verificationCode }
+  )
+  return data.data
+}
+
+export type EmailVerificationCreateResult = {
+  verificationId: number
+  email: string
+  expiresAt: string
+  message: string
+}
+
+/** `POST /api/auth/email-verifications` — 회원가입 이메일 인증 요청. */
+export const requestEmailVerification = async (
+  email: string
+): Promise<EmailVerificationCreateResult> => {
+  const { data } = await api.post<ApiEnvelope<EmailVerificationCreateResult>>(
+    '/auth/email-verifications',
+    { email }
+  )
+  return data.data
+}
+
+export type EmailVerificationConfirmResult = {
+  verificationId: number
+  email: string
+  verifiedAt: string
+  signupVerificationToken: string
+  message: string
+}
+
+/** `POST /api/auth/email-verifications/confirm`. */
+export const confirmEmailVerification = async (
+  verificationId: number,
+  verificationCode: string
+): Promise<EmailVerificationConfirmResult> => {
+  const { data } = await api.post<ApiEnvelope<EmailVerificationConfirmResult>>(
+    '/auth/email-verifications/confirm',
     { verificationId, verificationCode }
   )
   return data.data
