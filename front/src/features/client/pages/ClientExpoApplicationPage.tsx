@@ -1,32 +1,309 @@
 'use client'
 
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 
-import { Button, EmptyState, PageHeader } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  CardTitle,
+  ErrorState,
+  Input,
+  LoadingBlock,
+  PageHeader,
+  Select,
+  Textarea,
+} from '@/components/ui'
+import { useVenueHalls, useVenueZones, useVirtualVenues } from '@/features/recruitment/hooks'
+import { formatDate } from '@/lib/date'
+import { getErrorMessage } from '@/lib/errorMessage'
+
+import { EXPO_OPENING_STATUS_LABEL, type ExpoOpeningRequestStatus } from '../expoOpeningApi'
+import {
+  useCreateExpoOpeningRequest,
+  useMyExpoOpeningRequests,
+  useSubmitExpoOpeningRequest,
+} from '../hooks'
+import { expoOpeningRequestSchema, type ExpoOpeningRequestFormValues } from '../schemas'
+
+const STATUS_VARIANT: Record<ExpoOpeningRequestStatus, 'success' | 'neutral' | 'error' | 'info'> = {
+  DRAFT: 'neutral',
+  SUBMITTED: 'info',
+  UNDER_REVIEW: 'info',
+  APPROVED: 'success',
+  REJECTED: 'error',
+  CANCELED: 'neutral',
+}
 
 /**
  * `/client/expos/new`. Function.md 3절 — "박람회 개최 신청".
  *
- * 이 화면을 뒷받침할 API 가 아직 없다(이슈 #107 이 이미 추적 중). Function.md 7절 원칙대로
- * 화면 자체는 두되, 없는 API 위에 없는 폼을 지어 올리지 않는다 — 제출해도 어디에도 닿지
- * 않는 폼은 버그처럼 보인다. `EmptyState` 의 `notReady` 로 "준비 중"임을 명시한다.
+ * 디자인(`13484d75`)의 "임시저장"·"심사요청" 두 버튼을 그대로 살렸다 — 백엔드 상태도
+ * DRAFT/SUBMITTED 로 나뉜다.
+ *
+ * **카테고리·대표 이미지·소개 자료는 뺐다.** 디자인에는 있지만 신청 테이블에 담을 컬럼이
+ * 없고 파일 도메인 자체가 아직 없다(이슈 #93). 대신 디자인에 없던 **판매 기간**을 넣었다 —
+ * 승인 시 만들 `expos` 행이 이 값을 NOT NULL 로 요구한다. 자세한 배경은 이슈 #116.
  */
 const ClientExpoApplicationPage = () => {
   const router = useRouter()
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const { data: requests, isPending, isError, error, refetch } = useMyExpoOpeningRequests()
+  const { data: venues, isPending: venuesPending } = useVirtualVenues()
+  const createMutation = useCreateExpoOpeningRequest()
+  const submitMutation = useSubmitExpoOpeningRequest()
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<ExpoOpeningRequestFormValues>({
+    resolver: zodResolver(expoOpeningRequestSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      eventStartAt: '',
+      eventEndAt: '',
+      salesStartAt: '',
+      salesEndAt: '',
+      desiredVenueId: '',
+      desiredVenueHallId: '',
+      desiredVenueZoneId: '',
+    },
+  })
+
+  const selectedVenueId = useWatch({ control, name: 'desiredVenueId' })
+  const selectedHallId = useWatch({ control, name: 'desiredVenueHallId' })
+  const { data: halls, isPending: hallsPending } = useVenueHalls(
+    selectedVenueId ? Number(selectedVenueId) : null
+  )
+  const { data: zones, isPending: zonesPending } = useVenueZones(
+    selectedHallId ? Number(selectedHallId) : null
+  )
+
+  const save = (values: ExpoOpeningRequestFormValues, submitNow: boolean) => {
+    setFormError(null)
+    createMutation.mutate(
+      {
+        submitNow,
+        content: {
+          title: values.title,
+          description: values.description,
+          eventStartAt: new Date(values.eventStartAt).toISOString(),
+          eventEndAt: new Date(values.eventEndAt).toISOString(),
+          salesStartAt: new Date(values.salesStartAt).toISOString(),
+          salesEndAt: new Date(values.salesEndAt).toISOString(),
+          desiredVenueId: Number(values.desiredVenueId),
+          desiredVenueHallId: values.desiredVenueHallId
+            ? Number(values.desiredVenueHallId)
+            : undefined,
+          desiredVenueZoneId: values.desiredVenueZoneId
+            ? Number(values.desiredVenueZoneId)
+            : undefined,
+        },
+      },
+      {
+        onSuccess: () => reset(),
+        onError: (err) => setFormError(getErrorMessage(err)),
+      }
+    )
+  }
 
   return (
-    <div>
-      <PageHeader title="박람회 개최 신청" />
-      <EmptyState
-        notReady
+    <div className="flex flex-col gap-6">
+      <PageHeader
         title="박람회 개최 신청"
-        description="박람회 개최 신청을 처리할 API 가 아직 준비되지 않았습니다. 이슈 #107 에서 진행 상황을 확인해 주세요."
+        description="신청하면 관리자 심사를 거쳐 박람회가 개설됩니다."
         action={
           <Button variant="secondary" onClick={() => router.push('/client/expos')}>
-            내 박람회로 돌아가기
+            내 박람회
           </Button>
         }
       />
+
+      <Card>
+        <CardTitle>기본 정보</CardTitle>
+        <form
+          className="mt-4 flex flex-col gap-4"
+          onSubmit={handleSubmit((values) => save(values, true))}
+          noValidate
+        >
+          <Input label="박람회명" error={errors.title?.message} {...register('title')} />
+          <Textarea
+            label="상세 소개"
+            hint="행사의 목적, 주요 프로그램 등을 적어 주세요."
+            error={errors.description?.message}
+            {...register('description')}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="행사 시작일"
+              type="datetime-local"
+              error={errors.eventStartAt?.message}
+              {...register('eventStartAt')}
+            />
+            <Input
+              label="행사 종료일"
+              type="datetime-local"
+              error={errors.eventEndAt?.message}
+              {...register('eventEndAt')}
+            />
+            <Input
+              label="티켓 판매 시작"
+              type="datetime-local"
+              error={errors.salesStartAt?.message}
+              {...register('salesStartAt')}
+            />
+            <Input
+              label="티켓 판매 종료"
+              type="datetime-local"
+              error={errors.salesEndAt?.message}
+              {...register('salesEndAt')}
+            />
+          </div>
+
+          {venuesPending ? (
+            <LoadingBlock label="장소를 불러오는 중입니다" />
+          ) : (
+            <Select
+              label="희망 장소"
+              hint="승인 시 이 장소의 지역이 박람회 지역으로 등록됩니다."
+              error={errors.desiredVenueId?.message}
+              {...register('desiredVenueId', {
+                onChange: () => {
+                  setValue('desiredVenueHallId', '')
+                  setValue('desiredVenueZoneId', '')
+                },
+              })}
+            >
+              <option value="">선택해 주세요</option>
+              {venues?.map((venue) => (
+                <option key={venue.id} value={venue.id}>
+                  {venue.name}
+                  {venue.address ? ` · ${venue.address}` : ''}
+                </option>
+              ))}
+            </Select>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select
+              label="희망 전시관 (선택)"
+              disabled={!selectedVenueId}
+              hint={!selectedVenueId ? '먼저 장소를 선택해 주세요.' : undefined}
+              {...register('desiredVenueHallId', {
+                onChange: () => setValue('desiredVenueZoneId', ''),
+              })}
+            >
+              <option value="">{hallsPending && selectedVenueId ? '불러오는 중…' : '미정'}</option>
+              {halls?.map((hall) => (
+                <option key={hall.id} value={hall.id}>
+                  {hall.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="희망 구역 (선택)"
+              disabled={!selectedHallId}
+              hint={!selectedHallId ? '먼저 전시관을 선택해 주세요.' : undefined}
+              {...register('desiredVenueZoneId')}
+            >
+              <option value="">{zonesPending && selectedHallId ? '불러오는 중…' : '미정'}</option>
+              {zones?.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {formError && <p className="text-label-sm text-error">{formError}</p>}
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="lg" loading={createMutation.isPending}>
+              심사 요청
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              loading={createMutation.isPending}
+              onClick={handleSubmit((values) => save(values, false))}
+            >
+              임시저장
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      <div>
+        <CardTitle className="mb-3">내 신청 내역</CardTitle>
+        {isError ? (
+          <ErrorState error={error} onRetry={() => refetch()} />
+        ) : isPending ? (
+          <LoadingBlock label="신청 내역을 불러오는 중입니다" />
+        ) : requests.length === 0 ? (
+          <Card>
+            <p className="text-body-md text-on-surface-variant">아직 신청한 박람회가 없습니다.</p>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {requests.map((request) => (
+              <Card key={request.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-title-lg text-on-surface font-semibold">{request.title}</p>
+                    <p className="text-body-sm text-on-surface-variant mt-1">
+                      행사 {formatDate(request.eventStartAt)} ~ {formatDate(request.eventEndAt)}
+                      {request.desiredVenueName ? ` · ${request.desiredVenueName}` : ''}
+                    </p>
+                  </div>
+                  <Badge variant={STATUS_VARIANT[request.status]}>
+                    {EXPO_OPENING_STATUS_LABEL[request.status]}
+                  </Badge>
+                </div>
+
+                {request.status === 'REJECTED' && request.rejectionReason && (
+                  <p className="bg-error-container text-on-error-container text-body-md mt-3 rounded px-3 py-2">
+                    반려 사유: {request.rejectionReason}
+                  </p>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {request.status === 'DRAFT' && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      loading={submitMutation.isPending}
+                      onClick={() => submitMutation.mutate(request.id)}
+                    >
+                      심사 요청
+                    </Button>
+                  )}
+                  {request.status === 'APPROVED' && request.createdExpoId && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => router.push('/client/expos')}
+                    >
+                      개설된 박람회 보기
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

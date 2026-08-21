@@ -152,3 +152,76 @@ export const getMyProfile = async (): Promise<MemberProfile> => {
   const { data } = await api.get<ApiEnvelope<MemberProfile>>('/users/me/profile')
   return data.data
 }
+
+/** `PATCH /api/users/me/nickname` — A-API-016. 기존과 같은 닉네임을 다시 보내도 에러 없이 처리된다. */
+export const changeNickname = async (nickname: string): Promise<MemberProfile> => {
+  const { data } = await api.patch<ApiEnvelope<MemberProfile>>('/users/me/nickname', { nickname })
+  return data.data
+}
+
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+  newPasswordConfirm: string
+}
+
+/**
+ * `PATCH /api/users/me/password` — 로그인 상태에서의 비밀번호 변경.
+ *
+ * 이메일 토큰 기반 재설정(`requestPasswordReset`/`confirmPasswordReset`, "비밀번호를 잊어버렸을 때"용,
+ * 로그인 화면 쪽에서 쓴다)과는 다른 흐름이다. 마이페이지에서는 이미 로그인돼 있으므로 현재
+ * 비밀번호만 확인하고 바로 바꾼다.
+ */
+export const changePassword = async (payload: ChangePasswordPayload): Promise<void> => {
+  await api.patch('/users/me/password', payload)
+}
+
+export type PasswordResetRequestResult = {
+  email: string
+  expiresAt: string
+  message: string
+}
+
+/**
+ * `POST /api/auth/password-reset-requests` — A-API-013.
+ *
+ * MVP: 이메일 발송이 아직 연동돼 있지 않다. 재설정 토큰은 로그에도 남기지 않으므로,
+ * 실제 이메일 발송이 붙기 전까지는 이 API 단독으로 재설정 흐름을 끝까지 테스트할 수 없다
+ * (백엔드 `PasswordResetController` 설명 참고). 토큰을 손에 넣는 방법이 생기면
+ * 아래 `confirmPasswordReset` 으로 이어간다.
+ */
+export const requestPasswordReset = async (email: string): Promise<PasswordResetRequestResult> => {
+  const { data } = await api.post<ApiEnvelope<PasswordResetRequestResult>>(
+    '/auth/password-reset-requests',
+    { email }
+  )
+  return data.data
+}
+
+export type PasswordResetConfirmPayload = {
+  resetToken: string
+  newPassword: string
+  newPasswordConfirm: string
+}
+
+/** `POST /api/auth/password-resets/confirm` — A-API-014. 토큰은 1회용, 30분 유효. */
+export const confirmPasswordReset = async (
+  payload: PasswordResetConfirmPayload
+): Promise<{ message: string }> => {
+  const { data } = await api.post<ApiEnvelope<{ message: string }>>(
+    '/auth/password-resets/confirm',
+    payload
+  )
+  return data.data
+}
+
+/**
+ * `POST /api/users/me/withdrawal` — A-API-018.
+ *
+ * 현재 비밀번호로 본인 확인 후 소프트 삭제(`account_status = WITHDRAWN`) 처리한다. 성공하면
+ * 서버의 모든 Refresh Token 이 폐기된다 — 화면은 이 호출 뒤에 반드시 로컬 인증 상태도 지워야 한다
+ * (`useWithdraw` 훅 참고).
+ */
+export const withdrawMember = async (password: string): Promise<void> => {
+  await api.post('/users/me/withdrawal', { password })
+}

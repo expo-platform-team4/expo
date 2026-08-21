@@ -32,3 +32,17 @@ export const useCreateGuestOrder = () => useMutation({ mutationFn: ticketApi.cre
  * 함께 쓴다 — 뒤로 GET-by-id 가 없어서 상세도 같은 조회를 다시 부른다.
  */
 export const useGuestOrderSearch = () => useMutation({ mutationFn: ticketApi.searchGuestOrder })
+
+/** 예매 내역. `GET /api/users/me/orders`. 로그인 필요 (레이아웃의 `RequireAuth` 가 보장한다). */
+export const useMyOrders = () =>
+  useQuery({
+    queryKey: ticketKeys.myOrders(),
+    queryFn: ticketApi.fetchMyOrders,
+  })
+
+/** 나의 티켓. `GET /api/users/me/tickets`. */
+export const useMyTickets = () =>
+  useQuery({
+    queryKey: ticketKeys.myTickets(),
+    queryFn: ticketApi.fetchMyTickets,
+  })

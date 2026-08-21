@@ -98,6 +98,16 @@ public class User extends BaseTimeEntity {
         this.passwordHash = newPasswordHash;
     }
 
+    /**
+     * 회원 탈퇴 처리한다 (A-API-018). 소프트 삭제 — 행을 지우지 않고 상태만 바꾼다.
+     *
+     * <p>이미 탈퇴한 계정을 다시 탈퇴시키는 건 호출하는 쪽(서비스 계층)이 막는다. 여기서는 상태 전이 자체만 책임진다.
+     */
+    public void withdraw(Instant at) {
+        this.accountStatus = AccountStatus.WITHDRAWN;
+        this.withdrawnAt = at;
+    }
+
     public Long getId() {
         return id;
     }

@@ -51,6 +51,14 @@ public enum ErrorCode {
     EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
     NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "해당 박람회의 주최자가 아닙니다."),
 
+    // --- 박람회 개최 신청 ---
+    EXPO_OPENING_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "박람회 개최 신청을 찾을 수 없습니다."),
+    EXPO_OPENING_REQUEST_NOT_EDITABLE(HttpStatus.CONFLICT, "임시저장 상태에서만 수정할 수 있습니다."),
+    EXPO_OPENING_REQUEST_NOT_SUBMITTABLE(HttpStatus.CONFLICT, "임시저장 상태에서만 심사를 요청할 수 있습니다."),
+    EXPO_OPENING_REQUEST_NOT_REVIEWABLE(HttpStatus.CONFLICT, "이미 심사가 끝난 신청입니다."),
+    EXPO_OPENING_REQUEST_ALREADY_REVIEWED(HttpStatus.CONFLICT, "이미 심사가 끝나 철회할 수 없습니다."),
+    EXPO_OPENING_REQUEST_VENUE_REQUIRED(HttpStatus.BAD_REQUEST, "희망 장소는 필수입니다."),
+
     // --- 관리자 · 카테고리 ---
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 카테고리입니다."),
     DUPLICATE_CATEGORY_NAME(HttpStatus.CONFLICT, "이미 사용 중인 카테고리명입니다."),
@@ -178,7 +186,9 @@ public enum ErrorCode {
     CLIENT_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "클라이언트 프로필을 찾을 수 없습니다."),
 
     // --- 회원 마이페이지 ---
-    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다.");
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."),
+    MEMBER_WITHDRAWAL_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
+    CURRENT_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다.");
 
     private final HttpStatus status;
     private final String message;
