@@ -4,9 +4,12 @@ import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
 import com.expo.payment.dto.ConfirmTicketPaymentRequest;
 import com.expo.payment.dto.ConfirmTicketPaymentResponse;
+import com.expo.payment.dto.FailTicketPaymentRequest;
+import com.expo.payment.dto.FailTicketPaymentResponse;
 import com.expo.payment.dto.TicketPaymentRequest;
 import com.expo.payment.dto.TicketPaymentResponse;
 import com.expo.payment.service.TicketPaymentConfirmationService;
+import com.expo.payment.service.TicketPaymentFailureProcessingService;
 import com.expo.payment.service.TicketPaymentInitiationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,11 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "티켓 결제 API")
-@RequestMapping("/api/payments/")
+@RequestMapping("/api/payments")
 public class TicketPaymentController {
 
     private final TicketPaymentInitiationService ticketPaymentInitiationService;
     private final TicketPaymentConfirmationService ticketPaymentConfirmationService;
+    private final TicketPaymentFailureProcessingService ticketPaymentFailureProcessingService;
 
     @PostMapping("/initiate")
     public ResponseEntity<ApiResponse<TicketPaymentResponse>> initiatePayment(
@@ -42,6 +46,16 @@ public class TicketPaymentController {
             @Valid @RequestBody ConfirmTicketPaymentRequest request) {
         ConfirmTicketPaymentResponse response =
                 ticketPaymentConfirmationService.confirm(request, principal);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PostMapping("/tickets/fail")
+    public ResponseEntity<ApiResponse<FailTicketPaymentResponse>> failTicketPayment(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @Valid @RequestBody FailTicketPaymentRequest request) {
+        FailTicketPaymentResponse response =
+                ticketPaymentFailureProcessingService.process(
+                        request.orderId(), request.failureCode(), principal);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

@@ -68,4 +68,10 @@ public class InventoryReservation {
     public void confirm() {
         this.status = InventoryReservationStatus.CONFIRMED;
     }
+
+    /** 결제 실패로 임시 확보 재고를 해제한다. */
+    public void release() {
+        this.status = InventoryReservationStatus.RELEASED;
+        this.releasedAt = Instant.now();
+    }
 }

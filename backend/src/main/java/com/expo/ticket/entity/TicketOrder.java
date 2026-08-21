@@ -121,4 +121,9 @@ public class TicketOrder extends BaseTimeEntity {
         this.status = TicketOrderStatus.PAID;
         this.paidAt = Instant.now();
     }
+
+    /** 결제 실패로 더 이상 결제할 수 없는 주문 상태로 전이한다. */
+    public void markPaymentFailed() {
+        this.status = TicketOrderStatus.PAYMENT_FAILED;
+    }
 }
