@@ -17,6 +17,10 @@ import com.expo.common.config.TossConfirmResult;
 import com.expo.common.config.TossPaymentClient;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.repository.ParticipationApplicationRepository;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +37,8 @@ public class BoothPaymentService {
     private final BoothPaymentRepository boothPaymentRepository;
     private final BoothPaymentHistoryRepository boothPaymentHistoryRepository;
     private final BoothOrderRepository boothOrderRepository;
+    private final ParticipationApplicationRepository participationApplicationRepository;
+    private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final BoothOrderCompletionService boothOrderCompletionService;
     private final TossPaymentClient tossPaymentClient;
     private final BoothPaymentConverter boothPaymentConverter;
@@ -41,12 +47,16 @@ public class BoothPaymentService {
             BoothPaymentRepository boothPaymentRepository,
             BoothPaymentHistoryRepository boothPaymentHistoryRepository,
             BoothOrderRepository boothOrderRepository,
+            ParticipationApplicationRepository participationApplicationRepository,
+            RecruitmentNoticeRepository recruitmentNoticeRepository,
             BoothOrderCompletionService boothOrderCompletionService,
             TossPaymentClient tossPaymentClient,
             BoothPaymentConverter boothPaymentConverter) {
         this.boothPaymentRepository = boothPaymentRepository;
         this.boothPaymentHistoryRepository = boothPaymentHistoryRepository;
         this.boothOrderRepository = boothOrderRepository;
+        this.participationApplicationRepository = participationApplicationRepository;
+        this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.boothOrderCompletionService = boothOrderCompletionService;
         this.tossPaymentClient = tossPaymentClient;
         this.boothPaymentConverter = boothPaymentConverter;
@@ -207,12 +217,28 @@ public class BoothPaymentService {
         return order;
     }
 
+    /**
+     * 주문이 결제(시작·승인) 가능한 상태인지 확인한다.
+     *
+     * <p>모집공고는 주문 생성 이후에도 마감·취소될 수 있어, 결제 시점에 다시 게시 중인지 확인한다 - 그렇지 않으면 마감된
+     * 모집공고에 대한 결제가 그대로 승인될 수 있다.
+     */
     private void validateOrderPayable(BoothOrder order) {
         if (order.getStatus() != BoothOrderStatus.PENDING_PAYMENT) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_NOT_PENDING);
         }
         if (Instant.now().isAfter(order.getExpiresAt())) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
+        }
+        boolean noticeOpen =
+                participationApplicationRepository
+                        .findById(order.getApplicationId())
+                        .map(ParticipationApplication::getRecruitmentNoticeId)
+                        .flatMap(recruitmentNoticeRepository::findById)
+                        .map(notice -> notice.getStatus() == RecruitmentNoticeStatus.OPEN)
+                        .orElse(false);
+        if (!noticeOpen) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
     }
 }
