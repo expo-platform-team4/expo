@@ -5,6 +5,7 @@ import com.expo.common.config.TossConfirmResult;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.payment.converter.TicketPaymentConverter;
 import com.expo.payment.dto.ConfirmTicketPaymentResponse;
 import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.entity.TicketPaymentEventType;
@@ -20,6 +21,7 @@ import com.expo.ticket.repository.InventoryReservationRepository;
 import com.expo.ticket.repository.TicketInventoryRepository;
 import com.expo.ticket.repository.TicketOrderRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ class TicketPaymentCompletionService {
     private final InventoryReservationRepository inventoryReservationRepository;
     private final TicketInventoryRepository ticketInventoryRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
+    private final TicketPaymentConverter ticketPaymentConverter;
     private final TicketIssueService ticketIssueService;
     private final EntityManager entityManager;
 
@@ -55,10 +58,13 @@ class TicketPaymentCompletionService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 
         if (payment.getStatus() == TicketPaymentStatus.DONE) {
-            return toResponse(order, payment);
+            return ticketPaymentConverter.toConfirmResponse(order, payment);
         }
-        if (order.getStatus() != TicketOrderStatus.PENDING
-                || payment.getRequestedAmount().compareTo(result.totalAmount()) != 0) {
+        if (payment.getStatus() == TicketPaymentStatus.CANCELED
+                || order.getStatus() != TicketOrderStatus.PENDING) {
+            throw new BusinessException(ErrorCode.PAYMENT_ORDER_NOT_PENDING);
+        }
+        if (payment.getRequestedAmount().compareTo(result.totalAmount()) != 0) {
             throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
@@ -71,6 +77,11 @@ class TicketPaymentCompletionService {
                                         reservation.getStatus()
                                                 != InventoryReservationStatus.ACTIVE)) {
             throw new BusinessException(ErrorCode.PAYMENT_RESERVATION_NOT_FOUND);
+        }
+        if (reservations.stream()
+                .anyMatch(reservation -> Instant.now().isAfter(reservation.getExpiresAt()))) {
+            // PG 승인 뒤 만료된 경우 PG 취소 보상은 후속 과제로 처리한다.
+            throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
         }
 
         TicketPaymentStatus statusBeforeAttempt = payment.getStatus();
@@ -99,17 +110,6 @@ class TicketPaymentCompletionService {
         entityManager.flush();
         ticketIssueService.issue(order.getId());
 
-        return toResponse(order, payment);
-    }
-
-    private ConfirmTicketPaymentResponse toResponse(TicketOrder order, TicketPayment payment) {
-        return new ConfirmTicketPaymentResponse(
-                payment.getId(),
-                order.getOrderNumber(),
-                payment.getPaymentKey(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getApprovedAmount(),
-                payment.getApprovedAt());
+        return ticketPaymentConverter.toConfirmResponse(order, payment);
     }
 }

@@ -116,6 +116,12 @@ public enum ErrorCode {
     BOOTH_ALLOCATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 취소된 배정입니다."),
     BOOTH_ALLOCATION_NOT_ASSIGNED(HttpStatus.CONFLICT, "확정 배정 상태에서만 부스 콘텐츠를 작성할 수 있습니다."),
     PAYMENT_RESERVATION_NOT_FOUND(HttpStatus.CONFLICT, "결제 가능한 재고 예약을 찾을 수 없습니다."),
+    TICKET_ORDER_ACCESS_DENIED(HttpStatus.NOT_FOUND, "주문 정보를 확인할 수 없습니다."),
+
+    // --- 환불 ---
+    REFUND_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제 완료된 주문만 환불 요청할 수 있습니다."),
+    REFUND_PAYMENT_NOT_COMPLETED(HttpStatus.CONFLICT, "완료된 결제 건만 환불 요청할 수 있습니다."),
+    REFUND_ALREADY_REQUESTED(HttpStatus.CONFLICT, "이미 환불 요청이 접수된 주문입니다."),
 
     // --- 부스 콘텐츠 ---
     BOOTH_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠입니다."),
