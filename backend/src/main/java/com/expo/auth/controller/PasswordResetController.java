@@ -33,7 +33,8 @@ public class PasswordResetController {
 
           - 계정 존재 여부를 응답으로 노출하지 않습니다. 가입되지 않은 이메일이어도 동일한 성공 메시지를 반환합니다.
           - `app.mail.provider=smtp` 면 재설정 코드를 실제 메일로 보냅니다. 기본값(logging)이면 발송하지
-            않고 서버 로그에만 남습니다.
+            않습니다 — 이때도 재설정 코드 자체는 어떤 로그에도 남지 않고, 수신자·제목 같은 메타데이터만
+            서버 로그에 남습니다.
           - 재요청 시 앞서 발급된 토큰은 폐기됩니다.
           """)
     @PostMapping("/api/auth/password-reset-requests")
