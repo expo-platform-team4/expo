@@ -95,7 +95,8 @@ class SecurityDefaultDenyTest {
             "/api/venue-halls/1/zones",
             "/api/files/1",
             "/api/files/1/content",
-            "/api/public/tickets"
+            "/api/public/tickets",
+            "/api/orders/ORD-1/payment-status"
         })
         String publicGet() {
             return "ok";
@@ -149,7 +150,10 @@ class SecurityDefaultDenyTest {
                 "/api/venue-halls/1/zones",
                 "/api/files/1",
                 "/api/files/1/content",
-                "/api/public/tickets"
+                "/api/public/tickets",
+                // 비회원이 결제 후 결과를 확인하는 경로. 게스트는
+                // TicketOrderAccessVerifier 가 통과시킨다
+                "/api/orders/ORD-1/payment-status"
             })
     void publicGetPathsStayOpen(String path) throws Exception {
         mockMvc.perform(get(path)).andExpect(status().isOk());
