@@ -9,17 +9,25 @@
 --
 -- USED 상태는 phone_verifications 에는 없다 — 이메일 인증은 회원가입(AuthService.signup)이
 -- 토큰을 실제로 소비하므로, 한 번 가입에 쓴 토큰을 다시 못 쓰게 구분할 상태가 필요하다.
+-- signup_token_expires_at: 인증코드 확인(VERIFIED) 시점에 발급하는 가입토큰 자체의 만료시각.
+-- expires_at 은 "인증코드"의 만료시각이라 코드 확인 이후에는 더 이상 체크되지 않는다 — 그래서
+-- 가입토큰이 무기한 유효해지는 걸 막으려면 별도 만료시각이 필요하다.
+--
+-- version: 낙관적 락. 같은 레코드에 대한 확인(confirm) 요청이 동시에 들어와 상태 전이가
+-- 중복 적용되는 걸 막는다 (JPA @Version).
 CREATE TABLE email_verifications (
-    id                      BIGSERIAL    PRIMARY KEY,
-    user_id                 BIGINT       NULL,
-    email                   VARCHAR(255) NOT NULL,
-    verification_code_hash  VARCHAR(255) NOT NULL,
-    signup_token_hash       VARCHAR(255) NULL,
-    status                  VARCHAR(20)  NOT NULL
+    id                       BIGSERIAL    PRIMARY KEY,
+    user_id                  BIGINT       NULL,
+    email                    VARCHAR(255) NOT NULL,
+    verification_code_hash   VARCHAR(255) NOT NULL,
+    signup_token_hash        VARCHAR(255) NULL,
+    status                   VARCHAR(20)  NOT NULL
         CHECK (status IN ('REQUESTED', 'VERIFIED', 'FAILED', 'EXPIRED', 'USED')),
-    requested_at            TIMESTAMPTZ  NOT NULL,
-    verified_at             TIMESTAMPTZ  NULL,
-    expires_at              TIMESTAMPTZ  NOT NULL
+    requested_at             TIMESTAMPTZ  NOT NULL,
+    verified_at              TIMESTAMPTZ  NULL,
+    expires_at               TIMESTAMPTZ  NOT NULL,
+    signup_token_expires_at  TIMESTAMPTZ  NULL,
+    version                  BIGINT       NOT NULL DEFAULT 0
 );
 
 -- 회원가입 시 "이 이메일로 VERIFIED 상태인 인증이 있는가"를 조회하는 조건과 정확히 같다.

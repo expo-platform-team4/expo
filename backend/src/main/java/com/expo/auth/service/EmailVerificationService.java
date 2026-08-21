@@ -13,6 +13,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -128,8 +129,10 @@ public class EmailVerificationService {
 
         String signupToken = UUID.randomUUID().toString();
         String signupTokenHash = passwordEncoder.encode(signupToken);
-        verification.markVerified(signupTokenHash, now);
-        emailVerificationRepository.save(verification);
+        Instant signupTokenExpiresAt =
+                now.plus(properties.getSignupTokenExpireMinutes(), ChronoUnit.MINUTES);
+        verification.markVerified(signupTokenHash, now, signupTokenExpiresAt);
+        saveWithLockCheck(verification);
 
         return new EmailVerificationConfirmResponse(
                 verification.getId(),
@@ -168,8 +171,26 @@ public class EmailVerificationService {
                                         new BusinessException(
                                                 ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID));
 
+        Instant now = Instant.now();
+        if (matched.isSignupTokenExpired(now)) {
+            throw new BusinessException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID);
+        }
+
         matched.markUsed(userId);
-        emailVerificationRepository.save(matched);
+        saveWithLockCheck(matched);
+    }
+
+    /**
+     * 낙관적 락({@code @Version}) 충돌을 공통 처리한다. 같은 인증 레코드에 대한 확인(confirm)·소비
+     * (consume) 요청이 동시에 들어와도 하나만 성공시키기 위한 방어다 — 성공한 한 요청만 상태를
+     * 실제로 바꾸고, 나머지는 저장 시점에 버전 충돌로 실패한다.
+     */
+    private void saveWithLockCheck(EmailVerification verification) {
+        try {
+            emailVerificationRepository.saveAndFlush(verification);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new BusinessException(ErrorCode.RESOURCE_BUSY);
+        }
     }
 
     private void sendVerificationEmail(String to, String code) {
