@@ -115,4 +115,10 @@ public class TicketOrder extends BaseTimeEntity {
         items.add(item);
         item.assignOrder(this);
     }
+
+    /** 결제 승인에 성공한 주문을 결제 완료 상태로 전이한다. */
+    public void markPaid() {
+        this.status = TicketOrderStatus.PAID;
+        this.paidAt = Instant.now();
+    }
 }

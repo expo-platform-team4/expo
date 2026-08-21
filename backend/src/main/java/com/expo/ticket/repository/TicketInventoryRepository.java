@@ -17,4 +17,15 @@ public interface TicketInventoryRepository extends JpaRepository<TicketInventory
            AND i.totalQuantity - i.reservedQuantity - i.soldQuantity >= :quantity
         """)
     int reserveIfAvailable(@Param("productId") Long productId, @Param("quantity") int quantity);
+
+    @Modifying
+    @Query(
+            """
+        UPDATE TicketInventory i
+           SET i.reservedQuantity = i.reservedQuantity - :quantity,
+               i.soldQuantity = i.soldQuantity + :quantity
+         WHERE i.ticketProduct.id = :productId
+           AND i.reservedQuantity >= :quantity
+        """)
+    int confirmReservedToSold(@Param("productId") Long productId, @Param("quantity") int quantity);
 }

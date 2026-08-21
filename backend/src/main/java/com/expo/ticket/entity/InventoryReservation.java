@@ -63,4 +63,9 @@ public class InventoryReservation {
         this.reservedAt = Instant.now();
         this.expiresAt = expiresAt;
     }
+
+    /** 결제 승인으로 임시 확보 재고를 판매 확정 상태로 전이한다. */
+    public void confirm() {
+        this.status = InventoryReservationStatus.CONFIRMED;
+    }
 }

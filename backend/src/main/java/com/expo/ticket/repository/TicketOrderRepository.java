@@ -12,6 +12,10 @@ public interface TicketOrderRepository extends JpaRepository<TicketOrder, Long> 
     Optional<TicketOrder> findByOrderNumber(@Param("orderNumber") String orderNumber);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select ticketOrder from TicketOrder ticketOrder where ticketOrder.id = :orderId")
+    Optional<TicketOrder> findByIdForUpdate(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             "select ticketOrder from TicketOrder ticketOrder where ticketOrder.orderNumber = :orderNumber")
     Optional<TicketOrder> findByOrderNumberForUpdate(@Param("orderNumber") String orderNumber);
