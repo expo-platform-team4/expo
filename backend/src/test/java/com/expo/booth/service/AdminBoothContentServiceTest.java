@@ -11,11 +11,13 @@ import com.expo.booth.converter.BoothContentConverter;
 import com.expo.booth.converter.BoothContentFileConverter;
 import com.expo.booth.converter.BoothManagementHistoryConverter;
 import com.expo.booth.converter.ExternalLinkConverter;
+import com.expo.booth.entity.BoothAllocation;
 import com.expo.booth.entity.BoothContent;
 import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentFileType;
 import com.expo.booth.entity.ExternalLink;
 import com.expo.booth.entity.ExternalLinkType;
+import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
@@ -41,6 +43,7 @@ class AdminBoothContentServiceTest {
     private BoothContentRepository boothContentRepository;
     private BoothContentFileRepository boothContentFileRepository;
     private ExternalLinkRepository externalLinkRepository;
+    private BoothAllocationRepository boothAllocationRepository;
     private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private AdminBoothContentService service;
 
@@ -49,12 +52,14 @@ class AdminBoothContentServiceTest {
         boothContentRepository = mock(BoothContentRepository.class);
         boothContentFileRepository = mock(BoothContentFileRepository.class);
         externalLinkRepository = mock(ExternalLinkRepository.class);
+        boothAllocationRepository = mock(BoothAllocationRepository.class);
         boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new AdminBoothContentService(
                         boothContentRepository,
                         boothContentFileRepository,
                         externalLinkRepository,
+                        boothAllocationRepository,
                         boothManagementHistoryRepository,
                         new BoothContentConverter(
                                 new BoothContentFileConverter(), new ExternalLinkConverter()),
@@ -63,6 +68,12 @@ class AdminBoothContentServiceTest {
                 .thenReturn(List.of());
         when(externalLinkRepository.findAllByBoothContentIdOrderBySortOrderAscIdAsc(any()))
                 .thenReturn(List.of());
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(assignedAllocation()));
+    }
+
+    private static BoothAllocation assignedAllocation() {
+        return BoothAllocation.create(10L, 20L, 30L, CLIENT_USER_ID);
     }
 
     private BoothContent content() {
@@ -228,5 +239,37 @@ class AdminBoothContentServiceTest {
 
         assertThat(response.status().name()).isEqualTo("PUBLISHED");
         verify(boothManagementHistoryRepository).save(any());
+    }
+
+    @Test
+    void restoreRejectsWhenAllocationNotAssigned() {
+        BoothContent content = content();
+        moveToPublished(content);
+        content.hide();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+        BoothAllocation canceledAllocation = assignedAllocation();
+        canceledAllocation.cancel("배정 정정");
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceledAllocation));
+
+        assertThatThrownBy(() -> service.restore(CONTENT_ID, ADMIN_ID, "재검토 완료"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+        verify(boothManagementHistoryRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void restoreRejectsWhenAllocationNotFound() {
+        BoothContent content = content();
+        moveToPublished(content);
+        content.hide();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+        when(boothAllocationRepository.findById(ALLOCATION_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.restore(CONTENT_ID, ADMIN_ID, "재검토 완료"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND);
     }
 }
