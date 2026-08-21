@@ -1,11 +1,9 @@
 package com.expo.payment.service;
 
-import com.expo.checkin.service.TicketIssueService;
-import com.expo.common.config.TossConfirmResult;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.payment.dto.ConfirmTicketPaymentResponse;
+import com.expo.payment.dto.FailTicketPaymentResponse;
 import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.entity.TicketPaymentEventType;
 import com.expo.payment.entity.TicketPaymentHistory;
@@ -19,17 +17,15 @@ import com.expo.ticket.entity.TicketOrderStatus;
 import com.expo.ticket.repository.InventoryReservationRepository;
 import com.expo.ticket.repository.TicketInventoryRepository;
 import com.expo.ticket.repository.TicketOrderRepository;
-import jakarta.persistence.EntityManager;
-import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 토스 승인 성공 후 주문·재고·발권을 하나의 로컬 트랜잭션으로 확정한다. */
+/** 결제 실패를 기록하고 주문의 임시 확보 재고를 반환한다. */
 @Service
 @RequiredArgsConstructor
-class TicketPaymentCompletionService {
+public class TicketPaymentFailureProcessingService {
 
     private final TicketPaymentRepository ticketPaymentRepository;
     private final TicketPaymentHistoryRepository ticketPaymentHistoryRepository;
@@ -37,33 +33,29 @@ class TicketPaymentCompletionService {
     private final InventoryReservationRepository inventoryReservationRepository;
     private final TicketInventoryRepository ticketInventoryRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
-    private final TicketIssueService ticketIssueService;
-    private final EntityManager entityManager;
 
     @Transactional
-    public ConfirmTicketPaymentResponse complete(
-            TicketPaymentConfirmationTarget target,
-            TossConfirmResult result,
-            AuthPrincipal principal) {
-        TicketOrder order =
-                ticketOrderRepository
-                        .findByIdForUpdate(target.ticketOrderId())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_ORDER_NOT_FOUND));
-        ticketOrderAccessVerifier.verifyForPaymentFlow(order, principal);
+    public FailTicketPaymentResponse process(
+            String pgOrderId, String failureCode, AuthPrincipal principal) {
         TicketPayment payment =
                 ticketPaymentRepository
-                        .findById(target.ticketPaymentId())
+                        .findByPgOrderId(pgOrderId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+        TicketOrder order =
+                ticketOrderRepository
+                        .findByIdForUpdate(payment.getTicketOrderId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_ORDER_NOT_FOUND));
+        ticketOrderAccessVerifier.verifyForPaymentFlow(order, principal);
 
         if (payment.getStatus() == TicketPaymentStatus.DONE) {
-            return toResponse(order, payment);
+            throw new BusinessException(ErrorCode.PAYMENT_ALREADY_APPROVED);
+        }
+        if (payment.getStatus() == TicketPaymentStatus.FAILED) {
+            return toResponse(payment, order);
         }
         if (payment.getStatus() == TicketPaymentStatus.CANCELED
                 || order.getStatus() != TicketOrderStatus.PENDING) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_NOT_PENDING);
-        }
-        if (payment.getRequestedAmount().compareTo(result.totalAmount()) != 0) {
-            throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
         List<InventoryReservation> reservations =
@@ -76,49 +68,33 @@ class TicketPaymentCompletionService {
                                                 != InventoryReservationStatus.ACTIVE)) {
             throw new BusinessException(ErrorCode.PAYMENT_RESERVATION_NOT_FOUND);
         }
-        if (reservations.stream()
-                .anyMatch(reservation -> Instant.now().isAfter(reservation.getExpiresAt()))) {
-            // PG 승인 뒤 만료된 경우 PG 취소 보상은 후속 과제로 처리한다.
-            throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
-        }
 
-        TicketPaymentStatus statusBeforeAttempt = payment.getStatus();
-        payment.approve(result.paymentKey(), result.method(), result.totalAmount());
-        order.markPaid();
+        TicketPaymentStatus statusBeforeFailure = payment.getStatus();
         for (InventoryReservation reservation : reservations) {
             int updated =
-                    ticketInventoryRepository.confirmReservedToSold(
+                    ticketInventoryRepository.releaseReserved(
                             reservation.getTicketProduct().getId(), reservation.getQuantity());
             if (updated != 1) {
                 throw new BusinessException(ErrorCode.PAYMENT_RESERVATION_NOT_FOUND);
             }
-            reservation.confirm();
+            reservation.release();
         }
+        payment.fail(failureCode);
+        order.markPaymentFailed();
         ticketPaymentHistoryRepository.save(
                 TicketPaymentHistory.record(
                         payment.getId(),
-                        TicketPaymentEventType.APPROVE,
-                        statusBeforeAttempt,
-                        TicketPaymentStatus.DONE,
-                        result.totalAmount(),
-                        result.paymentKey(),
-                        result.rawResponse()));
-
-        // 발권은 MyBatis로 주문 상태를 다시 읽으므로 JPA 변경을 먼저 DB에 반영해야 한다.
-        entityManager.flush();
-        ticketIssueService.issue(order.getId());
-
-        return toResponse(order, payment);
+                        TicketPaymentEventType.FAIL,
+                        statusBeforeFailure,
+                        TicketPaymentStatus.FAILED,
+                        null,
+                        null,
+                        null));
+        return toResponse(payment, order);
     }
 
-    private ConfirmTicketPaymentResponse toResponse(TicketOrder order, TicketPayment payment) {
-        return new ConfirmTicketPaymentResponse(
-                payment.getId(),
-                order.getOrderNumber(),
-                payment.getPaymentKey(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getApprovedAmount(),
-                payment.getApprovedAt());
+    private FailTicketPaymentResponse toResponse(TicketPayment payment, TicketOrder order) {
+        return new FailTicketPaymentResponse(
+                payment.getId(), order.getOrderNumber(), payment.getStatus(), order.getStatus());
     }
 }

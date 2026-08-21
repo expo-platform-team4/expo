@@ -16,7 +16,7 @@ public class TicketOrderAccessVerifier {
             return;
         }
         if (principal == null || !order.getMemberUserId().equals(principal.getMemberId())) {
-            throw new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED);
+            throw new BusinessException(ErrorCode.TICKET_ORDER_ACCESS_DENIED);
         }
     }
 }
