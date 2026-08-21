@@ -109,3 +109,18 @@ app:
     api-secret: ${SOLAPI_SMS_API_SECRET_KEY:}
     sender-number: ${SOLAPI_SENDER_NUMBER:}
     api-base-url: https://api.solapi.com
+
+  mail:
+    # logging = 실제로 보내지 않고 로그만 남긴다 (기본, 로컬 개발용)
+    # smtp    = 실제 발송. 아래 app.mail.smtp 값이 전부 있어야 하고, 없으면 기동에 실패한다
+    provider: ${MAIL_PROVIDER:logging}
+
+    smtp:
+      # Gmail 기준. 앱 비밀번호(App Password)를 써야 한다 — 구글 계정 비밀번호 그대로는 인증이
+      # 거부된다. https://myaccount.google.com/apppasswords 에서 발급한다 (2단계 인증 필수).
+      # provider 가 logging 이면 비어 있어도 된다.
+      host: ${MAIL_SMTP_HOST:smtp.gmail.com}
+      port: ${MAIL_SMTP_PORT:587}
+      username: ${MAIL_SMTP_USERNAME:}
+      password: ${MAIL_SMTP_PASSWORD:}
+      from: ${MAIL_FROM:${MAIL_SMTP_USERNAME:}}
