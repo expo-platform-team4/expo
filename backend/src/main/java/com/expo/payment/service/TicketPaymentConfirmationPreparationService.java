@@ -14,6 +14,7 @@ import com.expo.ticket.entity.TicketOrderStatus;
 import com.expo.ticket.repository.InventoryReservationRepository;
 import com.expo.ticket.repository.TicketOrderRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 class TicketPaymentConfirmationPreparationService {
+
+    private static final Duration CONFIRMATION_LEASE_DURATION = Duration.ofMinutes(2);
 
     private final TicketPaymentRepository ticketPaymentRepository;
     private final TicketOrderRepository ticketOrderRepository;
@@ -57,21 +60,23 @@ class TicketPaymentConfirmationPreparationService {
         if (payment.getRequestedAmount().compareTo(amount) != 0) {
             throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
-        validateActiveReservations(order.getId());
+        validateAndExtendActiveReservations(order.getId());
         return new TicketPaymentConfirmationTarget(order.getId(), payment.getId(), null);
     }
 
-    private void validateActiveReservations(Long ticketOrderId) {
+    private void validateAndExtendActiveReservations(Long ticketOrderId) {
         List<InventoryReservation> reservations =
-                inventoryReservationRepository.findAllByTicketOrderId(ticketOrderId);
+                inventoryReservationRepository.findAllByTicketOrderIdForUpdate(ticketOrderId);
         if (reservations.isEmpty()) {
             throw new BusinessException(ErrorCode.PAYMENT_RESERVATION_NOT_FOUND);
         }
+        Instant confirmationLeaseExpiresAt = Instant.now().plus(CONFIRMATION_LEASE_DURATION);
         for (InventoryReservation reservation : reservations) {
             if (reservation.getStatus() != InventoryReservationStatus.ACTIVE
                     || Instant.now().isAfter(reservation.getExpiresAt())) {
                 throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
             }
+            reservation.extendExpiration(confirmationLeaseExpiresAt);
         }
     }
 }

@@ -74,4 +74,17 @@ public class InventoryReservation {
         this.status = InventoryReservationStatus.RELEASED;
         this.releasedAt = Instant.now();
     }
+
+    /** 결제 가능 시간이 지나 임시 확보 재고를 만료 처리한다. */
+    public void expire() {
+        this.status = InventoryReservationStatus.EXPIRED;
+        this.releasedAt = Instant.now();
+    }
+
+    /** 토스 승인 호출 중 스케줄러가 예약을 만료시키지 않도록 만료 시각을 짧게 연장한다. */
+    public void extendExpiration(Instant expiresAt) {
+        if (this.expiresAt.isBefore(expiresAt)) {
+            this.expiresAt = expiresAt;
+        }
+    }
 }
