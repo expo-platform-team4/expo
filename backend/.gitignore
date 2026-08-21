@@ -3,7 +3,7 @@ HELP.md
 build/
 
 ### 환경변수 / 비밀값 ###
-../.env
+.env
 .env.*
 !env.sample
 

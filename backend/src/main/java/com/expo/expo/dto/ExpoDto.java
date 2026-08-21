@@ -4,7 +4,14 @@ import com.expo.expo.entity.Expo;
 import com.expo.expo.entity.ExpoAttachments.ExpoFile;
 import com.expo.expo.entity.ExpoAttachments.ExpoImage;
 import com.expo.expo.entity.ExpoAttachments.ExternalLink;
-import com.expo.expo.entity.ExpoEnums.*;
+import com.expo.expo.entity.ExpoEnums.EventStatus;
+import com.expo.expo.entity.ExpoEnums.ExpoFilePurpose;
+import com.expo.expo.entity.ExpoEnums.ExpoImageType;
+import com.expo.expo.entity.ExpoEnums.ExternalLinkType;
+import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
+import com.expo.expo.entity.ExpoEnums.ReviewStatus;
+import com.expo.expo.entity.ExpoEnums.SaleStatus;
+import com.expo.expo.entity.ExpoEnums.VisibilityStatus;
 import com.expo.expo.entity.ExpoOpeningRequest;
 import com.expo.expo.repository.ExpoCardProjection;
 import jakarta.validation.constraints.NotBlank;
@@ -27,9 +34,9 @@ public final class ExpoDto {
     /**
      * 개최 신청 임시저장/생성 (희-EXPO-01, 희-EXPO-17)
      * V1 스키마 제약상 제목·소개·행사/판매 일시는 DRAFT 에서도 필수(NOT NULL).
+     * 신청자(host)는 인증 주체(AuthPrincipal)에서 받으므로 요청 필드에 두지 않는다.
      */
     public record OpeningRequestCreate(
-            @NotNull Long hostClientId,
             @NotBlank @Size(max = 255) String title,
             @NotBlank String description,
             @NotNull OffsetDateTime eventStartAt,
@@ -43,7 +50,6 @@ public final class ExpoDto {
 
     /** 승인 전 직접 수정 (희-EXPO-05) — null 필드는 유지 */
     public record OpeningRequestUpdate(
-            @NotNull Long hostClientId,
             @Size(max = 255) String title,
             String description,
             OffsetDateTime eventStartAt,
@@ -57,11 +63,12 @@ public final class ExpoDto {
     /**
      * 승인 (희-EXPO-09) — expos 생성 + 자동 공개.
      * regionCode 미지정 시 희망 장소(virtual_venues.region_code)에서 해석.
+     * 처리 관리자는 인증 주체에서 받으므로 요청 필드에 두지 않는다.
      */
     public record OpeningRequestApprove(
-            @NotNull Long adminId, @Size(max = 30) String regionCode, List<Long> categoryIds) {}
+            @Size(max = 30) String regionCode, List<Long> categoryIds) {}
 
-    public record OpeningRequestReject(@NotNull Long adminId, @NotBlank String rejectionReason) {}
+    public record OpeningRequestReject(@NotBlank String rejectionReason) {}
 
     /** 썸네일·상세 이미지 등록 (희-EXPO-15: THUMBNAIL = 대표 이미지) */
     public record ExpoImageCreate(

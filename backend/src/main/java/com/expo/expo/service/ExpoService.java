@@ -289,9 +289,17 @@ public class ExpoService {
                 .map(ExpoCardResponse::from);
     }
 
-    /** 상세 조회 — 판매 상태(희-EXPO-10) 계산 + 이미지·파일·링크 포함. */
+    /**
+     * 상세 조회 — 판매 상태(희-EXPO-10) 계산 + 이미지·파일·링크 포함.
+     *
+     * <p>공개(PUBLIC·APPROVED·미취소) 상태가 아닌 박람회(DRAFT·심사중·반려·취소 등)는 비공개 리소스이므로
+     * 노출하지 않는다. 존재 자체를 드러내지 않기 위해 404(찾을 수 없음)로 처리한다.
+     */
     public ExpoDetailResponse getDetail(Long expoId) {
         Expo expo = requireExpo(expoId);
+        if (!expo.isPubliclyVisible()) {
+            throw new EntityNotFoundException("공개된 박람회를 찾을 수 없습니다. id=" + expoId);
+        }
 
         Object[] agg =
                 (Object[])

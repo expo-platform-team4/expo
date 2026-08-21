@@ -72,6 +72,9 @@ public class SecurityConfig {
                                         // 공개 API
                                         .requestMatchers("/api/public/**")
                                         .permitAll()
+                                        // 공개 박람회 조회 (검색·상세 등) — 토큰 없이 접근 가능
+                                        .requestMatchers(HttpMethod.GET, "/api/expos/**")
+                                        .permitAll()
                                         // Swagger UI
                                         .requestMatchers("/swagger-ui/**")
                                         .permitAll()
@@ -88,11 +91,6 @@ public class SecurityConfig {
                                         .requestMatchers("/api/member/**")
                                         .hasRole("MEMBER")
                                         // 위에 해당하지 않는 나머지 URL — 인증 없이 허용 (필요 시 authenticated()로 변경)
-                                        .requestMatchers(HttpMethod.GET, "/api/expos/**")
-                                        .permitAll() // 공개 조회
-                                        .requestMatchers("/api/client/**")
-                                        .authenticated() // 클라이언트
-                                        // /api/admin/** 는 기존 hasRole("ADMIN") 규칙 유지
                                         .anyRequest()
                                         .permitAll())
                 // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치해 토큰을 먼저 처리
