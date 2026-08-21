@@ -18,6 +18,16 @@ public interface InventoryReservationRepository extends JpaRepository<InventoryR
             """
         select reservation
           from InventoryReservation reservation
+         where reservation.ticketOrder.id = :ticketOrderId
+        """)
+    List<InventoryReservation> findAllByTicketOrderIdForUpdate(
+            @Param("ticketOrderId") Long ticketOrderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+        select reservation
+          from InventoryReservation reservation
          where reservation.status = :status
            and reservation.expiresAt <= :now
         """)
