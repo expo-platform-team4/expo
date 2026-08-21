@@ -58,7 +58,8 @@ class TicketPaymentCompletionService {
         if (payment.getStatus() == TicketPaymentStatus.DONE) {
             return toResponse(order, payment);
         }
-        if (order.getStatus() != TicketOrderStatus.PENDING) {
+        if (payment.getStatus() == TicketPaymentStatus.CANCELED
+                || order.getStatus() != TicketOrderStatus.PENDING) {
             throw new BusinessException(ErrorCode.PAYMENT_ORDER_NOT_PENDING);
         }
         if (payment.getRequestedAmount().compareTo(result.totalAmount()) != 0) {
