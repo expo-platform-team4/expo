@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** 비밀번호 재설정 서비스 (A-API-013, A-API-014). */
 @Slf4j
@@ -53,9 +55,10 @@ public class PasswordResetService {
      * <p>{@code app.mail.provider=smtp} 면 실제로 메일이 나간다. 기본값(logging)이면 발송하지 않고 로그에만
      * 남는다 — {@link LoggingEmailSender} 참고.
      *
-     * <p>메일 발송은 토큰 저장과 같은 트랜잭션 안에서 호출하지만, 발송 자체가 실패해도 이 메서드는 실패하지
-     * 않는다({@link EmailSender} 계약). 트랜잭션 커밋 전에 외부 호출이 끼는 건 이상적이지 않지만, 재설정
-     * 토큰 발급 하나 때문에 이벤트 발행·비동기 처리를 새로 들이는 건 지금 규모에 과하다고 보고 미룬다.
+     * <p>메일 발송은 {@link TransactionSynchronizationManager} 로 커밋 이후로 미룬다 — 커밋 전에 보내면,
+     * 메일은 나갔는데 토큰 저장이 롤백되는(또는 반대로 커밋 직전 SMTP 대기 시간만큼 트랜잭션이 늘어지는)
+     * 불일치가 생길 수 있다. 발송 자체가 실패해도 이 메서드(이미 커밋된 트랜잭션)에는 영향을 주지
+     * 않는다({@link EmailSender} 계약).
      */
     @Transactional
     public PasswordResetRequestResponse requestReset(String rawEmail) {
@@ -87,7 +90,13 @@ public class PasswordResetService {
                             // 개인정보·토큰은 로그에 남기지 않는다 (AGENTS.md, DEBUG도 예외 없음).
                             log.debug("비밀번호 재설정 요청 userId={}", user.getId());
 
-                            sendResetEmail(email, resetToken);
+                            TransactionSynchronizationManager.registerSynchronization(
+                                    new TransactionSynchronization() {
+                                        @Override
+                                        public void afterCommit() {
+                                            sendResetEmail(email, resetToken);
+                                        }
+                                    });
                         });
 
         return new PasswordResetRequestResponse(

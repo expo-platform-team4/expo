@@ -11,9 +11,10 @@ import org.springframework.stereotype.Component;
  * <p>{@code app.mail.provider} 를 지정하지 않으면 이것이 선택된다. SMTP 계정 없이 비밀번호 재설정
  * 흐름 전체를 돌려볼 수 있다.
  *
- * <p>본문에 재설정 토큰이 들어 있고 그 토큰은 <b>그 자체가 인증 수단</b>이다. 원래 로그에 남기면 안
- * 되는 값이지만, 로컬에서 토큰을 손에 넣는 것이 이 구현의 존재 이유라 DEBUG 로 남긴다. <b>운영에서 이
- * 구현이 선택되면 안 된다</b> — 기동 시 WARN 으로 경고한다.
+ * <p>본문에는 재설정 토큰·인증코드처럼 그 자체가 인증 수단인 값이 들어 있다. 어떤 로그 레벨에서도
+ * 남기지 않는다(AGENTS.md — 개인정보·토큰·비밀번호는 로그에 남기지 않는다, DEBUG 도 예외 없음).
+ * 로컬에서 코드를 직접 확인해야 한다면 SMTP 테스트 계정을 붙이거나 별도 개발용 조회 수단을 쓴다.
+ * <b>운영에서 이 구현이 선택되면 안 된다</b> — 기동 시 WARN 으로 경고한다.
  */
 @Slf4j
 @Component
@@ -33,7 +34,7 @@ public class LoggingEmailSender implements EmailSender {
 
     @Override
     public void send(String to, String subject, String body) {
+        // 본문(인증코드·재설정 토큰)은 로그에 남기지 않는다. 수신자·제목 같은 메타데이터만 남긴다.
         log.info("[메일 미발송] to={} subject={}", emailMasker.mask(to), subject);
-        log.debug("[메일 미발송] 본문\n{}", body);
     }
 }

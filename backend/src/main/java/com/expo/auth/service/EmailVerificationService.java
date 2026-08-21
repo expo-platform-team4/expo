@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 회원가입 이메일 본인인증 서비스.
@@ -77,7 +79,15 @@ public class EmailVerificationService {
                 EmailVerification.createRequested(normalized, codeHash, now, expiresAt);
         EmailVerification saved = emailVerificationRepository.save(verification);
 
-        sendVerificationEmail(normalized, code);
+        // 메일 발송은 커밋 이후로 미룬다 — 커밋 전에 보내면 저장 실패 시 "확인할 수 없는 인증코드"가
+        // 나가버리고, SMTP 대기 시간만큼 트랜잭션도 불필요하게 길어진다.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        sendVerificationEmail(normalized, code);
+                    }
+                });
 
         // 개인정보·인증코드는 로그에 남기지 않는다 (AGENTS.md, DEBUG도 예외 없음).
         log.debug("이메일 본인인증 요청 verificationId={}", saved.getId());

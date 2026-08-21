@@ -82,9 +82,16 @@ const ClientSignupPage = () => {
             hint={emailAvailability.hint?.ok ? emailAvailability.hint.message : undefined}
             {...register('email', {
               onBlur: (event) => emailAvailability.check(event.target.value),
+              onChange: () => {
+                // 이메일이 바뀌면 이전 인증 토큰은 그 즉시 무효 — 아래 key={emailValue} 로
+                // EmailVerificationField 도 함께 리마운트되어 내부 UI 상태가 리셋된다.
+                setValue('emailVerificationToken', '', { shouldValidate: true })
+                setEmailVerified(false)
+              },
             })}
           />
           <EmailVerificationField
+            key={emailValue}
             email={emailValue}
             emailHasError={Boolean(errors.email)}
             onVerified={(token) => {

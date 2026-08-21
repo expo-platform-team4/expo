@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Badge, Button, Input } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
@@ -18,6 +18,17 @@ import { useConfirmEmailVerification, useRequestEmailVerification } from '../hoo
  * (`emailVerificationToken`)에 실어 회원가입 요청에 같이 보내야 한다 — 그래야 서버가 "이
  * 이메일이 실제로 확인됐는지"를 검증할 수 있다. 휴대폰 인증은 아직 이 토큰을 회원가입이
  * 검증하지 않지만(별도 이슈), 이메일은 처음부터 검증하도록 만들었다.
+ */
+/**
+ * 이메일 값이 바뀌면 이전 인증은 무효다 — 주소를 바꿔놓고 이전 인증 토큰을 그대로
+ * 들고 있으면 안 된다 (다른 이메일로 인증받은 토큰이 새 이메일에 쓰이면 안 되므로).
+ *
+ * 예전엔 이 리셋을 `useEffect(() => {...}, [email])` 로 했는데, 렌더링 중이 아니라 렌더링
+ * '후'에 setState 가 연쇄로 일어나 리렌더가 한 번 더 생기고(react-hooks/set-state-in-effect
+ * 린트 에러) 이메일이 바뀐 시점과 리셋 시점 사이에 미묘한 프레임 차이가 생겼다. 부모가
+ * `key={email}` 로 이 컴포넌트를 통째로 언마운트·리마운트시켜 내부 state 를 초기화하고,
+ * 부모 자신의 `emailVerificationToken`/`emailVerified` 는 이메일 입력의 onChange 에서
+ * 그 즉시(같은 이벤트 핸들러 안에서) 지운다 — 두 상태가 어긋나는 순간이 없다.
  */
 export const EmailVerificationField = ({
   email,
@@ -37,17 +48,6 @@ export const EmailVerificationField = ({
 
   const requestMutation = useRequestEmailVerification()
   const confirmMutation = useConfirmEmailVerification()
-
-  // 이메일 값이 바뀌면 이전 인증은 무효다 — 주소를 바꿔놓고 이전 인증 토큰을 그대로
-  // 들고 있으면 안 된다 (다른 이메일로 인증받은 토큰이 새 이메일에 쓰이면 안 되므로).
-  useEffect(() => {
-    setVerified(false)
-    setVerificationId(null)
-    setCode('')
-    setRequestMessage(null)
-    onVerified(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email])
 
   const handleRequest = () => {
     setRequestError(null)

@@ -43,9 +43,13 @@ public class SmtpEmailSender implements EmailSender {
         sender.setPort(properties.getPort());
         sender.setUsername(username);
         sender.setPassword(password);
+        String timeout = String.valueOf(properties.getTimeoutMillis());
         sender.getJavaMailProperties().put("mail.transport.protocol", "smtp");
         sender.getJavaMailProperties().put("mail.smtp.auth", "true");
         sender.getJavaMailProperties().put("mail.smtp.starttls.enable", "true");
+        sender.getJavaMailProperties().put("mail.smtp.connectiontimeout", timeout);
+        sender.getJavaMailProperties().put("mail.smtp.timeout", timeout);
+        sender.getJavaMailProperties().put("mail.smtp.writetimeout", timeout);
         this.mailSender = sender;
     }
 

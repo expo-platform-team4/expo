@@ -32,6 +32,12 @@ public class EmailProperties {
     /** 발신자로 표시할 주소. 비어 있으면 {@link #username} 을 그대로 쓴다. */
     private String from;
 
+    /**
+     * SMTP 연결·읽기·쓰기 제한 시간(ms). Jakarta Mail 기본값은 무제한이라, SMTP 서버가 응답하지
+     * 않으면 요청 스레드가 계속 붙잡힌다. 세 항목 모두 이 값 하나로 통일해서 쓴다.
+     */
+    private int timeoutMillis = 5000;
+
     public String getHost() {
         return host;
     }
@@ -70,5 +76,13 @@ public class EmailProperties {
 
     public void setFrom(String from) {
         this.from = from;
+    }
+
+    public int getTimeoutMillis() {
+        return timeoutMillis;
+    }
+
+    public void setTimeoutMillis(int timeoutMillis) {
+        this.timeoutMillis = timeoutMillis;
     }
 }
