@@ -106,6 +106,9 @@ public class SecurityConfig {
                                         // 일반 회원 API — ROLE_MEMBER 필요
                                         .requestMatchers("/api/member/**")
                                         .hasRole("MEMBER")
+                                        // 회원 환불 API — ROLE_MEMBER 필요
+                                        .requestMatchers("/api/members/**")
+                                        .hasRole("MEMBER")
                                         // 마이페이지(회원·클라이언트 공통) — MEMBER 또는 CLIENT
                                         .requestMatchers("/api/users/**")
                                         .hasAnyRole("MEMBER", "CLIENT")
