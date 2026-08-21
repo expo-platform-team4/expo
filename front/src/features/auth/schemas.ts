@@ -57,3 +57,45 @@ export const loginSchema = z.object({
   password: z.string().min(1, '비밀번호는 필수입니다.'),
 })
 export type LoginFormValues = z.infer<typeof loginSchema>
+
+/** 마이페이지 "프로필 수정" — 닉네임 변경. 백엔드 `NicknameChangeRequest`. */
+export const nicknameChangeSchema = z.object({
+  nickname: baseSignupShape.nickname,
+})
+export type NicknameChangeFormValues = z.infer<typeof nicknameChangeSchema>
+
+/** 재설정 토큰으로 새 비밀번호 저장. 백엔드 `PasswordResetConfirmRequest`. */
+export const passwordResetConfirmSchema = z
+  .object({
+    resetToken: z.string().min(1, '재설정 토큰은 필수입니다.'),
+    newPassword: z
+      .string()
+      .regex(PASSWORD_PATTERN, '비밀번호는 영문·숫자·특수문자를 포함해 8자 이상이어야 합니다.'),
+    newPasswordConfirm: z.string().min(1, '새 비밀번호 확인은 필수입니다.'),
+  })
+  .refine((data) => data.newPassword === data.newPasswordConfirm, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['newPasswordConfirm'],
+  })
+export type PasswordResetConfirmFormValues = z.infer<typeof passwordResetConfirmSchema>
+
+/** 로그인 상태에서의 비밀번호 변경. 백엔드 `ChangePasswordRequest`. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, '현재 비밀번호는 필수입니다.'),
+    newPassword: z
+      .string()
+      .regex(PASSWORD_PATTERN, '비밀번호는 영문·숫자·특수문자를 포함해 8자 이상이어야 합니다.'),
+    newPasswordConfirm: z.string().min(1, '새 비밀번호 확인은 필수입니다.'),
+  })
+  .refine((data) => data.newPassword === data.newPasswordConfirm, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['newPasswordConfirm'],
+  })
+export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
+
+/** 회원 탈퇴 — 본인 확인용 현재 비밀번호. 백엔드 `MemberWithdrawalRequest`. */
+export const withdrawalSchema = z.object({
+  password: z.string().min(1, '비밀번호는 필수입니다.'),
+})
+export type WithdrawalFormValues = z.infer<typeof withdrawalSchema>

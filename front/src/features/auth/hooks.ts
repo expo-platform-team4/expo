@@ -74,3 +74,40 @@ export const useMyProfile = () => {
     enabled: Boolean(accessToken),
   })
 }
+
+/** 닉네임 변경 (A-API-016). 성공하면 사이드바·프로필 화면이 같이 쓰는 profile 캐시를 갱신한다. */
+export const useChangeNickname = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: authApi.changeNickname,
+    onSuccess: (profile) => {
+      queryClient.setQueryData(authKeys.profile, profile)
+    },
+  })
+}
+
+/** 비밀번호 재설정 요청 (A-API-013). 로그인 화면의 "비밀번호 찾기"에서 쓴다. */
+export const useRequestPasswordReset = () =>
+  useMutation({ mutationFn: authApi.requestPasswordReset })
+
+/** 재설정 토큰으로 새 비밀번호 저장 (A-API-014). */
+export const useConfirmPasswordReset = () =>
+  useMutation({ mutationFn: authApi.confirmPasswordReset })
+
+/** 로그인 상태에서의 비밀번호 변경. */
+export const useChangePassword = () => useMutation({ mutationFn: authApi.changePassword })
+
+/**
+ * 회원 탈퇴 (A-API-018). 성공하면 서버 Refresh Token 이 이미 폐기됐으므로, 로컬 인증
+ * 상태도 즉시 지운다 — `useLogout` 과 같은 `onSettled` 패턴이다.
+ */
+export const useWithdraw = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: authApi.withdrawMember,
+    onSuccess: () => {
+      useAuthStore.getState().clear()
+      queryClient.clear()
+    },
+  })
+}
