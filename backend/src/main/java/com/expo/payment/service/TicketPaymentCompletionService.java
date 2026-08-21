@@ -5,6 +5,7 @@ import com.expo.common.config.TossConfirmResult;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.payment.converter.TicketPaymentConverter;
 import com.expo.payment.dto.ConfirmTicketPaymentResponse;
 import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.entity.TicketPaymentEventType;
@@ -37,6 +38,7 @@ class TicketPaymentCompletionService {
     private final InventoryReservationRepository inventoryReservationRepository;
     private final TicketInventoryRepository ticketInventoryRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
+    private final TicketPaymentConverter ticketPaymentConverter;
     private final TicketIssueService ticketIssueService;
     private final EntityManager entityManager;
 
@@ -56,7 +58,7 @@ class TicketPaymentCompletionService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 
         if (payment.getStatus() == TicketPaymentStatus.DONE) {
-            return toResponse(order, payment);
+            return ticketPaymentConverter.toConfirmResponse(order, payment);
         }
         if (payment.getStatus() == TicketPaymentStatus.CANCELED
                 || order.getStatus() != TicketOrderStatus.PENDING) {
@@ -108,17 +110,6 @@ class TicketPaymentCompletionService {
         entityManager.flush();
         ticketIssueService.issue(order.getId());
 
-        return toResponse(order, payment);
-    }
-
-    private ConfirmTicketPaymentResponse toResponse(TicketOrder order, TicketPayment payment) {
-        return new ConfirmTicketPaymentResponse(
-                payment.getId(),
-                order.getOrderNumber(),
-                payment.getPaymentKey(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getApprovedAmount(),
-                payment.getApprovedAt());
+        return ticketPaymentConverter.toConfirmResponse(order, payment);
     }
 }

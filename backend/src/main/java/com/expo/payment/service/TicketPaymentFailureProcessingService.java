@@ -3,6 +3,7 @@ package com.expo.payment.service;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.payment.converter.TicketPaymentConverter;
 import com.expo.payment.dto.FailTicketPaymentResponse;
 import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.entity.TicketPaymentEventType;
@@ -33,6 +34,7 @@ public class TicketPaymentFailureProcessingService {
     private final InventoryReservationRepository inventoryReservationRepository;
     private final TicketInventoryRepository ticketInventoryRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
+    private final TicketPaymentConverter ticketPaymentConverter;
 
     @Transactional
     public FailTicketPaymentResponse process(
@@ -51,7 +53,7 @@ public class TicketPaymentFailureProcessingService {
             throw new BusinessException(ErrorCode.PAYMENT_ALREADY_APPROVED);
         }
         if (payment.getStatus() == TicketPaymentStatus.FAILED) {
-            return toResponse(payment, order);
+            return ticketPaymentConverter.toFailureResponse(order, payment);
         }
         if (payment.getStatus() == TicketPaymentStatus.CANCELED
                 || order.getStatus() != TicketOrderStatus.PENDING) {
@@ -90,11 +92,6 @@ public class TicketPaymentFailureProcessingService {
                         null,
                         null,
                         null));
-        return toResponse(payment, order);
-    }
-
-    private FailTicketPaymentResponse toResponse(TicketPayment payment, TicketOrder order) {
-        return new FailTicketPaymentResponse(
-                payment.getId(), order.getOrderNumber(), payment.getStatus(), order.getStatus());
+        return ticketPaymentConverter.toFailureResponse(order, payment);
     }
 }

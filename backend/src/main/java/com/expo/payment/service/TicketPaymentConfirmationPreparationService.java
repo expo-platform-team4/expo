@@ -3,7 +3,7 @@ package com.expo.payment.service;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.jwt.AuthPrincipal;
-import com.expo.payment.dto.ConfirmTicketPaymentResponse;
+import com.expo.payment.converter.TicketPaymentConverter;
 import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.entity.TicketPaymentStatus;
 import com.expo.payment.repository.TicketPaymentRepository;
@@ -29,6 +29,7 @@ class TicketPaymentConfirmationPreparationService {
     private final TicketOrderRepository ticketOrderRepository;
     private final InventoryReservationRepository inventoryReservationRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
+    private final TicketPaymentConverter ticketPaymentConverter;
 
     @Transactional
     public TicketPaymentConfirmationTarget prepare(
@@ -45,7 +46,9 @@ class TicketPaymentConfirmationPreparationService {
 
         if (payment.getStatus() == TicketPaymentStatus.DONE) {
             return new TicketPaymentConfirmationTarget(
-                    order.getId(), payment.getId(), toResponse(order, payment));
+                    order.getId(),
+                    payment.getId(),
+                    ticketPaymentConverter.toConfirmResponse(order, payment));
         }
         if (payment.getStatus() == TicketPaymentStatus.CANCELED
                 || order.getStatus() != TicketOrderStatus.PENDING) {
@@ -70,16 +73,5 @@ class TicketPaymentConfirmationPreparationService {
                 throw new BusinessException(ErrorCode.PAYMENT_ORDER_EXPIRED);
             }
         }
-    }
-
-    private ConfirmTicketPaymentResponse toResponse(TicketOrder order, TicketPayment payment) {
-        return new ConfirmTicketPaymentResponse(
-                payment.getId(),
-                order.getOrderNumber(),
-                payment.getPaymentKey(),
-                payment.getMethod(),
-                payment.getStatus(),
-                payment.getApprovedAmount(),
-                payment.getApprovedAt());
     }
 }
