@@ -31,6 +31,7 @@ const RESULT_BADGE: Record<CheckInHistoryRow['result'], { label: string; variant
     ALREADY_USED: { label: '이미 사용됨', variant: 'error' },
     CANCELED_TICKET: { label: '취소된 티켓', variant: 'error' },
     WRONG_EXPO: { label: '다른 박람회', variant: 'error' },
+    INVALID_TOKEN: { label: '확인 불가', variant: 'error' },
   }
 
 const METHOD_LABEL: Record<CheckInHistoryRow['method'], string> = {
@@ -123,7 +124,10 @@ const HistoryRow = ({ item }: { item: CheckInHistoryRow }) => {
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-body-md text-on-surface font-mono">{item.ticketCode}</span>
+          {/* 위조·미등록 QR 은 가리킬 티켓이 없어 코드가 비어 있다 (이슈 #73). */}
+          <span className="text-body-md text-on-surface font-mono">
+            {item.ticketCode ?? '티켓 없음'}
+          </span>
           <Badge variant={badge.variant}>{badge.label}</Badge>
         </div>
         <p className="text-label-sm text-on-surface-variant mt-1">

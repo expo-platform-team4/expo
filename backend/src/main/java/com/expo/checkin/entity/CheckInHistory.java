@@ -31,7 +31,11 @@ public class CheckInHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "issued_ticket_id", nullable = false)
+    /**
+     * 스캔이 가리킨 티켓. <b>{@link CheckInResult#INVALID_TOKEN} 일 때만 {@code null} 이다</b> — 위조·미등록 QR 에는
+     * 가리킬 티켓이 없다. DB 의 {@code ck_check_in_histories_ticket_required} 가 이 규칙을 강제한다.
+     */
+    @Column(name = "issued_ticket_id")
     private Long issuedTicketId;
 
     /** expo 도메인 엔티티가 아직 없으므로 FK ID만 매핑한다. */
@@ -81,8 +85,8 @@ public class CheckInHistory {
     /**
      * 체크인 시도 한 건을 남긴다. <b>성공만이 아니라 거절도 남긴다</b> — 현장에서 "안 들여보내 줬다" 는 항의를 가릴 근거가 이것뿐이다.
      *
-     * <p>{@link CheckInResult#INVALID_TOKEN} 은 이 메서드로 남길 수 없다. {@code issued_ticket_id} 가 NOT NULL
-     * 인데 위조 QR 에는 가리킬 티켓이 없기 때문이다. 그 경우는 로그로만 남긴다.
+     * <p>{@link CheckInResult#INVALID_TOKEN} 은 {@code issuedTicketId} 가 {@code null} 이다. 위조·미등록 QR 에는
+     * 가리킬 티켓이 없다 — 그래도 남긴다. 반복 시도가 공격 탐지 신호이기 때문이다(이슈 #73).
      *
      * @param expoId <b>스캔이 일어난</b> 박람회. 티켓의 소속이 아니다 — 다른 박람회 티켓을 찍은 경우({@code WRONG_EXPO}) 에도
      *     "이 현장에서 이런 시도가 있었다" 로 읽혀야 한다

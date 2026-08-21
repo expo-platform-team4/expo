@@ -35,7 +35,12 @@
                h.processed_by_client_id AS processed_by_client_id,
                h.detail                 AS detail
         FROM check_in_histories h
-        JOIN issued_tickets it ON it.id = h.issued_ticket_id
+        <!--
+          LEFT 여야 한다. 위조·미등록 QR 시도는 issued_ticket_id 가 NULL 이라(이슈 #73)
+          INNER JOIN 이면 그 행이 통째로 사라진다 — 감사 화면에서 위조만 안 보이게 된다.
+          ticket_code 는 그 경우 NULL 로 나가고 화면이 대체 문구를 넣는다.
+        -->
+        LEFT JOIN issued_tickets it ON it.id = h.issued_ticket_id
         WHERE h.expo_id = #{expoId}
         ORDER BY h.checked_at DESC, h.id DESC
         LIMIT #{limit} OFFSET #{offset}

@@ -175,29 +175,50 @@ class CheckInServiceTest {
     }
 
     /**
-     * 위조·미등록 QR.
+     * 위조·미등록 QR <b>도 이력에 남는다</b> (이슈 #73).
      *
-     * <p>{@code check_in_histories.issued_ticket_id} 가 NOT NULL 이라 <b>이력을 남길 수 없다.</b> 남기려고 하면
-     * 제약 위반으로 터지므로 저장을 시도하지 않아야 한다.
+     * <p>반복 시도가 공격 탐지 신호인데, 로그의 IP 는 마스킹되어 있어 "같은 출처에서 몇 번" 을 셀 수 없다. 이력에는 원문이 들어간다.
+     * 가리킬 티켓이 없으므로 {@code issuedTicketId} 는 비어 있다.
      */
     @Test
-    void rejectsUnknownQrWithoutWritingHistory() {
+    void recordsUnknownQrAttemptWithoutTicket() {
         when(issuedTicketRepository.findByQrTokenHash(any())).thenReturn(Optional.empty());
 
         CheckInResponse response = service.checkInByQr(EXPO_ID, HOST_CLIENT_ID, "v1.forged", IP);
 
         assertThat(response.result()).isEqualTo("INVALID_TOKEN");
         assertThat(response.issuedTicketId()).isNull();
-        verify(checkInHistoryRepository, never()).save(any());
+
+        ArgumentCaptor<CheckInHistory> captor = ArgumentCaptor.forClass(CheckInHistory.class);
+        verify(checkInHistoryRepository).save(captor.capture());
+        CheckInHistory saved = captor.getValue();
+        assertThat(saved.getIssuedTicketId()).isNull();
+        assertThat(saved.getResult()).isEqualTo(CheckInResult.INVALID_TOKEN);
+        assertThat(saved.getExpoId()).isEqualTo(EXPO_ID);
+        // 마스킹은 로그의 몫이다. 이력에는 원문이 들어가야 집계할 수 있다.
+        assertThat(saved.getRequestIp()).isEqualTo(IP);
     }
 
-    /** 빈 값으로 DB 를 두드릴 이유가 없다. */
+    /** 스캔값 자체는 남기지 않는다. 임의 문자열이고, 추적에 필요한 것은 "언제 어디서 몇 번" 이다. */
+    @Test
+    void doesNotStoreTheScannedPayload() {
+        when(issuedTicketRepository.findByQrTokenHash(any())).thenReturn(Optional.empty());
+
+        service.checkInByQr(EXPO_ID, HOST_CLIENT_ID, "v1.forged-payload", IP);
+
+        ArgumentCaptor<CheckInHistory> captor = ArgumentCaptor.forClass(CheckInHistory.class);
+        verify(checkInHistoryRepository).save(captor.capture());
+        assertThat(captor.getValue().getDetail()).isNull();
+    }
+
+    /** 빈 값으로 DB 를 두드릴 이유가 없다. 다만 시도 자체는 이력에 남는다. */
     @Test
     void rejectsBlankQrWithoutHittingTheDatabase() {
         assertThat(service.checkInByQr(EXPO_ID, HOST_CLIENT_ID, "  ", IP).result())
                 .isEqualTo("INVALID_TOKEN");
 
         verify(issuedTicketRepository, never()).findByQrTokenHash(any());
+        verify(checkInHistoryRepository).save(any());
     }
 
     /**
