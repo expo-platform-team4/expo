@@ -1,4 +1,4 @@
-package com.expo.payment.service;
+package com.expo.ticket.service;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
@@ -6,13 +6,11 @@ import com.expo.jwt.AuthPrincipal;
 import com.expo.ticket.dto.GuestTicketOrderSearchSnapshot;
 import com.expo.ticket.entity.TicketOrder;
 import com.expo.ticket.entity.TicketOrdererType;
-import com.expo.ticket.service.GuestTicketOrderAttemptService;
-import com.expo.ticket.service.GuestTicketOrderSnapshotService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/** 결제 진행 중 회원 주문의 소유자를 검증한다. 게스트는 예측 불가능한 주문 번호로 이어지는 흐름을 사용한다. */
+/** 회원·비회원 티켓 주문의 접근 권한을 공통 정책으로 검증한다. */
 @Component
 @RequiredArgsConstructor
 public class TicketOrderAccessVerifier {
@@ -21,6 +19,7 @@ public class TicketOrderAccessVerifier {
     private final GuestTicketOrderSnapshotService guestTicketOrderSnapshotService;
     private final GuestTicketOrderAttemptService guestTicketOrderAttemptService;
 
+    /** 결제 진행 흐름에서 회원 주문의 소유자를 검증한다. */
     public void verifyForPaymentFlow(TicketOrder order, AuthPrincipal principal) {
         if (order.getOrdererType() != TicketOrdererType.MEMBER) {
             return;
@@ -39,16 +38,18 @@ public class TicketOrderAccessVerifier {
         }
     }
 
-    /** 비회원 주문 비밀번호를 확인하고 성공 시 주문 식별자를 반환한다. */
-    public Long verifyGuestOrderAccess(String orderNumber, String phoneNumber, String password) {
+    /** 비회원 주문의 휴대폰 번호·비밀번호를 검증하고 인증에 사용한 주문 snapshot을 반환한다. */
+    public GuestTicketOrderSearchSnapshot verifyGuestOrderAccess(
+            String orderNumber, String phoneNumber, String password) {
         GuestTicketOrderSearchSnapshot snapshot =
                 guestTicketOrderSnapshotService.findByOrderNumber(orderNumber);
-        if (!snapshot.phoneNumber().equals(phoneNumber)
-                || !passwordEncoder.matches(password, snapshot.lookupPasswordHash())) {
+        boolean phoneMatches = snapshot.phoneNumber().equals(phoneNumber);
+        boolean passwordMatches = passwordEncoder.matches(password, snapshot.lookupPasswordHash());
+        if (!phoneMatches || !passwordMatches) {
             guestTicketOrderAttemptService.recordFailure(snapshot.ticketOrderId());
             throw new BusinessException(ErrorCode.GUEST_ORDER_LOOKUP_FAILED);
         }
         guestTicketOrderAttemptService.resetFailures(snapshot.ticketOrderId());
-        return snapshot.ticketOrderId();
+        return snapshot;
     }
 }

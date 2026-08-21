@@ -9,6 +9,7 @@ import com.expo.payment.entity.TicketPayment;
 import com.expo.payment.repository.TicketPaymentRepository;
 import com.expo.ticket.entity.TicketOrder;
 import com.expo.ticket.repository.TicketOrderRepository;
+import com.expo.ticket.service.TicketOrderAccessVerifier;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

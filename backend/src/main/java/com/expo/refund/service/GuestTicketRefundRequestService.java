@@ -1,8 +1,9 @@
 package com.expo.refund.service;
 
-import com.expo.payment.service.TicketOrderAccessVerifier;
 import com.expo.refund.dto.GuestTicketRefundRequest;
 import com.expo.refund.dto.TicketRefundResponse;
+import com.expo.ticket.dto.GuestTicketOrderSearchSnapshot;
+import com.expo.ticket.service.TicketOrderAccessVerifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +16,10 @@ public class GuestTicketRefundRequestService {
     private final TicketRefundRequestService ticketRefundRequestService;
 
     public TicketRefundResponse request(GuestTicketRefundRequest request) {
-        Long ticketOrderId =
+        GuestTicketOrderSearchSnapshot snapshot =
                 ticketOrderAccessVerifier.verifyGuestOrderAccess(
                         request.orderNumber(), request.phoneNumber(), request.password());
-        return ticketRefundRequestService.requestGuestRefund(ticketOrderId, request.reason());
+        return ticketRefundRequestService.requestGuestRefund(
+                snapshot.ticketOrderId(), request.reason());
     }
 }
