@@ -99,16 +99,22 @@ export const fetchCheckInSummary = async (expoId: number): Promise<CheckInSummar
   return data.data
 }
 
-/** 백엔드 `CheckInHistoryRow` 와 짝이다. */
+/**
+ * 백엔드 `CheckInHistoryRow` 와 짝이다.
+ *
+ * `issuedTicketId`·`ticketCode` 는 **없을 수 있다** — 위조·미등록 QR 시도(`INVALID_TOKEN`)는
+ * 가리킬 티켓이 없다(이슈 #73). 백엔드가 `non_null` 직렬화라 키 자체가 빠지므로
+ * `| null` 이 아니라 `?` 다 (Spec.md 1-1절).
+ */
 export type CheckInHistoryRow = {
   id: number
-  issuedTicketId: number
-  ticketCode: string
+  issuedTicketId?: number
+  ticketCode?: string
   method: 'QR' | 'MANUAL_CODE'
-  result: 'SUCCESS' | 'ALREADY_USED' | 'CANCELED_TICKET' | 'WRONG_EXPO'
+  result: 'SUCCESS' | 'ALREADY_USED' | 'CANCELED_TICKET' | 'WRONG_EXPO' | 'INVALID_TOKEN'
   checkedAt: string
   processedByClientId: number
-  detail: string | null
+  detail?: string
 }
 
 /** 백엔드 `CheckInHistoryPage` 와 짝이다. Spec.md 2절 페이지네이션 봉투. */

@@ -132,6 +132,14 @@ public class TicketIssuedTextRebuilder implements NotificationTextRebuilder {
         // 남겨 두면 "살아 있는 링크는 하나" 규칙이 흐려진다.
         alive.forEach(token -> token.revoke(now));
 
+        // 폐기(UPDATE)를 새 토큰 INSERT 보다 먼저 내보낸다.
+        //
+        // ticket_access_tokens 에 "주문당 살아 있는 ORDER_VIEW 토큰 하나" 부분 유니크 인덱스가
+        // 있고(이슈 #75), id 가 IDENTITY 라 save() 가 INSERT 를 즉시 실행한다. Hibernate 의
+        // 기본 플러시 순서는 INSERT 가 UPDATE 보다 앞이므로, 여기서 밀어내지 않으면 아직
+        // ACTIVE 인 옛 토큰과 부딪혀 정상적인 재발송이 제약 위반으로 실패한다.
+        accessTokenRepository.flush();
+
         String tokenValue = accessTokenGenerator.generate();
         accessTokenRepository.save(
                 TicketAccessToken.forOrder(orderId, tokenHasher.hash(tokenValue), expiresAt));

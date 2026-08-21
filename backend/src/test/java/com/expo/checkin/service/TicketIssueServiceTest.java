@@ -19,6 +19,7 @@ import com.expo.checkin.repository.TicketAccessTokenRepository;
 import com.expo.checkin.repository.TicketIssuanceMapper;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.support.PassthroughRowLockTimeout;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -63,6 +64,7 @@ class TicketIssueServiceTest {
                         new QrTokenGenerator(properties),
                         new AccessTokenGenerator(),
                         new TokenHasher(),
+                        new PassthroughRowLockTimeout(),
                         eventPublisher);
 
         // 시퀀스는 부를 때마다 다른 값을 준다. 실제 DB 시퀀스와 같은 성질이다.
@@ -185,7 +187,7 @@ class TicketIssueServiceTest {
         TicketIssueResult result = service.issue(ORDER_ID);
 
         ArgumentCaptor<TicketAccessToken> captor = ArgumentCaptor.forClass(TicketAccessToken.class);
-        verify(accessTokenRepository).save(captor.capture());
+        verify(accessTokenRepository).saveAndFlush(captor.capture());
 
         assertThat(result.accessTokenValue()).isNotBlank();
         assertThat(captor.getValue().getTokenHash())
@@ -202,7 +204,7 @@ class TicketIssueServiceTest {
         service.issue(ORDER_ID);
 
         ArgumentCaptor<TicketAccessToken> captor = ArgumentCaptor.forClass(TicketAccessToken.class);
-        verify(accessTokenRepository).save(captor.capture());
+        verify(accessTokenRepository).saveAndFlush(captor.capture());
 
         assertThat(captor.getValue().getExpiresAt()).isAfter(EXPO_END_AT);
     }
