@@ -95,13 +95,18 @@ public class AdminBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 검수 승인. 검수 요청 상태에서만 승인할 수 있고, 승인해야 비로소 공개된다. */
+    /**
+     * 검수 승인. 검수 요청 상태에서만 승인할 수 있고, 승인해야 비로소 공개된다.
+     *
+     * <p>검수 요청 이후 승인 사이에 배정이 취소될 수 있어, 승인 시점에도 배정 상태를 다시 확인한다.
+     */
     @Transactional
     public BoothContentResponse approve(Long contentId, Long adminId) {
         BoothContent content = getEntity(contentId);
         if (content.getStatus() != BoothContentStatus.UNDER_REVIEW) {
             throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_APPROVABLE);
         }
+        assertAllocationAssigned(content);
         content.approve(adminId);
         boothManagementHistoryRepository.save(
                 BoothManagementHistory.create(

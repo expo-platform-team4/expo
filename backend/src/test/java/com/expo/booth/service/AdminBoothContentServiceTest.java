@@ -160,6 +160,23 @@ class AdminBoothContentServiceTest {
     }
 
     @Test
+    void approveRejectsWhenAllocationNotAssigned() {
+        BoothContent content = content();
+        content.submitForReview();
+        when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
+        BoothAllocation canceledAllocation = assignedAllocation();
+        canceledAllocation.cancel("배정 정정");
+        when(boothAllocationRepository.findById(ALLOCATION_ID))
+                .thenReturn(Optional.of(canceledAllocation));
+
+        assertThatThrownBy(() -> service.approve(CONTENT_ID, ADMIN_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+        verify(boothManagementHistoryRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
     void approveRejectsWhenNotUnderReview() {
         BoothContent content = content();
         when(boothContentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(content));
