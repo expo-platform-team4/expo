@@ -3,9 +3,14 @@ package com.expo.expo.entity;
 import com.expo.expo.entity.ExpoEnums.ExpoFilePurpose;
 import com.expo.expo.entity.ExpoEnums.ExpoImageType;
 import com.expo.expo.entity.ExpoEnums.ExternalLinkType;
-import jakarta.persistence.*;
-import java.time.OffsetDateTime;
-import java.util.Map;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,6 +19,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
+
+import java.time.OffsetDateTime;
+import java.util.Map;
 
 /**
  * 박람회 부속 엔티티 모음 (V1: expo_images / expo_files / external_links / expo_change_requests)
