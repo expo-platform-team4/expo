@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -182,11 +183,23 @@ public class TicketIssueService {
      */
     private String createAccessToken(TicketIssuanceOrder order, Instant issuedAt) {
         String tokenValue = accessTokenGenerator.generate();
-        ticketAccessTokenRepository.save(
-                TicketAccessToken.forOrder(
-                        order.orderId(),
-                        tokenHasher.hash(tokenValue),
-                        accessTokenExpiry(order, issuedAt)));
+        try {
+            // saveAndFlush 로 INSERT 를 여기서 내보낸다. 그냥 save 면 제약 위반이 커밋 시점에
+            // 터져 이 try 를 벗어나고, 서비스 밖에서 잡히는 예외라 500 으로 나간다.
+            ticketAccessTokenRepository.saveAndFlush(
+                    TicketAccessToken.forOrder(
+                            order.orderId(),
+                            tokenHasher.hash(tokenValue),
+                            accessTokenExpiry(order, issuedAt)));
+        } catch (DataIntegrityViolationException e) {
+            // uq_ticket_access_tokens_active_order_view 위반 = 이 주문은 이미 발권됐다(이슈 #75).
+            //
+            // 앞의 countIssuedTickets 검사를 통과하고도 여기까지 오는 경우가 있다 — 잠금 순서나
+            // 격리 수준이 바뀌면 그 검사가 무력해지는데, 그때도 DB 는 막는다. 사용자에게는
+            // 애플리케이션 검사와 같은 메시지가 나가야 한다.
+            log.warn("중복 발권이 DB 제약에서 막혔다 orderId={}", order.orderId(), e);
+            throw new BusinessException(ErrorCode.TICKET_ALREADY_ISSUED);
+        }
         return tokenValue;
     }
 

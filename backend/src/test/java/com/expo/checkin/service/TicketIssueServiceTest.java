@@ -185,7 +185,7 @@ class TicketIssueServiceTest {
         TicketIssueResult result = service.issue(ORDER_ID);
 
         ArgumentCaptor<TicketAccessToken> captor = ArgumentCaptor.forClass(TicketAccessToken.class);
-        verify(accessTokenRepository).save(captor.capture());
+        verify(accessTokenRepository).saveAndFlush(captor.capture());
 
         assertThat(result.accessTokenValue()).isNotBlank();
         assertThat(captor.getValue().getTokenHash())
@@ -202,7 +202,7 @@ class TicketIssueServiceTest {
         service.issue(ORDER_ID);
 
         ArgumentCaptor<TicketAccessToken> captor = ArgumentCaptor.forClass(TicketAccessToken.class);
-        verify(accessTokenRepository).save(captor.capture());
+        verify(accessTokenRepository).saveAndFlush(captor.capture());
 
         assertThat(captor.getValue().getExpiresAt()).isAfter(EXPO_END_AT);
     }
