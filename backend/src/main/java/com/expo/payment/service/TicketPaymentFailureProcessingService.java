@@ -18,6 +18,7 @@ import com.expo.ticket.entity.TicketOrderStatus;
 import com.expo.ticket.repository.InventoryReservationRepository;
 import com.expo.ticket.repository.TicketInventoryRepository;
 import com.expo.ticket.repository.TicketOrderRepository;
+import com.expo.ticket.service.TicketOrderAccessVerifier;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

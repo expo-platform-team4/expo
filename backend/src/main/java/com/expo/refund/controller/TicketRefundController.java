@@ -36,7 +36,8 @@ public class TicketRefundController {
             throw new BusinessException(ErrorCode.AUTHENTICATION_REQUIRED);
         }
         TicketRefundResponse response =
-                ticketRefundRequestService.requestMemberRefund(orderId, request.reason(), principal);
+                ticketRefundRequestService.requestMemberRefund(
+                        orderId, request.reason(), principal);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }
