@@ -49,7 +49,10 @@ public enum ErrorCode {
 
     // --- 박람회 ---
     EXPO_NOT_FOUND(HttpStatus.BAD_REQUEST, "박람회를 찾을 수 없습니다."),
-    NOT_EXPO_HOST(HttpStatus.BAD_REQUEST, "해당 박람회의 주최자가 아닙니다."),
+    // 입력이 아니라 권한의 문제다. 400 이면 프런트가 "값을 고쳐 다시 보내라" 로 안내하게 되는데
+    // 다시 보내도 결과가 같다. 주최사와 참여 기업이 같은 CLIENT 역할을 쓰기 때문에
+    // SecurityConfig 의 hasAnyRole 로는 걸러지지 않고, 이 코드가 사실상 유일한 권한 경계다 (이슈 #71).
+    NOT_EXPO_HOST(HttpStatus.FORBIDDEN, "해당 박람회의 주최자가 아닙니다."),
 
     // --- 박람회 개최 신청 ---
     EXPO_OPENING_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "박람회 개최 신청을 찾을 수 없습니다."),

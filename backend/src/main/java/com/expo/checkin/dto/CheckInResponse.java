@@ -10,9 +10,8 @@ import java.time.Instant;
  * 경로로 빠져 그 구분을 잃는다. 스캔이 처리된 이상 요청 자체는 성공이고, 통과 여부는 {@code result} 로 말한다.
  *
  * <p>주최자가 아니거나 박람회가 없는 경우는 이와 다르다. 그건 스캔 결과가 아니라 요청 자체의 문제라 예외로
- * 던진다. <b>둘 다 현재 400 이다</b> — {@code NOT_EXPO_HOST} 와 {@code EXPO_NOT_FOUND} 가 모두
- * {@code BAD_REQUEST} 로 정의돼 있다. 권한 문제는 403 이 맞지만 다른 도메인이 같은 코드를 쓰고 있어
- * <a href="https://github.com/expo-platform-team4/expo/issues/71">이슈 #71</a> 로 분리했다.
+ * 던진다. {@code NOT_EXPO_HOST} 는 <b>403</b> 이다 — 권한 문제이므로(이슈 #71). {@code EXPO_NOT_FOUND}
+ * 는 아직 {@code BAD_REQUEST} 라 400 으로 나간다.
  *
  * @param result 판정. {@code SUCCESS} 외에는 입장 거절이다
  * @param admitted 들여보내도 되는가. {@code result == SUCCESS} 와 같지만 화면이 분기하기 쉬우라고 따로 준다
