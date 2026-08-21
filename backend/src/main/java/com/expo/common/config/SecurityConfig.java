@@ -1,5 +1,7 @@
 package com.expo.common.config;
 
+import com.expo.common.exception.ApiAccessDeniedHandler;
+import com.expo.common.exception.ApiAuthenticationEntryPoint;
 import com.expo.jwt.JwtAuthenticationFilter;
 import com.expo.jwt.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -40,8 +42,19 @@ public class SecurityConfig {
     /** 매 요청마다 JWT를 읽어 SecurityContext를 설정하는 필터. */
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    /** 인증되지 않은 요청(토큰 없음·만료·위조)에 401 을 돌려준다. */
+    private final ApiAuthenticationEntryPoint authenticationEntryPoint;
+
+    /** 인증은 됐지만 역할이 모자란 요청에 403 을 돌려준다. */
+    private final ApiAccessDeniedHandler accessDeniedHandler;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ApiAuthenticationEntryPoint authenticationEntryPoint,
+            ApiAccessDeniedHandler accessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     /**
@@ -112,6 +125,13 @@ public class SecurityConfig {
                                         // 위에 해당하지 않는 나머지 URL — 인증 없이 허용 (필요 시 authenticated()로 변경)
                                         .anyRequest()
                                         .permitAll())
+                // 인증 실패는 401, 권한 부족은 403. 등록하지 않으면 기본값이 둘 다 403 이라
+                // 프론트의 401 재발급 인터셉터가 만료된 토큰을 갱신하지 못한다.
+                .exceptionHandling(
+                        exception ->
+                                exception
+                                        .authenticationEntryPoint(authenticationEntryPoint)
+                                        .accessDeniedHandler(accessDeniedHandler))
                 // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 배치해 토큰을 먼저 처리
                 .addFilterBefore(
                         jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
