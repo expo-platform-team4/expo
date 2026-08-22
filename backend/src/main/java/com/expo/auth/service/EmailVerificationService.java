@@ -97,8 +97,16 @@ public class EmailVerificationService {
                 saved.getId(), normalized, expiresAt, "인증코드가 발송되었습니다.");
     }
 
-    /** 인증코드를 확인하고, 성공하면 회원가입용 1회성 토큰을 발급한다. */
-    @Transactional
+    /**
+     * 인증코드를 확인하고, 성공하면 회원가입용 1회성 토큰을 발급한다.
+     *
+     * <p>{@code noRollbackFor = BusinessException.class} — 만료·코드불일치로 실패할 때도
+     * {@link EmailVerification#markExpired()}/{@link EmailVerification#markFailed()} 로 바꾼 상태를
+     * 커밋해야 한다. 기본 롤백 정책대로 두면 unchecked 예외인 {@code BusinessException} 때문에 상태변경
+     * 저장까지 롤백되어 레코드가 계속 {@code REQUESTED} 로 남고, 같은 인증 건에 인증코드를 무제한으로
+     * 추측 시도할 수 있게 된다.
+     */
+    @Transactional(noRollbackFor = BusinessException.class)
     public EmailVerificationConfirmResponse confirmVerification(
             Long verificationId, String verificationCode) {
         Instant now = Instant.now();
