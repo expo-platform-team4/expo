@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <ul>
  *   <li>{@link BusinessException} — 도메인 규칙 위반. {@link ErrorCode} 의 상태·메시지로 응답
  *   <li>{@link MethodArgumentNotValidException} — 요청 DTO {@code @Valid} 실패
- *   <li>{@link ObjectOptimisticLockingFailureException} — {@code @Version} 낙관적 락 충돌
  * </ul>
  *
  * <p>도메인 전용 예외는 그 도메인의 {@code exception} 패키지에 자기 핸들러를 둔다. 예: {@link
@@ -37,17 +36,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.fail(ex.getMessage()));
     }
 
-    /**
-     * {@code @Version} 낙관적 락 충돌 처리.
-     *
-     * <p>서비스 계층에서 개별 try/catch 로 잡아서 {@link BusinessException} 으로 바꿔치기하지 않는다 —
-     * 그렇게 하면 이미 커밋 실패로 rollback-only 표시된 트랜잭션을 다시 커밋하려다 {@code
-     * UnexpectedRollbackException} 이 나는 경우가 있다. 예외를 트랜잭션 경계 밖(컨트롤러 어드바이스)까지
-     * 그대로 흘려보내 정상적으로 롤백을 끝낸 뒤 여기서 응답만 변환한다.
-     *
-     * <p>응답 예: {@code { "success": false, "message": "다른 처리가 진행 중입니다. 잠시 후 다시 시도해
-     * 주세요." } }
-     */
+    /** {@code @Version} 낙관적 락 충돌 처리. 트랜잭션 밖에서 잡아야 UnexpectedRollbackException을 피한다. */
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(
             ObjectOptimisticLockingFailureException ex) {
