@@ -58,6 +58,11 @@ dependencies {
 	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
 	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
 
+	// --- Notification / Email ---
+	// 비밀번호 재설정 메일 발송용. spring.mail.host 가 없으면 자동설정이 빈을 만들지 않으므로
+	// app.mail.provider=logging(기본) 상태에서는 이 스타터가 있어도 실제 연결을 시도하지 않는다.
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
 	// --- Object Storage (S3) ---
 	// 이건 AWS SDK 연동 라이브러리일 뿐이다. S3 에뮬레이터는 애플리케이션이 아니라
 	// docker-compose.yml 에 별도 서버(Adobe S3Mock)로 떠 있고, 여기서는 그저

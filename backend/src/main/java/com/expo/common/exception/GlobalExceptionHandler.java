@@ -3,6 +3,7 @@ package com.expo.common.exception;
 import com.expo.common.response.ApiResponse;
 import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,6 +34,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
         ErrorCode errorCode = ex.getErrorCode();
         return ResponseEntity.status(errorCode.getStatus()).body(ApiResponse.fail(ex.getMessage()));
+    }
+
+    /** {@code @Version} 낙관적 락 충돌 처리. 트랜잭션 밖에서 잡아야 UnexpectedRollbackException을 피한다. */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException ex) {
+        ErrorCode errorCode = ErrorCode.RESOURCE_BUSY;
+        return ResponseEntity.status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode.getMessage()));
     }
 
     /**

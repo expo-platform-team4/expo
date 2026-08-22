@@ -8,17 +8,19 @@ import { useForm } from 'react-hook-form'
 import { Button, Card, CardTitle, Checkbox, Input } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 
+import { EmailVerificationField } from '../components/EmailVerificationField'
 import { PhoneVerificationField } from '../components/PhoneVerificationField'
 import { useEmailAvailability, useNicknameAvailability, useSignupMember } from '../hooks'
 import { memberSignupSchema, type MemberSignupFormValues } from '../schemas'
 import { useAvailabilityHint } from '../useAvailabilityHint'
 
-/** `/signup/member`. Function.md 2절 — "휴대폰 인증 포함". */
+/** `/signup/member`. Function.md 2절 — "휴대폰 인증 포함". 이메일 인증도 같은 방식으로 가입을 막는다. */
 const MemberSignupPage = () => {
   const router = useRouter()
   const signupMutation = useSignupMember()
   const [formError, setFormError] = useState<string | null>(null)
   const [phoneVerified, setPhoneVerified] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
 
   const emailAvailability = useAvailabilityHint(useEmailAvailability())
   const nicknameAvailability = useAvailabilityHint(useNicknameAvailability())
@@ -27,6 +29,8 @@ const MemberSignupPage = () => {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<MemberSignupFormValues>({
     resolver: zodResolver(memberSignupSchema),
@@ -36,11 +40,14 @@ const MemberSignupPage = () => {
       passwordConfirm: '',
       nickname: '',
       phoneNumber: '',
+      emailVerificationToken: '',
       serviceTermsAgreed: false,
       privacyPolicyAgreed: false,
       marketingAgreed: false,
     },
   })
+
+  const emailValue = watch('email')
 
   const onSubmit = (values: MemberSignupFormValues) => {
     setFormError(null)
@@ -66,7 +73,22 @@ const MemberSignupPage = () => {
             hint={emailAvailability.hint?.ok ? emailAvailability.hint.message : undefined}
             {...register('email', {
               onBlur: (event) => emailAvailability.check(event.target.value),
+              onChange: () => {
+                // 이메일이 바뀌면 이전 인증 토큰은 그 즉시 무효 — 아래 key={emailValue} 로
+                // EmailVerificationField 도 함께 리마운트되어 내부 UI 상태가 리셋된다.
+                setValue('emailVerificationToken', '', { shouldValidate: true })
+                setEmailVerified(false)
+              },
             })}
+          />
+          <EmailVerificationField
+            key={emailValue}
+            email={emailValue}
+            emailHasError={Boolean(errors.email)}
+            onVerified={(token) => {
+              setValue('emailVerificationToken', token ?? '', { shouldValidate: true })
+              setEmailVerified(Boolean(token))
+            }}
           />
           <Input
             label="비밀번호"
@@ -127,13 +149,17 @@ const MemberSignupPage = () => {
             type="submit"
             size="lg"
             loading={signupMutation.isPending}
-            disabled={!phoneVerified}
+            disabled={!phoneVerified || !emailVerified}
           >
             가입하기
           </Button>
-          {!phoneVerified && (
+          {(!phoneVerified || !emailVerified) && (
             <p className="text-label-sm text-on-surface-variant text-center">
-              휴대폰 인증을 완료해 주세요.
+              {!emailVerified && !phoneVerified
+                ? '이메일과 휴대폰 인증을 완료해 주세요.'
+                : !emailVerified
+                  ? '이메일 인증을 완료해 주세요.'
+                  : '휴대폰 인증을 완료해 주세요.'}
             </p>
           )}
         </form>

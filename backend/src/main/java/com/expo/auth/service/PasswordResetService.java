@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** 비밀번호 재설정 서비스 (A-API-013, A-API-014). */
 @Slf4j
@@ -29,16 +31,19 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailAvailabilityService emailAvailabilityService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailSender emailSender;
 
     public PasswordResetService(
             UserRepository userRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             EmailAvailabilityService emailAvailabilityService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            EmailSender emailSender) {
         this.userRepository = userRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailAvailabilityService = emailAvailabilityService;
         this.passwordEncoder = passwordEncoder;
+        this.emailSender = emailSender;
     }
 
     /**
@@ -47,9 +52,13 @@ public class PasswordResetService {
      * <p>이메일 존재 여부를 응답으로 노출하지 않는다(계정 존재 여부 추측 방지) — 가입된 이메일이면 토큰을 발급하고,
      * 아니면 아무 것도 하지 않은 채 같은 성공 메시지를 돌려준다.
      *
-     * <p>MVP 단계: 실제 이메일 발송 미연동. 개인정보·토큰은 로그에 남기지 않으므로(AGENTS.md), 이메일 연동
-     * 전까지는 이 흐름을 로컬에서 끝까지 수동 테스트할 방법이 없다 — 발급 자체는 정상 동작함을 단위 테스트로
-     * 확인한다.
+     * <p>{@code app.mail.provider=smtp} 면 실제로 메일이 나간다. 기본값(logging)이면 발송하지 않고 로그에만
+     * 남는다 — {@link LoggingEmailSender} 참고.
+     *
+     * <p>메일 발송은 {@link TransactionSynchronizationManager} 로 커밋 이후로 미룬다 — 커밋 전에 보내면,
+     * 메일은 나갔는데 토큰 저장이 롤백되는(또는 반대로 커밋 직전 SMTP 대기 시간만큼 트랜잭션이 늘어지는)
+     * 불일치가 생길 수 있다. 발송 자체가 실패해도 이 메서드(이미 커밋된 트랜잭션)에는 영향을 주지
+     * 않는다({@link EmailSender} 계약).
      */
     @Transactional
     public PasswordResetRequestResponse requestReset(String rawEmail) {
@@ -79,13 +88,42 @@ public class PasswordResetService {
                             passwordResetTokenRepository.save(issued);
 
                             // 개인정보·토큰은 로그에 남기지 않는다 (AGENTS.md, DEBUG도 예외 없음).
-                            // MVP라 이메일 발송이 없어 이 로그만으로는 재설정 토큰을 알 수 없다 —
-                            // 실제 이메일 연동 전까지는 이 흐름을 로컬에서 끝까지 수동 테스트할 방법이 없다.
-                            log.debug("비밀번호 재설정 요청(MVP, 이메일 미연동) userId={}", user.getId());
+                            log.debug("비밀번호 재설정 요청 userId={}", user.getId());
+
+                            TransactionSynchronizationManager.registerSynchronization(
+                                    new TransactionSynchronization() {
+                                        @Override
+                                        public void afterCommit() {
+                                            sendResetEmail(email, resetToken);
+                                        }
+                                    });
                         });
 
         return new PasswordResetRequestResponse(
                 email, expiresAt, "해당 이메일로 가입된 계정이 있으면 재설정 안내를 보냈습니다.");
+    }
+
+    /**
+     * 재설정 토큰을 이메일로 보낸다.
+     *
+     * <p>프론트에 재설정 화면(A-API-013·014 프론트, 보류 중)이 아직 없어 클릭형 링크 대신 토큰 원문을
+     * 그대로 담는다 — 화면이 생기면 {@code {frontBaseUrl}/reset-password?token=...} 형태 링크로 바꾼다.
+     */
+    private void sendResetEmail(String to, String resetToken) {
+        String subject = "[엑스포티켓] 비밀번호 재설정";
+        String body =
+                """
+                비밀번호 재설정을 요청하셨습니다.
+
+                아래 재설정 코드를 입력해 새 비밀번호를 설정해 주세요. 이 코드는 %d분간 유효하며, 한 번만
+                사용할 수 있습니다.
+
+                재설정 코드: %s
+
+                본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다.
+                """
+                        .formatted(TOKEN_EXPIRE_MINUTES, resetToken);
+        emailSender.send(to, subject, body);
     }
 
     /**
