@@ -13,7 +13,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,7 +139,10 @@ public class EmailVerificationService {
         Instant signupTokenExpiresAt =
                 now.plus(properties.getSignupTokenExpireMinutes(), ChronoUnit.MINUTES);
         verification.markVerified(signupTokenHash, now, signupTokenExpiresAt);
-        saveWithLockCheck(verification);
+        // 낙관적 락(@Version) 충돌은 여기서 잡지 않는다 — 실패한 트랜잭션을 억지로 커밋하려다
+        // UnexpectedRollbackException 이 나는 걸 피하려고, 예외를 그대로 흘려보내 정상 롤백시키고
+        // GlobalExceptionHandler 에서 RESOURCE_BUSY 로 변환한다.
+        emailVerificationRepository.save(verification);
 
         return new EmailVerificationConfirmResponse(
                 verification.getId(),
@@ -185,20 +187,7 @@ public class EmailVerificationService {
         }
 
         matched.markUsed(userId);
-        saveWithLockCheck(matched);
-    }
-
-    /**
-     * 낙관적 락({@code @Version}) 충돌을 공통 처리한다. 같은 인증 레코드에 대한 확인(confirm)·소비
-     * (consume) 요청이 동시에 들어와도 하나만 성공시키기 위한 방어다 — 성공한 한 요청만 상태를
-     * 실제로 바꾸고, 나머지는 저장 시점에 버전 충돌로 실패한다.
-     */
-    private void saveWithLockCheck(EmailVerification verification) {
-        try {
-            emailVerificationRepository.saveAndFlush(verification);
-        } catch (ObjectOptimisticLockingFailureException e) {
-            throw new BusinessException(ErrorCode.RESOURCE_BUSY);
-        }
+        emailVerificationRepository.save(matched);
     }
 
     private void sendVerificationEmail(String to, String code) {
