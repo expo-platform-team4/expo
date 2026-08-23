@@ -1,5 +1,7 @@
 package com.expo.refund.service;
 
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import com.expo.refund.entity.TicketRefund;
 import com.expo.refund.entity.TicketRefundStatus;
 import com.expo.refund.repository.TicketRefundRepository;
@@ -16,7 +18,10 @@ class TicketRefundExecutionFailureService {
 
     @Transactional
     public void recordFailure(Long refundId, String failureCode) {
-        TicketRefund refund = ticketRefundRepository.getReferenceById(refundId);
+        TicketRefund refund =
+                ticketRefundRepository
+                        .findByIdForUpdate(refundId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.REFUND_NOT_FOUND));
         if (refund.getStatus() != TicketRefundStatus.COMPLETED) {
             refund.fail(failureCode);
         }
