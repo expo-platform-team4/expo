@@ -81,4 +81,22 @@ public class TicketRefund extends BaseTimeEntity {
         refund.requestedAt = Instant.now();
         return refund;
     }
+
+    /** PG 취소 요청을 시작한다. */
+    public void markProcessing() {
+        this.status = TicketRefundStatus.PROCESSING;
+    }
+
+    /** PG 취소와 로컬 상태 반영이 완료됐다. */
+    public void complete(String pgRefundKey) {
+        this.pgRefundKey = pgRefundKey;
+        this.completedAt = Instant.now();
+        this.status = TicketRefundStatus.COMPLETED;
+    }
+
+    /** PG 취소 실패 결과를 기록한다. */
+    public void fail(String failureCode) {
+        this.lastFailureCode = failureCode;
+        this.status = TicketRefundStatus.FAILED;
+    }
 }

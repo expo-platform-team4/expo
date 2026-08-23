@@ -2,9 +2,12 @@ package com.expo.checkin.repository;
 
 import com.expo.checkin.entity.IssuedTicket;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** 발권 티켓 영속성 접근 인터페이스. */
 public interface IssuedTicketRepository extends JpaRepository<IssuedTicket, Long> {
@@ -25,4 +28,17 @@ public interface IssuedTicketRepository extends JpaRepository<IssuedTicket, Long
     /** QR 이 안 찍힐 때 쓰는 수동 입력 경로. 잠그는 이유는 위와 같다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<IssuedTicket> findByTicketCode(String ticketCode);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+        select issuedTicket
+          from IssuedTicket issuedTicket
+         where issuedTicket.ticketOrderItemId in (
+             select orderItem.id
+               from TicketOrderItem orderItem
+              where orderItem.ticketOrder.id = :ticketOrderId
+         )
+        """)
+    List<IssuedTicket> findAllByTicketOrderIdForUpdate(@Param("ticketOrderId") Long ticketOrderId);
 }
