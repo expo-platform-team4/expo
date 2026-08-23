@@ -1,6 +1,7 @@
 package com.expo.payment.service;
 
 import com.expo.common.config.TossApiException;
+import com.expo.common.config.TossCancelResult;
 import com.expo.common.config.TossConfirmResult;
 import com.expo.common.config.TossPaymentClient;
 import com.expo.common.exception.BusinessException;
@@ -23,6 +24,7 @@ public class TicketPaymentConfirmationService {
     private final TicketPaymentConfirmationPreparationService preparationService;
     private final TicketPaymentCompletionService completionService;
     private final TicketPaymentFailureService ticketPaymentFailureService;
+    private final TicketPaymentCompensationService ticketPaymentCompensationService;
     private final TicketPaymentRepository ticketPaymentRepository;
     private final TossPaymentClient tossPaymentClient;
 
@@ -45,7 +47,17 @@ public class TicketPaymentConfirmationService {
                             request.orderId(),
                             request.amount(),
                             payment.getIdempotencyKey());
-            return completionService.complete(target, result, principal);
+            try {
+                return completionService.complete(target, result, principal);
+            } catch (BusinessException localFailure) {
+                TossCancelResult cancelResult =
+                        tossPaymentClient.cancelPayment(
+                                result.paymentKey(),
+                                "로컬 결제 확정 실패",
+                                payment.getIdempotencyKey() + "-cancel");
+                ticketPaymentCompensationService.compensate(target.ticketPaymentId(), cancelResult);
+                throw localFailure;
+            }
         } catch (TossApiException e) {
             ticketPaymentFailureService.recordFailure(
                     target.ticketPaymentId(), e.getCode(), e.getRawResponse());

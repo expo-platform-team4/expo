@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 /** 회원·비회원 티켓 환불 요청의 주문·결제 상태 검증을 확인한다. */
 class TicketRefundRequestServiceTest {
@@ -47,7 +48,8 @@ class TicketRefundRequestServiceTest {
                         payments,
                         refunds,
                         mock(TicketOrderAccessVerifier.class),
-                        converter);
+                        converter,
+                        mock(ApplicationEventPublisher.class));
     }
 
     @Test

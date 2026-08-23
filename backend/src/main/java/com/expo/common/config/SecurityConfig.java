@@ -141,7 +141,11 @@ public class SecurityConfig {
                         .permitAll()
                         // 비회원 예매 — 로그인 없이 사는 흐름 자체가 상품이다
                         .requestMatchers(
-                                HttpMethod.POST, "/api/orders/guest", "/api/orders/search/guest")
+                                HttpMethod.POST,
+                                "/api/orders/guest",
+                                "/api/orders/search/guest",
+                                "/api/orders/guest/refunds",
+                                "/api/orders/guest/refund-eligibility")
                         .permitAll()
                         // 결제 — 게스트 주문도 승인해야 해서 열어 둔다.
                         // 회원 주문의 소유자 확인은 TicketOrderAccessVerifier 가

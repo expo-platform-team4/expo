@@ -9,6 +9,7 @@ import com.expo.payment.repository.TicketPaymentRepository;
 import com.expo.refund.converter.TicketRefundConverter;
 import com.expo.refund.dto.TicketRefundResponse;
 import com.expo.refund.entity.TicketRefund;
+import com.expo.refund.event.TicketRefundRequestedEvent;
 import com.expo.refund.repository.TicketRefundRepository;
 import com.expo.ticket.entity.TicketOrder;
 import com.expo.ticket.entity.TicketOrderStatus;
@@ -16,6 +17,7 @@ import com.expo.ticket.entity.TicketOrdererType;
 import com.expo.ticket.repository.TicketOrderRepository;
 import com.expo.ticket.service.TicketOrderAccessVerifier;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ public class TicketRefundRequestService {
     private final TicketRefundRepository ticketRefundRepository;
     private final TicketOrderAccessVerifier ticketOrderAccessVerifier;
     private final TicketRefundConverter ticketRefundConverter;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public TicketRefundResponse requestMemberRefund(
@@ -80,6 +83,7 @@ public class TicketRefundRequestService {
                                 order.getTicketSubtotalAmount(),
                                 order.getBookingFeeAmount(),
                                 reason));
+        applicationEventPublisher.publishEvent(new TicketRefundRequestedEvent(refund.getId()));
         return ticketRefundConverter.toResponse(refund);
     }
 
