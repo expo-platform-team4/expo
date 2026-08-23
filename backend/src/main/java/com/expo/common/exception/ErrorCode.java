@@ -131,6 +131,7 @@ public enum ErrorCode {
     REFUND_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제 완료된 주문만 환불 요청할 수 있습니다."),
     REFUND_PAYMENT_NOT_COMPLETED(HttpStatus.CONFLICT, "완료된 결제 건만 환불 요청할 수 있습니다."),
     REFUND_ALREADY_REQUESTED(HttpStatus.CONFLICT, "이미 환불 요청이 접수된 주문입니다."),
+    REFUND_NOT_RETRYABLE(HttpStatus.CONFLICT, "실패한 환불 요청만 재처리할 수 있습니다."),
 
     // --- 부스 콘텐츠 ---
     BOOTH_CONTENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 부스 콘텐츠입니다."),
