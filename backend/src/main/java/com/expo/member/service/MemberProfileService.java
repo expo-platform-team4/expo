@@ -6,6 +6,7 @@ import com.expo.auth.service.NicknameAvailabilityService;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.file.entity.FileMetadata;
+import com.expo.file.entity.FilePurpose;
 import com.expo.file.service.FileService;
 import com.expo.member.dto.MemberProfileResponse;
 import java.time.Instant;
@@ -73,12 +74,19 @@ public class MemberProfileService {
      * 나 넘겨도 존재만 하면 내주기 때문에, 다른 사람이 올린 공개 파일(예: 박람회 이미지)을 내 프로필에
      * 연결하는 걸 막으려면 소유자 검사를 따로 해야 한다.
      *
+     * <p><b>{@code purpose} 는 다시 확인하지 못한다</b> — {@code file_metadata} 는 애초에 업로드 용도를
+     * 저장하지 않는다({@link FilePurpose} 주석 참고, 11개 도메인이 테이블 하나를 공유해서다). 대신 저장돼
+     * 있는 {@code contentType} 이 {@link FilePurpose#PROFILE_IMAGE} 가 허용하는 형식(JPEG/PNG/WEBP)인지는
+     * 확인한다 — 이걸 빼먹으면 내가 올린 PDF(예: 정산 리포트)의 fileId 를 그대로 여기 보내도 통과해서,
+     * 나중에 그 fileId 로 아바타를 그리려는 {@code <img>} 가 깨진다.
+     *
      * <p>이전에 연결돼 있던 파일은 지우지 않는다 — 다른 화면이 그 fileId 를 아직 들고 있을 수 있어(예: 캐시된
      * 응답), 여기서 지우면 그쪽이 깨진다. 정리는 {@link FileService#delete} 의 정책과 같이 나중 배치의 몫으로
      * 남긴다.
      *
      * @throws BusinessException 파일이 없거나({@code FILE_NOT_FOUND}), 내가 올린 파일이 아니거나({@code
-     *     FILE_NOT_FOUND}), 사용자가 없으면({@code MEMBER_NOT_FOUND})
+     *     FILE_NOT_FOUND}), 이미지 형식이 아니거나({@code FILE_CONTENT_TYPE_NOT_ALLOWED}), 사용자가 없으면
+     *     ({@code MEMBER_NOT_FOUND})
      */
     @Transactional
     public MemberProfileResponse changeProfileImage(Long userId, Long fileId) {
@@ -87,6 +95,9 @@ public class MemberProfileService {
         FileMetadata file = fileService.get(fileId, userId, false);
         if (!file.isUploadedBy(userId)) {
             throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
+        }
+        if (!FilePurpose.PROFILE_IMAGE.allows(file.getContentType())) {
+            throw new BusinessException(ErrorCode.FILE_CONTENT_TYPE_NOT_ALLOWED);
         }
 
         user.updateProfileImage(fileId, Instant.now());
