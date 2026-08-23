@@ -108,6 +108,18 @@ public class User extends BaseTimeEntity {
         this.withdrawnAt = at;
     }
 
+    /** 프로필 이미지를 등록·교체한다 (A-API-017). 소유권·형식 검증은 서비스 계층에서 끝낸 뒤 호출한다. */
+    public void updateProfileImage(Long fileId, Instant at) {
+        this.profileImageFileId = fileId;
+        this.profileImageUpdatedAt = at;
+    }
+
+    /** 프로필 이미지를 지운다 (A-API-017). 이후 기본 이미지로 보인다. */
+    public void clearProfileImage(Instant at) {
+        this.profileImageFileId = null;
+        this.profileImageUpdatedAt = at;
+    }
+
     public Long getId() {
         return id;
     }

@@ -7,6 +7,7 @@ import com.expo.jwt.AuthPrincipal;
 import com.expo.member.dto.ChangePasswordRequest;
 import com.expo.member.dto.MemberProfileResponse;
 import com.expo.member.dto.NicknameChangeRequest;
+import com.expo.member.dto.ProfileImageChangeRequest;
 import com.expo.member.service.MemberPasswordService;
 import com.expo.member.service.MemberProfileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,13 +15,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 일반 회원·클라이언트 공통 마이페이지 프로필 API (A-API-015, A-API-016). */
+/** 일반 회원·클라이언트 공통 마이페이지 프로필 API (A-API-015, A-API-016, A-API-017). */
 @Tag(name = "Member Profile", description = "마이페이지 프로필 API")
 @RestController
 @RequestMapping("/api/users/me")
@@ -81,6 +83,36 @@ public class MemberProfileController {
                 request.newPassword(),
                 request.newPasswordConfirm());
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @Operation(
+            summary = "프로필 이미지 등록·교체",
+            description =
+                    """
+          로그인한 사용자 본인의 프로필 이미지를 등록하거나 교체합니다.
+
+          - 이미지 바이트는 먼저 `POST /api/files`(purpose=PROFILE_IMAGE)로 올립니다. 이 API는 그 응답의
+            fileId를 받아 내 계정에 연결하기만 합니다.
+          - 내가 올린 파일이 아니면 실패합니다(다른 사람 파일 도용 방지).
+          """)
+    @PatchMapping("/profile-image")
+    public ResponseEntity<ApiResponse<MemberProfileResponse>> changeProfileImage(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @Valid @RequestBody ProfileImageChangeRequest request) {
+        requireAuthenticated(principal);
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        memberProfileService.changeProfileImage(
+                                principal.getMemberId(), request.fileId())));
+    }
+
+    @Operation(summary = "프로필 이미지 삭제", description = "등록된 프로필 이미지 연결을 지웁니다. 이후 기본 이미지로 보입니다.")
+    @DeleteMapping("/profile-image")
+    public ResponseEntity<ApiResponse<MemberProfileResponse>> removeProfileImage(
+            @AuthenticationPrincipal AuthPrincipal principal) {
+        requireAuthenticated(principal);
+        return ResponseEntity.ok(
+                ApiResponse.ok(memberProfileService.removeProfileImage(principal.getMemberId())));
     }
 
     private void requireAuthenticated(AuthPrincipal principal) {

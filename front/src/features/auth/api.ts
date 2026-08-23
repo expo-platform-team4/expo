@@ -199,6 +199,25 @@ export const changeNickname = async (nickname: string): Promise<MemberProfile> =
   return data.data
 }
 
+/**
+ * `PATCH /api/users/me/profile-image` — A-API-017.
+ *
+ * 이미지 바이트는 여기서 보내지 않는다. `features/file/api.ts` 의 `uploadFile(file,
+ * 'PROFILE_IMAGE')` 로 먼저 올린 뒤, 그 응답의 `fileId` 를 여기로 보내 내 계정에 연결한다.
+ */
+export const changeProfileImage = async (fileId: number): Promise<MemberProfile> => {
+  const { data } = await api.patch<ApiEnvelope<MemberProfile>>('/users/me/profile-image', {
+    fileId,
+  })
+  return data.data
+}
+
+/** `DELETE /api/users/me/profile-image` — A-API-017. 지운 뒤에는 기본 이미지로 보인다. */
+export const removeProfileImage = async (): Promise<MemberProfile> => {
+  const { data } = await api.delete<ApiEnvelope<MemberProfile>>('/users/me/profile-image')
+  return data.data
+}
+
 export type ChangePasswordPayload = {
   currentPassword: string
   newPassword: string

@@ -1,18 +1,22 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { UserRound } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Badge, Button, Card, CardTitle, ErrorState, Input, LoadingBlock } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 
+import { uploadFile } from '../../file/api'
 import {
   useChangeNickname,
   useChangePassword,
+  useChangeProfileImage,
   useMyProfile,
   useNicknameAvailability,
+  useRemoveProfileImage,
   useWithdraw,
 } from '../hooks'
 import { useAvailabilityHint } from '../useAvailabilityHint'
@@ -38,7 +42,11 @@ const ProfileEditPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <ProfileHeaderCard email={profile.email} currentNickname={profile.nickname} />
+      <ProfileHeaderCard
+        email={profile.email}
+        currentNickname={profile.nickname}
+        profileImageFileId={profile.profileImageFileId}
+      />
       <ChangePasswordSection />
       <WithdrawalSection />
     </div>
@@ -48,22 +56,93 @@ const ProfileEditPage = () => {
 /**
  * 프로필 사진 + 닉네임을 한 카드에 나란히 둔다.
  *
- * 사진은 S3 업로드 방향(직접 업로드 vs presigned URL 등, docs/s3-presigned-url.md 참고)이
- * 아직 정해지지 않아 자리만 두고 비활성 상태다. 닉네임은 평소엔 텍스트로만 보이다가
- * "수정" 버튼을 눌러야 입력칸 + 중복확인 버튼이 나온다 — 화면에 상시 노출된 입력칸이
- * 없으면 실수로 건드릴 일도 없다.
+ * 사진은 원 안을 눌러 파일을 고르면 (1) `POST /api/files`(purpose=PROFILE_IMAGE)로 먼저 올리고
+ * (2) 받은 fileId를 `PATCH /api/users/me/profile-image`로 내 계정에 연결하는 2단계로 처리한다 —
+ * `features/file/api.ts` 의 범용 업로드를 그대로 재사용한다(A-API-017). 닉네임은 평소엔
+ * 텍스트로만 보이다가 "수정" 버튼을 눌러야 입력칸 + 중복확인 버튼이 나온다 — 화면에 상시
+ * 노출된 입력칸이 없으면 실수로 건드릴 일도 없다.
  */
 const ProfileHeaderCard = ({
   email,
   currentNickname,
+  profileImageFileId,
 }: {
   email: string
   currentNickname: string
+  profileImageFileId: number | null
 }) => {
   const [editing, setEditing] = useState(false)
   const changeNicknameMutation = useChangeNickname()
   const nicknameAvailability = useAvailabilityHint(useNicknameAvailability())
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const changeProfileImageMutation = useChangeProfileImage()
+  const removeProfileImageMutation = useRemoveProfileImage()
+  const [imageEditing, setImageEditing] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+
+  // 로컬 미리보기용 objectURL은 쓰고 나면 반드시 지운다 — 안 지우면 메모리에 계속 쌓인다.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  const startImageEditing = () => {
+    setImageError(null)
+    setImageEditing(true)
+  }
+
+  const cancelImageEditing = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    setImageError(null)
+    setImageEditing(false)
+  }
+
+  const handleFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = '' // 같은 파일을 다시 골라도 onChange가 뜨도록 초기화
+    if (!file) return
+
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setImageError(null)
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const saveImage = async () => {
+    if (!selectedFile) return
+    setImageError(null)
+    setIsUploadingImage(true)
+    try {
+      const uploaded = await uploadFile(selectedFile, 'PROFILE_IMAGE')
+      changeProfileImageMutation.mutate(uploaded.fileId, {
+        onSuccess: () => cancelImageEditing(),
+        onError: (error) => setImageError(getErrorMessage(error)),
+      })
+    } catch (error) {
+      setImageError(getErrorMessage(error))
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
+  const deleteImage = () => {
+    setImageError(null)
+    removeProfileImageMutation.mutate(undefined, {
+      onSuccess: () => cancelImageEditing(),
+      onError: (error) => setImageError(getErrorMessage(error)),
+    })
+  }
+
+  const isImageBusy =
+    isUploadingImage || changeProfileImageMutation.isPending || removeProfileImageMutation.isPending
 
   const {
     register,
@@ -101,14 +180,82 @@ const ProfileHeaderCard = ({
   return (
     <Card>
       <CardTitle>프로필</CardTitle>
-      <div className="flex items-center gap-4">
-        {/* 사진 등록은 아직 준비 중이라 버튼은 비활성 상태로만 둔다. */}
-        <div className="bg-surface-container-high text-on-surface-variant flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-xs">
-          준비 중
+      <div className="flex items-start gap-4">
+        <div className="flex shrink-0 flex-col items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <div className="bg-surface-container-high text-on-surface-variant flex h-20 w-20 items-center justify-center overflow-hidden rounded-full">
+            {previewUrl || profileImageFileId ? (
+              // eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기/백엔드 프록시 경로라 Next 이미지 최적화 대상이 아니다.
+              <img
+                src={previewUrl ?? `/api/files/${profileImageFileId}/content`}
+                alt="프로필 이미지"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <UserRound className="h-10 w-10" aria-hidden />
+            )}
+          </div>
+
+          {!imageEditing ? (
+            <Button type="button" variant="ghost" size="sm" onClick={startImageEditing}>
+              수정
+            </Button>
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={isImageBusy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                파일 선택
+              </Button>
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!selectedFile || isImageBusy}
+                  loading={isUploadingImage || changeProfileImageMutation.isPending}
+                  onClick={saveImage}
+                >
+                  저장
+                </Button>
+                {profileImageFileId && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    disabled={isImageBusy}
+                    loading={removeProfileImageMutation.isPending}
+                    onClick={deleteImage}
+                  >
+                    삭제
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={isImageBusy}
+                  onClick={cancelImageEditing}
+                >
+                  취소
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1">
           <p className="text-body-sm text-on-surface-variant">{email}</p>
+          {imageError && <p className="text-label-sm text-error mt-1">{imageError}</p>}
 
           {!editing ? (
             <div className="mt-1 flex items-center gap-3">

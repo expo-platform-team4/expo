@@ -36,6 +36,9 @@ export const MemberSidebarShell = ({ children }: { children: ReactNode }) => {
         name: profile.nickname,
         subtitle: profile.phoneNumber ?? '전화번호 미등록',
         editHref: '/mypage/profile',
+        avatarUrl: profile.profileImageFileId
+          ? `/api/files/${profile.profileImageFileId}/content`
+          : undefined,
       }}
       menuItems={MEMBER_MENU_ITEMS}
       onLogout={() => logoutMutation.mutate()}

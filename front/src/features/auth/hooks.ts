@@ -100,6 +100,28 @@ export const useChangeNickname = () => {
   })
 }
 
+/** 프로필 이미지 등록·교체 (A-API-017). 닉네임 변경과 같은 캐시 갱신 패턴이다. */
+export const useChangeProfileImage = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: authApi.changeProfileImage,
+    onSuccess: (profile) => {
+      queryClient.setQueryData(authKeys.profile, profile)
+    },
+  })
+}
+
+/** 프로필 이미지 삭제 (A-API-017). */
+export const useRemoveProfileImage = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: authApi.removeProfileImage,
+    onSuccess: (profile) => {
+      queryClient.setQueryData(authKeys.profile, profile)
+    },
+  })
+}
+
 /** 비밀번호 재설정 요청 (A-API-013). 로그인 화면의 "비밀번호 찾기"에서 쓴다. */
 export const useRequestPasswordReset = () =>
   useMutation({ mutationFn: authApi.requestPasswordReset })
