@@ -187,6 +187,10 @@ public class BoothOrderService {
      * <p>여러 번 호출해도 안전하다 — 이미 처리된 주문은 더 이상 {@code PENDING_PAYMENT} 가 아니므로 다시 조회되지
      * 않는다. 다중 인스턴스에서의 중복 실행 방지 장치가 없어 아직 스케줄러는 붙이지 않았다({@code
      * InternalSettlementController} 와 동일한 판단).
+     *
+     * <p>주문 ID 오름차순으로 정렬한 뒤 순서대로 잠근다 - 겹치는 두 배치가 동시에 돌면(예: 관리자가 두 번 눌렀거나,
+     * 스케줄러가 붙은 뒤 이전 호출이 아직 안 끝났는데 다음 호출이 시작된 경우) 서로 반대 순서로 잠그다가 교착 상태에
+     * 빠질 수 있다.
      */
     @Transactional
     public BoothOrderExpirationResult expireDue() {
@@ -196,6 +200,7 @@ public class BoothOrderService {
                                 BoothOrderStatus.PENDING_PAYMENT, Instant.now())
                         .stream()
                         .map(BoothOrder::getId)
+                        .sorted()
                         .toList();
         List<BoothOrderExpirationResult.Expired> expired =
                 dueOrderIds.stream().flatMap(id -> expireOne(id).stream()).toList();
