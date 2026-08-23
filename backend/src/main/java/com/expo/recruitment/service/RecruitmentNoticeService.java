@@ -2,6 +2,8 @@ package com.expo.recruitment.service;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.converter.RecruitmentNoticeConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
@@ -31,6 +33,7 @@ public class RecruitmentNoticeService {
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private final RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository;
+    private final ParticipationApplicationRepository participationApplicationRepository;
     private final VenueReservationRepository venueReservationRepository;
     private final VenueReservationHistoryRepository venueReservationHistoryRepository;
     private final RecruitmentNoticeConverter recruitmentNoticeConverter;
@@ -39,12 +42,14 @@ public class RecruitmentNoticeService {
             RecruitmentNoticeRepository recruitmentNoticeRepository,
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
             RecruitmentNoticeHistoryRepository recruitmentNoticeHistoryRepository,
+            ParticipationApplicationRepository participationApplicationRepository,
             VenueReservationRepository venueReservationRepository,
             VenueReservationHistoryRepository venueReservationHistoryRepository,
             RecruitmentNoticeConverter recruitmentNoticeConverter) {
         this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeHistoryRepository = recruitmentNoticeHistoryRepository;
+        this.participationApplicationRepository = participationApplicationRepository;
         this.venueReservationRepository = venueReservationRepository;
         this.venueReservationHistoryRepository = venueReservationHistoryRepository;
         this.recruitmentNoticeConverter = recruitmentNoticeConverter;
@@ -195,6 +200,9 @@ public class RecruitmentNoticeService {
     /**
      * 모집공고 직권 취소. 결제·신청이 아직 없는 마감 전 공고(초안·예약·게시 중)만 취소할 수 있다.
      *
+     * <p>결제 완료(SUBMITTED) 신청서가 하나라도 있으면 취소를 거부한다 - 이미 돈을 낸 기업이 있는 채로 공고가
+     * 사라지면 배정·환불 처리가 안 된 채로 방치된다.
+     *
      * <p>권한이 걸린 변경이라 변경 전후 상태를 감사 이력({@code recruitment_notice_histories})에 남긴다. 이 공고에
      * 딸린 장소 예약도 전부 같이 해제한다 - 안 풀면 같은 기간에 그 홀들을 다시 못 쓴다.
      */
@@ -206,6 +214,10 @@ public class RecruitmentNoticeService {
                 && previousStatus != RecruitmentNoticeStatus.SCHEDULED
                 && previousStatus != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_CANCELABLE);
+        }
+        if (participationApplicationRepository.existsByRecruitmentNoticeIdAndStatus(
+                noticeId, ParticipationApplicationStatus.SUBMITTED)) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_HAS_SUBMITTED_APPLICATIONS);
         }
         notice.cancel();
         recruitmentNoticeHistoryRepository.save(
