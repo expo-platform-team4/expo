@@ -330,6 +330,7 @@ class BoothOrderServiceTest {
         when(boothOrderRepository.findAllByStatusAndExpiresAtBefore(
                         eq(BoothOrderStatus.PENDING_PAYMENT), any()))
                 .thenReturn(List.of(order));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
         when(boothReservationRepository.findFirstByBoothOrderIdAndStatus(
                         ORDER_ID, BoothReservationStatus.ACTIVE))
                 .thenReturn(Optional.of(reservation));
@@ -357,5 +358,30 @@ class BoothOrderServiceTest {
 
         assertThat(result.expiredCount()).isZero();
         assertThat(result.expired()).isEmpty();
+    }
+
+    /**
+     * 배치 조회와 실제 만료 처리 사이에 결제가 승인돼 더는 PENDING_PAYMENT 가 아니게 된 주문은, 잠금을 다시 걸어
+     * 재확인했을 때 건너뛰어야 한다 - 안 그러면 방금 결제 완료된 주문을 만료로 덮어쓴다.
+     */
+    @Test
+    void expireDueSkipsOrderThatWasPaidConcurrently() {
+        BoothOrder staleSnapshot = pendingOrder();
+        withId(staleSnapshot, ORDER_ID);
+        BoothOrder lockedOrder = pendingOrder();
+        withId(lockedOrder, ORDER_ID);
+        lockedOrder.markPaid();
+
+        when(boothOrderRepository.findAllByStatusAndExpiresAtBefore(
+                        eq(BoothOrderStatus.PENDING_PAYMENT), any()))
+                .thenReturn(List.of(staleSnapshot));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(lockedOrder));
+
+        var result = service.expireDue();
+
+        assertThat(result.expiredCount()).isZero();
+        assertThat(result.expired()).isEmpty();
+        assertThat(lockedOrder.getStatus().name()).isEqualTo("PAYMENT_COMPLETED");
+        verify(boothReservationRepository, never()).findFirstByBoothOrderIdAndStatus(any(), any());
     }
 }

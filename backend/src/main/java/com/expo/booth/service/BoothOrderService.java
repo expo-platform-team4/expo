@@ -22,6 +22,7 @@ import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -177,28 +178,44 @@ public class BoothOrderService {
      * 결제 대기 시간(15분)을 넘긴 주문을 일괄 만료 처리한다. 취소와 마찬가지로 임시 확보를 풀고 부스 상품·신청서를 되돌리지만,
      * 본인 확인 없이 시스템이 만료 시각만 보고 처리한다는 점이 다르다.
      *
+     * <p>대상을 고르는 조회는 잠금 없이 하지만, 실제로 만료 처리하기 직전에 {@link
+     * BoothOrderRepository#findByIdForUpdate} 로 다시 잠그고 상태를 재확인한다 - 그렇지 않으면 결제 승인
+     * ({@code BoothPaymentService.confirm()})과 경합해서, 방금 결제가 확정된 주문을 만료로 덮어쓰거나 예약을
+     * 엉뚱하게 풀어버릴 수 있다. {@code confirm()} 도 같은 행 잠금을 쓰므로 둘 중 하나가 끝날 때까지 다른 하나는
+     * 기다렸다가 바뀐 상태를 다시 보고 판단하게 된다.
+     *
      * <p>여러 번 호출해도 안전하다 — 이미 처리된 주문은 더 이상 {@code PENDING_PAYMENT} 가 아니므로 다시 조회되지
      * 않는다. 다중 인스턴스에서의 중복 실행 방지 장치가 없어 아직 스케줄러는 붙이지 않았다({@code
      * InternalSettlementController} 와 동일한 판단).
      */
     @Transactional
     public BoothOrderExpirationResult expireDue() {
-        List<BoothOrder> dueOrders =
-                boothOrderRepository.findAllByStatusAndExpiresAtBefore(
-                        BoothOrderStatus.PENDING_PAYMENT, Instant.now());
+        List<Long> dueOrderIds =
+                boothOrderRepository
+                        .findAllByStatusAndExpiresAtBefore(
+                                BoothOrderStatus.PENDING_PAYMENT, Instant.now())
+                        .stream()
+                        .map(BoothOrder::getId)
+                        .toList();
         List<BoothOrderExpirationResult.Expired> expired =
-                dueOrders.stream().map(this::expireOne).toList();
+                dueOrderIds.stream().flatMap(id -> expireOne(id).stream()).toList();
         return new BoothOrderExpirationResult(expired.size(), expired);
     }
 
-    private BoothOrderExpirationResult.Expired expireOne(BoothOrder order) {
+    private Optional<BoothOrderExpirationResult.Expired> expireOne(Long orderId) {
+        Optional<BoothOrder> locked = boothOrderRepository.findByIdForUpdate(orderId);
+        if (locked.isEmpty() || locked.get().getStatus() != BoothOrderStatus.PENDING_PAYMENT) {
+            return Optional.empty();
+        }
+        BoothOrder order = locked.get();
         order.expire();
-        releaseReservationAndRevertProduct(order.getId(), order);
+        releaseReservationAndRevertProduct(orderId, order);
         participationApplicationRepository
                 .findById(order.getApplicationId())
                 .ifPresent(ParticipationApplication::cancelPayment);
-        return new BoothOrderExpirationResult.Expired(
-                order.getId(), order.getOrderNumber(), order.getApplicationId());
+        return Optional.of(
+                new BoothOrderExpirationResult.Expired(
+                        order.getId(), order.getOrderNumber(), order.getApplicationId()));
     }
 
     /**
