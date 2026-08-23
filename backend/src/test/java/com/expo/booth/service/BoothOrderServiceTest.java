@@ -128,16 +128,9 @@ class BoothOrderServiceTest {
      */
     @Test
     void createRejectsWhenNoticeNotOpen() {
-        RecruitmentNotice draftNotice =
-                RecruitmentNotice.create(
-                        100L,
-                        200L,
-                        "제목",
-                        "내용",
-                        Instant.now(),
-                        Instant.now().plus(Duration.ofDays(1)),
-                        ADMIN_ID);
-        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(draftNotice));
+        RecruitmentNotice closedNotice = openNotice();
+        closedNotice.close();
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(closedNotice));
         when(participationApplicationRepository.findByIdAndClientUserId(
                         APPLICATION_ID, CLIENT_USER_ID))
                 .thenReturn(Optional.of(draftApplication(BOOTH_PRODUCT_ID)));
