@@ -31,6 +31,8 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import com.expo.recruitment.entity.RecruitmentNotice;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -56,6 +58,7 @@ class BoothPaymentServiceTest {
     private BoothProductRepository boothProductRepository;
     private BoothReservationRepository boothReservationRepository;
     private ParticipationApplicationRepository participationApplicationRepository;
+    private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private BoothAllocationRepository boothAllocationRepository;
     private TossPaymentClient tossPaymentClient;
     private BoothPaymentService service;
@@ -68,6 +71,7 @@ class BoothPaymentServiceTest {
         boothProductRepository = mock(BoothProductRepository.class);
         boothReservationRepository = mock(BoothReservationRepository.class);
         participationApplicationRepository = mock(ParticipationApplicationRepository.class);
+        recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         boothAllocationRepository = mock(BoothAllocationRepository.class);
         tossPaymentClient = mock(TossPaymentClient.class);
         when(tossPaymentClient.getClientKey()).thenReturn("test_ck_dummy");
@@ -82,9 +86,33 @@ class BoothPaymentServiceTest {
                         boothPaymentRepository,
                         boothPaymentHistoryRepository,
                         boothOrderRepository,
+                        participationApplicationRepository,
+                        recruitmentNoticeRepository,
                         boothOrderCompletionService,
                         tossPaymentClient,
                         new BoothPaymentConverter());
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(applicationForOrder()));
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(openNotice()));
+    }
+
+    private ParticipationApplication applicationForOrder() {
+        return ParticipationApplication.create(
+                NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, BOOTH_PRODUCT_ID);
+    }
+
+    private RecruitmentNotice openNotice() {
+        RecruitmentNotice notice =
+                RecruitmentNotice.create(
+                        10L,
+                        20L,
+                        "테스트 공고",
+                        "내용",
+                        Instant.now().minus(Duration.ofDays(1)),
+                        Instant.now().plus(Duration.ofDays(1)),
+                        99L);
+        notice.publish();
+        return notice;
     }
 
     private BoothOrder pendingOrder() {
@@ -232,6 +260,43 @@ class BoothPaymentServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
+    }
+
+    @Test
+    void confirmRejectsWhenNoticeNotOpen() {
+        RecruitmentNotice closedNotice = openNotice();
+        closedNotice.close();
+        when(boothPaymentRepository.findByPgOrderId(PG_ORDER_ID))
+                .thenReturn(Optional.of(readyPayment()));
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
+                .thenReturn(Optional.of(pendingOrder()));
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.of(closedNotice));
+
+        assertThatThrownBy(
+                        () ->
+                                service.confirm(
+                                        PG_ORDER_ID,
+                                        "payKey",
+                                        BigDecimal.valueOf(1_100_000),
+                                        CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
+    }
+
+    @Test
+    void initiateRejectsWhenNoticeNotOpen() {
+        RecruitmentNotice canceledNotice = openNotice();
+        canceledNotice.cancel();
+        when(boothOrderRepository.findByIdForUpdate(ORDER_ID))
+                .thenReturn(Optional.of(pendingOrder()));
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(canceledNotice));
+
+        assertThatThrownBy(() -> service.initiate(ORDER_ID, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
     }
 
     @Test
