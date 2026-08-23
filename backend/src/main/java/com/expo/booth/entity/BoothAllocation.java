@@ -69,4 +69,12 @@ public class BoothAllocation extends BaseTimeEntity {
         this.canceledAt = Instant.now();
         this.cancelReason = reason;
     }
+
+    /**
+     * 관리자 재배정. 이 배정을 다른 부스 상품으로 옮긴다. 배정 자체(신청서·주문·클라이언트)는 그대로 두고 대상 상품만
+     * 바뀐다 - 취소 후 재신청과 달리 결제·주문을 다시 거치지 않는다.
+     */
+    public void reassign(Long newBoothProductId) {
+        this.boothProductId = newBoothProductId;
+    }
 }
