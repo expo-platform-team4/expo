@@ -105,6 +105,8 @@ class SecurityDefaultDenyTest {
         @PostMapping({
             "/api/orders/guest",
             "/api/orders/search/guest",
+            "/api/orders/guest/refunds",
+            "/api/orders/guest/refund-eligibility",
             "/api/payments/initiate",
             "/api/payments/tickets/confirm"
         })
@@ -164,6 +166,8 @@ class SecurityDefaultDenyTest {
             strings = {
                 "/api/orders/guest",
                 "/api/orders/search/guest",
+                "/api/orders/guest/refunds",
+                "/api/orders/guest/refund-eligibility",
                 "/api/payments/initiate",
                 "/api/payments/tickets/confirm"
             })
