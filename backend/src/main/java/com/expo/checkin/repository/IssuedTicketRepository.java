@@ -41,4 +41,15 @@ public interface IssuedTicketRepository extends JpaRepository<IssuedTicket, Long
          )
         """)
     List<IssuedTicket> findAllByTicketOrderIdForUpdate(@Param("ticketOrderId") Long ticketOrderId);
+
+    @Query(
+            """
+        select count(issuedTicket) > 0
+          from IssuedTicket issuedTicket
+         where issuedTicket.status = com.expo.checkin.entity.IssuedTicketStatus.CHECKED_IN
+           and issuedTicket.ticketOrderItemId in (
+               select orderItem.id from TicketOrderItem orderItem where orderItem.ticketOrder.id = :ticketOrderId
+           )
+        """)
+    boolean existsCheckedInByTicketOrderId(@Param("ticketOrderId") Long ticketOrderId);
 }

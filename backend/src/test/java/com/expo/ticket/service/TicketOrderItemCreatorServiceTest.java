@@ -94,6 +94,20 @@ class TicketOrderItemCreatorServiceTest {
                 .isEqualByComparingTo(BigDecimal.valueOf(20_000));
     }
 
+    @Test
+    void creatorOrderItemsRejectsProductsFromDifferentExpos() {
+        TicketProduct first = purchasableProduct(3);
+        TicketProduct second = purchasableProduct(3);
+        setField(second, "expoId", 2L);
+        when(ticketProductRepository.findById(1L)).thenReturn(Optional.of(first));
+        when(ticketProductRepository.findById(2L)).thenReturn(Optional.of(second));
+
+        assertThatThrownBy(() -> service.creatorOrderItems(List.of(request(1L, 1), request(2L, 1))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.TICKET_ORDER_MULTIPLE_EXPOS);
+    }
+
     private TicketOrderItemRequest request(Long productId, int quantity) {
         return new TicketOrderItemRequest(productId, quantity);
     }
