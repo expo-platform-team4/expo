@@ -5,23 +5,29 @@ import com.expo.auth.repository.UserRepository;
 import com.expo.auth.service.NicknameAvailabilityService;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.file.entity.FileMetadata;
+import com.expo.file.service.FileService;
 import com.expo.member.dto.MemberProfileResponse;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 일반 회원·클라이언트 공통 마이페이지 프로필 조회·닉네임 변경 (A-API-015, A-API-016). */
+/** 일반 회원·클라이언트 공통 마이페이지 프로필 조회·닉네임 변경·프로필이미지 변경 (A-API-015, A-API-016, A-API-017). */
 @Service
 @Transactional(readOnly = true)
 public class MemberProfileService {
 
     private final UserRepository userRepository;
     private final NicknameAvailabilityService nicknameAvailabilityService;
+    private final FileService fileService;
 
     public MemberProfileService(
             UserRepository userRepository,
-            NicknameAvailabilityService nicknameAvailabilityService) {
+            NicknameAvailabilityService nicknameAvailabilityService,
+            FileService fileService) {
         this.userRepository = userRepository;
         this.nicknameAvailabilityService = nicknameAvailabilityService;
+        this.fileService = fileService;
     }
 
     /**
@@ -54,6 +60,51 @@ public class MemberProfileService {
         }
 
         user.changeNickname(normalized);
+        userRepository.save(user);
+        return toResponse(user);
+    }
+
+    /**
+     * 프로필 이미지를 등록·교체한다 (A-API-017).
+     *
+     * <p>이미지 바이트는 이미 {@code POST /api/files}(purpose=PROFILE_IMAGE)로 올라가 있다고 가정하고,
+     * 그 결과인 {@code fileId} 를 받아 내 계정에 연결하기만 한다. 파일이 정말 내가 올린 게 맞는지는 여기서
+     * 한 번 더 확인한다 — {@link FileService#get} 은 PROFILE_IMAGE 가 공개(PUBLIC) 파일이라 아무 fileId
+     * 나 넘겨도 존재만 하면 내주기 때문에, 다른 사람이 올린 공개 파일(예: 박람회 이미지)을 내 프로필에
+     * 연결하는 걸 막으려면 소유자 검사를 따로 해야 한다.
+     *
+     * <p>이전에 연결돼 있던 파일은 지우지 않는다 — 다른 화면이 그 fileId 를 아직 들고 있을 수 있어(예: 캐시된
+     * 응답), 여기서 지우면 그쪽이 깨진다. 정리는 {@link FileService#delete} 의 정책과 같이 나중 배치의 몫으로
+     * 남긴다.
+     *
+     * @throws BusinessException 파일이 없거나({@code FILE_NOT_FOUND}), 내가 올린 파일이 아니거나({@code
+     *     FILE_NOT_FOUND}), 사용자가 없으면({@code MEMBER_NOT_FOUND})
+     */
+    @Transactional
+    public MemberProfileResponse changeProfileImage(Long userId, Long fileId) {
+        User user = findUserOrThrow(userId);
+
+        FileMetadata file = fileService.get(fileId, userId, false);
+        if (!file.isUploadedBy(userId)) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND);
+        }
+
+        user.updateProfileImage(fileId, Instant.now());
+        userRepository.save(user);
+        return toResponse(user);
+    }
+
+    /**
+     * 프로필 이미지를 지운다 (A-API-017). 지운 뒤에는 기본 이미지로 보인다.
+     *
+     * <p>연결만 끊는다 — {@code FileMetadata} 자체는 지우지 않는다. {@link FileService#delete} 의 정책과
+     * 같은 이유다(다른 화면이 같은 fileId 를 참조 중일 수 있고, 참조가 0인지 확인하는 정리는 나중 배치의
+     * 몫이다).
+     */
+    @Transactional
+    public MemberProfileResponse removeProfileImage(Long userId) {
+        User user = findUserOrThrow(userId);
+        user.clearProfileImage(Instant.now());
         userRepository.save(user);
         return toResponse(user);
     }
