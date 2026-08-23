@@ -32,6 +32,10 @@ class TicketRefundExecutionPreparationService {
         if (refund.getStatus() == TicketRefundStatus.COMPLETED) {
             return new TicketRefundExecutionTarget(refundId, null, null, null, null, true);
         }
+        if (refund.getStatus() != TicketRefundStatus.REQUESTED
+                && refund.getStatus() != TicketRefundStatus.FAILED) {
+            throw new BusinessException(ErrorCode.REFUND_NOT_RETRYABLE);
+        }
         TicketPayment payment =
                 ticketPaymentRepository
                         .findById(refund.getTicketPaymentId())
