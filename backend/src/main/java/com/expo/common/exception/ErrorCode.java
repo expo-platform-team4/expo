@@ -50,6 +50,7 @@ public enum ErrorCode {
     TICKET_PRODUCT_NOT_ON_SALE_PERIOD(HttpStatus.BAD_REQUEST, "티켓 판매 기간이 아닙니다."),
     TICKET_QUANTITY_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "티켓 상품별 최대 주문 수량을 초과했습니다."),
     TICKET_TOTAL_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "티켓 최대 주문 수량을 초과 했습니다."),
+    TICKET_ORDER_MULTIPLE_EXPOS(HttpStatus.BAD_REQUEST, "하나의 주문에는 동일한 박람회의 티켓만 담을 수 있습니다."),
     NOT_FOUND_ORDER_NUMBER(HttpStatus.BAD_REQUEST, "주문 번호를 확인할 수 없습니다"),
     GUEST_ORDER_LOOKUP_FAILED(HttpStatus.BAD_REQUEST, "주문 정보가 일치하지 않습니다."),
 
@@ -126,6 +127,7 @@ public enum ErrorCode {
     TICKET_ORDER_ACCESS_DENIED(HttpStatus.NOT_FOUND, "주문 정보를 확인할 수 없습니다."),
 
     // --- 환불 ---
+    REFUND_NOT_FOUND(HttpStatus.NOT_FOUND, "환불 요청을 찾을 수 없습니다."),
     REFUND_ORDER_NOT_PAID(HttpStatus.CONFLICT, "결제 완료된 주문만 환불 요청할 수 있습니다."),
     REFUND_PAYMENT_NOT_COMPLETED(HttpStatus.CONFLICT, "완료된 결제 건만 환불 요청할 수 있습니다."),
     REFUND_ALREADY_REQUESTED(HttpStatus.CONFLICT, "이미 환불 요청이 접수된 주문입니다."),

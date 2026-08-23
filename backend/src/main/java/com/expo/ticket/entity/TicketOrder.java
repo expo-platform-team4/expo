@@ -126,4 +126,10 @@ public class TicketOrder extends BaseTimeEntity {
     public void markPaymentFailed() {
         this.status = TicketOrderStatus.PAYMENT_FAILED;
     }
+
+    /** 전체 환불 완료로 주문을 취소 상태로 전이한다. */
+    public void cancel() {
+        this.status = TicketOrderStatus.CANCELED;
+        this.canceledAt = Instant.now();
+    }
 }

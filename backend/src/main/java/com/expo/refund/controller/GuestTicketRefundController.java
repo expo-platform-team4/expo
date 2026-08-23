@@ -1,8 +1,11 @@
 package com.expo.refund.controller;
 
 import com.expo.common.response.ApiResponse;
+import com.expo.refund.dto.GuestTicketRefundEligibilityRequest;
 import com.expo.refund.dto.GuestTicketRefundRequest;
+import com.expo.refund.dto.TicketRefundEligibilityResponse;
 import com.expo.refund.dto.TicketRefundResponse;
+import com.expo.refund.service.GuestTicketRefundEligibilityService;
 import com.expo.refund.service.GuestTicketRefundRequestService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,6 +24,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class GuestTicketRefundController {
 
     private final GuestTicketRefundRequestService guestTicketRefundRequestService;
+    private final GuestTicketRefundEligibilityService guestTicketRefundEligibilityService;
+
+    @PostMapping("/refund-eligibility")
+    public ResponseEntity<ApiResponse<TicketRefundEligibilityResponse>> checkRefundEligibility(
+            @Valid @RequestBody GuestTicketRefundEligibilityRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(guestTicketRefundEligibilityService.check(request)));
+    }
 
     @PostMapping("/refunds")
     public ResponseEntity<ApiResponse<TicketRefundResponse>> requestGuestRefund(

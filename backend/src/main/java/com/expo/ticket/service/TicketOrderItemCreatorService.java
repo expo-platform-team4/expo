@@ -24,6 +24,7 @@ public class TicketOrderItemCreatorService {
     public List<TicketOrderItem> creatorOrderItems(List<TicketOrderItemRequest> requests) {
         List<TicketOrderItem> orderItems = new ArrayList<>();
         Set<Long> ticketProductIds = new HashSet<>();
+        Long expoId = null;
 
         for (TicketOrderItemRequest itemRequest : requests) {
             validateDuplicateTicketProduct(ticketProductIds, itemRequest.ticketProductId());
@@ -32,6 +33,9 @@ public class TicketOrderItemCreatorService {
                     ticketProductRepository
                             .findById(itemRequest.ticketProductId())
                             .orElseThrow(() -> new BusinessException(ErrorCode.TICKET_NOT_FOUND));
+
+            validateSameExpo(expoId, product.getExpoId());
+            expoId = product.getExpoId();
 
             validatePurchasable(product, itemRequest.quantity());
 
@@ -46,6 +50,12 @@ public class TicketOrderItemCreatorService {
         }
 
         return orderItems;
+    }
+
+    private void validateSameExpo(Long expectedExpoId, Long actualExpoId) {
+        if (expectedExpoId != null && !expectedExpoId.equals(actualExpoId)) {
+            throw new BusinessException(ErrorCode.TICKET_ORDER_MULTIPLE_EXPOS);
+        }
     }
 
     private void validateDuplicateTicketProduct(Set<Long> ticketProductIds, Long ticketProductId) {

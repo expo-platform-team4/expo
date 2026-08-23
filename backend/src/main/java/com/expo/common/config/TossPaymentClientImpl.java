@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -26,6 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 public class TossPaymentClientImpl implements TossPaymentClient {
 
     private static final String CONFIRM_PATH = "/v1/payments/confirm";
+    private static final String CANCEL_PATH_FORMAT = "/v1/payments/%s/cancel";
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
@@ -100,6 +102,55 @@ public class TossPaymentClientImpl implements TossPaymentClient {
         }
     }
 
+    @Override
+    public TossCancelResult cancelPayment(
+            String paymentKey, String cancelReason, String idempotencyKey) {
+        requireConfigured(properties.getSecretKey(), "TOSS_SECRET_KEY");
+        requireConfigured(properties.getApiBaseUrl(), "app.toss.api-base-url");
+        String credentials =
+                Base64.getEncoder()
+                        .encodeToString(
+                                (properties.getSecretKey() + ":").getBytes(StandardCharsets.UTF_8));
+        try {
+            String rawBody =
+                    restClient
+                            .post()
+                            .uri(
+                                    properties.getApiBaseUrl()
+                                            + CANCEL_PATH_FORMAT.formatted(paymentKey))
+                            .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                            .header(IDEMPOTENCY_HEADER, idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(new TossCancelApiRequest(cancelReason))
+                            .retrieve()
+                            .body(String.class);
+            if (rawBody == null || rawBody.isBlank()) {
+                throw new TossApiException("EMPTY_RESPONSE", "토스 결제 취소 응답이 비어 있습니다.", null);
+            }
+            TossCancelApiResponse response;
+            try {
+                response = objectMapper.readValue(rawBody, TossCancelApiResponse.class);
+            } catch (JacksonException e) {
+                throw new TossApiException(
+                        "INVALID_RESPONSE", "토스 결제 취소 응답을 해석할 수 없습니다.", rawBody, e);
+            }
+            if (response.cancels() == null || response.cancels().isEmpty()) {
+                throw new TossApiException("INVALID_RESPONSE", "토스 취소 내역이 없습니다.", rawBody);
+            }
+            TossCancelApiItem cancel = response.cancels().getLast();
+            return new TossCancelResult(
+                    cancel.transactionKey(), cancel.cancelAmount(), cancel.canceledAt(), rawBody);
+        } catch (RestClientResponseException e) {
+            TossErrorResponse error = e.getResponseBodyAs(TossErrorResponse.class);
+            String code = error != null ? error.code() : "UNKNOWN";
+            String message = error != null ? error.message() : e.getMessage();
+            throw new TossApiException(code, message, e.getResponseBodyAsString(), e);
+        } catch (RestClientException e) {
+            throw new TossApiException(
+                    "NETWORK_ERROR", "토스 결제 서버 호출에 실패했습니다: " + e.getMessage(), null, e);
+        }
+    }
+
     private void requireConfigured(String value, String settingName) {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
@@ -116,6 +167,13 @@ public class TossPaymentClientImpl implements TossPaymentClient {
             String method,
             BigDecimal totalAmount,
             Instant approvedAt) {}
+
+    private record TossCancelApiRequest(String cancelReason) {}
+
+    private record TossCancelApiResponse(List<TossCancelApiItem> cancels) {}
+
+    private record TossCancelApiItem(
+            String transactionKey, BigDecimal cancelAmount, Instant canceledAt) {}
 
     private record TossErrorResponse(String code, String message) {}
 }
