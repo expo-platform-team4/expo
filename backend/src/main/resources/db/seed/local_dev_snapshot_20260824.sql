@@ -320,6 +320,47 @@ INSERT INTO public.ticket_inventories VALUES (1, 1, 1000, 0, 0, DEFAULT, 0, '202
 
 INSERT INTO public.venue_reservation_histories VALUES (1, 1, 'CONFIRMED', NULL, NULL, NULL, 6, '2026-08-20 00:23:11.768015+00') ON CONFLICT DO NOTHING;
 
+--
+-- 시퀀스 재조정. 위 INSERT 들은 전부 명시적 PK 값을 넣는다(pg_dump 특성) — auto-increment
+-- 시퀀스는 그걸 모르고 그대로 1에 멈춰 있어서, 이 블록 없이 로드하면 로드 자체는 성공해도
+-- 그 직후 앱에서 이 테이블에 새 행을 만드는 순간(회원가입·주문생성 등) nextval() 이 이미
+-- 시드가 차지한 id 를 다시 돌려줘 "duplicate key value violates unique constraint" 로 깨진다.
+-- id 가 아닌 다른 컬럼이 PK 인 테이블(client_profiles, guest_order_infos,
+-- recruitment_notice_request_zones)은 여기 없다 — pg_get_serial_sequence 가 없는 컬럼을
+-- 물으면 에러를 내므로 애초에 대상이 아니다.
+--
+SELECT setval(pg_get_serial_sequence('public.booths', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booths) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.users', 'id'), (SELECT COALESCE(max(id), 0) FROM public.users) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.file_metadata', 'id'), (SELECT COALESCE(max(id), 0) FROM public.file_metadata) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.recruitment_notice_requests', 'id'), (SELECT COALESCE(max(id), 0) FROM public.recruitment_notice_requests) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.recruitment_notices', 'id'), (SELECT COALESCE(max(id), 0) FROM public.recruitment_notices) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.booth_products', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booth_products) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.participation_applications', 'id'), (SELECT COALESCE(max(id), 0) FROM public.participation_applications) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.expo_opening_requests', 'id'), (SELECT COALESCE(max(id), 0) FROM public.expo_opening_requests) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.expos', 'id'), (SELECT COALESCE(max(id), 0) FROM public.expos) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.booth_orders', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booth_orders) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.booth_allocations', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booth_allocations) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.booth_contents', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booth_contents) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.booth_payments', 'id'), (SELECT COALESCE(max(id), 0) FROM public.booth_payments) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.categories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.categories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.ticket_orders', 'id'), (SELECT COALESCE(max(id), 0) FROM public.ticket_orders) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.ticket_products', 'id'), (SELECT COALESCE(max(id), 0) FROM public.ticket_products) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.ticket_order_items', 'id'), (SELECT COALESCE(max(id), 0) FROM public.ticket_order_items) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.issued_tickets', 'id'), (SELECT COALESCE(max(id), 0) FROM public.issued_tickets) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.check_in_histories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.check_in_histories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.expo_files', 'id'), (SELECT COALESCE(max(id), 0) FROM public.expo_files) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.expo_images', 'id'), (SELECT COALESCE(max(id), 0) FROM public.expo_images) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.expo_review_histories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.expo_review_histories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.venue_reservations', 'id'), (SELECT COALESCE(max(id), 0) FROM public.venue_reservations) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.inventory_reservations', 'id'), (SELECT COALESCE(max(id), 0) FROM public.inventory_reservations) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.notifications', 'id'), (SELECT COALESCE(max(id), 0) FROM public.notifications) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.message_histories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.message_histories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.recruitment_notice_request_histories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.recruitment_notice_request_histories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.settlements', 'id'), (SELECT COALESCE(max(id), 0) FROM public.settlements) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.ticket_access_tokens', 'id'), (SELECT COALESCE(max(id), 0) FROM public.ticket_access_tokens) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.ticket_inventories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.ticket_inventories) + 1, false);
+SELECT setval(pg_get_serial_sequence('public.venue_reservation_histories', 'id'), (SELECT COALESCE(max(id), 0) FROM public.venue_reservation_histories) + 1, false);
+
 COMMIT;
 
 \echo ''

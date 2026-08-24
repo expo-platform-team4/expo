@@ -58,6 +58,9 @@ public class ParticipationApplicationService {
         if (notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
+        if (clientUserId.equals(notice.getHostClientId())) {
+            throw new BusinessException(ErrorCode.CANNOT_APPLY_TO_OWN_NOTICE);
+        }
         if (participationApplicationRepository
                 .existsByRecruitmentNoticeIdAndClientUserIdAndStatusIn(
                         request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
