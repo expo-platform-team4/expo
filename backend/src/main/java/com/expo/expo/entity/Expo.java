@@ -13,7 +13,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,17 +55,17 @@ public class Expo {
     private String regionCode;
 
     @Column(name = "event_start_at", nullable = false)
-    private OffsetDateTime eventStartAt;
+    private Instant eventStartAt;
 
     @Column(name = "event_end_at", nullable = false)
-    private OffsetDateTime eventEndAt;
+    private Instant eventEndAt;
 
     /** 판매 시작·종료 (희-EXPO-10 판매 상태 자동 계산의 기준) */
     @Column(name = "sales_start_at", nullable = false)
-    private OffsetDateTime salesStartAt;
+    private Instant salesStartAt;
 
     @Column(name = "sales_end_at", nullable = false)
-    private OffsetDateTime salesEndAt;
+    private Instant salesEndAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", length = 20, nullable = false)
@@ -83,13 +83,13 @@ public class Expo {
     private Long approvedByAdminId;
 
     @Column(name = "approved_at")
-    private OffsetDateTime approvedAt;
+    private Instant approvedAt;
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
     @Column(name = "canceled_at")
-    private OffsetDateTime canceledAt;
+    private Instant canceledAt;
 
     /** 낙관적 락 (V1: version BIGINT DEFAULT 0) */
     @Version
@@ -98,18 +98,20 @@ public class Expo {
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+    private Instant updatedAt;
 
     /**
      * 승인된 개최 신청으로부터 공개 박람회를 생성한다 (희-EXPO-09 승인 시 자동 공개).
      *
      * @param regionCode 확정(또는 희망) 장소의 지역 코드
+     * @param now 승인 시각 — 심사 이력과 같은 값을 쓰기 위해 서비스에서 주입한다
      */
-    public static Expo publishFrom(ExpoOpeningRequest request, String regionCode, Long adminId) {
+    public static Expo createFromOpeningRequest(
+            ExpoOpeningRequest request, String regionCode, Long adminId, Instant now) {
         Expo expo = new Expo();
         expo.hostClientId = request.getHostClientId();
         expo.openingRequestId = request.getId();
@@ -124,7 +126,7 @@ public class Expo {
         expo.visibilityStatus = VisibilityStatus.PUBLIC; // 승인 = 자동 공개 → 목록 자동 반영 (희-SRCH-12)
         expo.eventStatus = EventStatus.SCHEDULED;
         expo.approvedByAdminId = adminId;
-        expo.approvedAt = OffsetDateTime.now();
+        expo.approvedAt = now;
         return expo;
     }
 
@@ -141,7 +143,7 @@ public class Expo {
             throw new ExpoStateException("이미 취소된 박람회입니다.");
         }
         this.eventStatus = EventStatus.CANCELED;
-        this.canceledAt = OffsetDateTime.now();
+        this.canceledAt = Instant.now();
         this.visibilityStatus = VisibilityStatus.ARCHIVED;
     }
 

@@ -1,6 +1,6 @@
 package com.expo.expo.repository;
 
-import com.expo.expo.entity.ExpoAttachments.ExpoImage;
+import com.expo.expo.entity.ExpoImage;
 import com.expo.expo.entity.ExpoImageType;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

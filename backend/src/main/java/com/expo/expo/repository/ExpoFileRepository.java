@@ -1,6 +1,6 @@
 package com.expo.expo.repository;
 
-import com.expo.expo.entity.ExpoAttachments.ExpoFile;
+import com.expo.expo.entity.ExpoFile;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
