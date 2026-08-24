@@ -86,7 +86,9 @@ app:
 
   phone-verification:
     code-expire-minutes: ${PHONE_VERIFICATION_CODE_EXPIRE_MINUTES:3}
-    test-verification-code: ${PHONE_VERIFICATION_TEST_CODE:123456}
+    # 같은 번호로 재발송 가능해지기까지의 최소 간격. 이 API 는 로그인 없이 열려 있고
+    # SMS 는 건당 과금이라, 제한이 없으면 남의 번호로 무한 발송을 시킬 수 있다.
+    resend-cooldown-seconds: ${PHONE_VERIFICATION_RESEND_COOLDOWN_SECONDS:60}
 
   email-verification:
     # 휴대폰(3분)보다 여유를 둔다. 메일 수신이 SMS보다 느릴 수 있어서다.

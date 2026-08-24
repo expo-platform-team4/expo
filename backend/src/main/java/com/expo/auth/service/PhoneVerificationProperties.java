@@ -1,13 +1,18 @@
 package com.expo.auth.service;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-// application.yml 설정을 읽어 들이는 설정 클래스(Properties)
-/** 휴대폰 본인인증 MVP 설정 ({@code app.phone-verification}). */
+/**
+ * 휴대폰 본인인증 설정 ({@code app.phone-verification}).
+ *
+ * <p>고정 테스트 인증번호 설정은 없앴다. 인증번호는 요청마다 무작위로 만들어 SMS 로만 전달한다.
+ * 고정값을 남겨 두면 운영에서도 그 값이 통해, 남의 번호로 본인인증을 통과시킬 수 있다.
+ *
+ * <p>로컬에서는 {@code SMS_PROVIDER=logging} 이라 실제 문자 대신 로그로 확인할 수 있어,
+ * 테스트용 우회 값이 없어도 개발에 지장이 없다.
+ */
 @ConfigurationProperties(prefix = "app.phone-verification")
 @Validated
 public class PhoneVerificationProperties {
@@ -16,34 +21,26 @@ public class PhoneVerificationProperties {
     @Positive private int codeExpireMinutes = 3;
 
     /**
-     * MVP 테스트용 고정 인증번호. 외부 SMS API 미연동 시 이 값으로 검증 통과.
+     * 같은 번호로 인증번호를 다시 보낼 수 있기까지의 최소 간격(초). 기본 60초.
      *
-     * <p>검증 API 구현 시 사용한다.
+     * <p>이 엔드포인트는 로그인 없이 열려 있고 SMS 는 건당 과금이다. 간격 제한이 없으면
+     * 아무나 남의 번호로 문자를 무한히 발송시킬 수 있고, 그 비용은 우리가 낸다.
      */
-    // 빈 값 금지 (application.yml / env 에 값이 없으면 앱 시작 시 검증 실패).
-    @NotBlank
-    // 6자리 숫자만 허용 (예: 123456). SMS 연동 전 MVP 테스트용.
-    @Pattern(regexp = "^\\d{6}$")
-    // 기본값 123456. application.yml의 test-verification-code 또는 PHONE_VERIFICATION_TEST_CODE로 변경 가능.
-    private String testVerificationCode = "123456";
+    @Positive private int resendCooldownSeconds = 60;
 
-    // PhoneVerificationService에서 expiresAt 계산 시 사용 (now + N분).
     public int getCodeExpireMinutes() {
         return codeExpireMinutes;
     }
 
-    // Spring이 application.yml의 code-expire-minutes 값을 여기에 넣어 준다.
     public void setCodeExpireMinutes(int codeExpireMinutes) {
         this.codeExpireMinutes = codeExpireMinutes;
     }
 
-    // MVP: 실제 SMS 없이 이 코드로 인증 통과. DEBUG 로그·검증 API에서 사용.
-    public String getTestVerificationCode() {
-        return testVerificationCode;
+    public int getResendCooldownSeconds() {
+        return resendCooldownSeconds;
     }
 
-    // Spring이 application.yml / env의 test-verification-code 값을 여기에 넣어 준다.
-    public void setTestVerificationCode(String testVerificationCode) {
-        this.testVerificationCode = testVerificationCode;
+    public void setResendCooldownSeconds(int resendCooldownSeconds) {
+        this.resendCooldownSeconds = resendCooldownSeconds;
     }
 }

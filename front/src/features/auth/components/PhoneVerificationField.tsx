@@ -14,8 +14,8 @@ import { useConfirmPhoneVerification, useRequestPhoneVerification } from '../hoo
  * "휴대폰 인증 포함". 번호 입력 → 인증번호 요청 → 6자리 확인의 2단계 흐름을 한 컴포넌트로
  * 묶는다. 두 가입 폼에 이 흐름을 각각 손으로 옮기면 상태 기계가 두 벌 생긴다.
  *
- * MVP: 백엔드가 SMS 를 미연동 상태라 테스트 인증번호 `123456` 으로 확인한다
- * (`PhoneVerificationService` Javadoc).
+ * 인증번호는 백엔드가 요청마다 무작위 6자리를 만들어 SMS 로 보낸다. 응답에는 들어 있지 않으므로
+ * 화면이 미리 알 수 있는 값이 없다. 같은 번호로 재요청하려면 60초를 기다려야 한다(429).
  */
 export const PhoneVerificationField = <T extends FieldValues>({
   control,
