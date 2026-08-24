@@ -38,7 +38,14 @@ import {
   type WithdrawalFormValues,
 } from '../schemas'
 
-/** `/mypage/profile`. 사이드바의 "프로필 수정" 링크가 여기로 온다. */
+/**
+ * 회원·클라이언트 공용 프로필 수정 화면. 두 경로가 이 컴포넌트를 재수출한다.
+ *
+ * `/mypage/profile` (MEMBER) 과 `/client/profile` (CLIENT) — 각 사이드바의 "프로필 수정"
+ * 링크가 여기로 온다. 레이아웃의 RequireAuth 가 요구하는 역할이 달라 한 경로로 합칠 수 없다.
+ *
+ * 화면이 쓰는 API 는 전부 `/api/users/me/*` 라 MEMBER·CLIENT 양쪽에 열려 있다.
+ */
 const ProfileEditPage = () => {
   const { data: profile, isPending, isError, error, refetch } = useMyProfile()
 
