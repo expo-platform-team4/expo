@@ -123,6 +123,20 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
         return this;
     }
 
+    /**
+     * 요청 제출. 별도의 초안 수정 단계 없이 작성과 동시에 제출되므로 {@code create()} 직후 바로 호출된다.
+     *
+     * <p>이미 확정된 예약과 희망 기간이 겹치는지 사전 판정한 결과({@code venueConflictStatus})를 같이 반영한다 -
+     * 겹침 여부를 전혀 계산 안 하고 항상 CLEAR 로 두면, 관리자가 장소 결정 화면에서 실제로는 겹치는 요청도 안 겹치는
+     * 것처럼 보게 된다. 최종 방어는 여전히 실제 예약 확정 시점의 DB EXCLUDE 제약이 맡는다 - 이건 관리자 검토를 돕는
+     * 사전 신호일 뿐이다.
+     */
+    public void submit(VenueConflictStatus venueConflictStatus) {
+        this.venueConflictStatus = venueConflictStatus;
+        this.status = RecruitmentNoticeRequestStatus.SUBMITTED;
+        this.submittedAt = Instant.now();
+    }
+
     /** 장소 충돌 판정. ALLOWED 면 승인, CANCELED 면 반려로 처리한다. */
     public void decideVenue(VenueDecision decision, Long decidedByAdminId, String decisionReason) {
         this.venueDecision = decision;
