@@ -31,10 +31,10 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 일반회원 가입 | `7eb82549` | `/signup/member` | `auth` | `POST /api/auth/signup` · `email-availability` · `nickname-availability` · `phone-verifications` | ✅ |
 | 기업회원 가입 | `14b50137` | `/signup/client` | `auth` | `POST /api/auth/client-signup` · `business-number-availability` | ✅ |
 | 소셜 로그인 콜백 | `2e17f073` | `/auth/callback` | `auth` | OAuth2 리다이렉트 | ✅ (계약 미확정, 아래 주) |
-| 티켓 예매 (회원) | `d3c2aaf3` | `/orders?expoId=` | `ticket` | `POST /api/orders/member` | 주문 ✅ / 결제 ⚠️ |
-| 티켓 예매 (비회원) | `2fd025bd` | `/orders/guest?expoId=` | `ticket` | `POST /api/orders/guest` | 주문 ✅ / 결제 ⚠️ |
+| 티켓 예매 (회원) | `d3c2aaf3` | `/orders?expoId=` | `ticket` | `POST /api/orders/member` + `payment` 도메인 | ✅ |
+| 티켓 예매 (비회원) | `2fd025bd` | `/orders/guest?expoId=` | `ticket` | `POST /api/orders/guest` + `payment` 도메인 | ✅ |
 | 비회원 주문 조회 | `119d7f0f` | `/orders/guest/search` | `ticket` | `POST /api/orders/search/guest` | ✅ |
-| 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/[orderNumber]` | `ticket` | 위 검색 API 재사용 | 조회 ✅ / 환불 ⚠️ |
+| 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/[orderNumber]` | `ticket` | 위 검색 API 재사용 + `refund` 도메인 | ✅ |
 | 예매 내역 | `50b7de2e` | `/mypage/orders` | `ticket` | `GET /api/users/me/orders` | ✅ |
 | 나의 티켓 | `66513a65` | `/mypage/tickets` | `ticket` | `GET /api/users/me/tickets` | ✅ |
 | 프로필 수정 | 대응 없음 | `/mypage/profile` | `auth` | 닉네임·비밀번호 변경, 회원 탈퇴 | ✅ |
@@ -104,17 +104,13 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 화면은 만들어 두고 `EmptyState notReady` 로 "준비 중" 을 명시한다 — 조용히 빈 목록을
 보여주지 않는다(Function.md 7절).
 
-| 화면 | 없는 API | 메모 |
-|-|-|-|
-| 결제 완료 · 환불 | 결제·환불 도메인 전체 | `payment`·`refund` 패키지가 `package-info.java` 뿐이다. **주문을 `PAID` 로 만드는 경로가 없어** 발권·정산·체크인이 실데이터로는 SQL 시드 없이 막힌다 |
-
-> **이슈 #107 은 대부분 해소됐다. 남은 것은 위 표 한 줄(결제·환불)뿐이다.**
+> **이슈 #107 은 대부분 해소됐다. 남은 것은 박람회 개최 신청·승인 관리뿐이다** (2·3절 참고).
 >
 > | 무엇 | 어떻게 |
 > |-|-|
 > | 홈 · 박람회 목록 · 박람회 상세(헤더) | `GET /api/expos`, `GET /api/expos/{expoId}` (2026-08-20) |
 > | 예매 내역 · 나의 티켓 | `GET /api/users/me/orders`, `/tickets` (PR #118) |
-> | 박람회 개최 신청 · 승인 관리 | 이슈 #116 (PR #117) |
+> | 결제 완료 · 환불 | `payment`·`refund` 도메인 (2026-08-23~24, 프론트 연동 + `GuestTicketRefundEligibilityService` 읽기전용 트랜잭션 버그 수정 포함) |
 >
 > 공개 박람회 목록은 예상대로 `v_public_expo_cards` 뷰 위에 컨트롤러·매퍼만 얹으면 되는
 > 일이었다.
