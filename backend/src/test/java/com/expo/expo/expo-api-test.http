@@ -1,0 +1,191 @@
+### =====================================================================
+### expo-api-test.http — 박람회 도메인 기능 테스트 (IntelliJ HTTP Client)
+### 사전 조건: V1 스키마 + V2 시드 적용, 앱 기동 (기준일 가정: 2026-08-07)
+### 각 요청 옆 주석 = 시드 데이터 기준 기대 결과
+### =====================================================================
+
+@host = http://localhost:9090
+
+### ---------------------------------------------------------------
+### 1. 검색 (희-SRCH-*)
+### ---------------------------------------------------------------
+
+### 1-1. 전체 목록 (기본 LATEST 정렬 — 희-SRCH-07)
+# 기대: 6건. 순서 = 승인일 역순 → [2 K-뷰티(UPCOMING), 1 AI엑스포(ON_SALE),
+#       3 미식위크(SOLD_OUT), 4 커리어시즌2(SALE_ENDED), 6 부산일러스트(ON_SALE), 5 상반기커리어(EVENT_ENDED)]
+# 카드에 제목·기간·장소명·"15,000원부터"·상태 배지 확인 (희-SRCH-11)
+GET {{host}}/expo
+
+### 1-2. 제목 검색 (희-SRCH-01)
+# 기대: 1건 — "2026 서울 AI & 로보틱스 엑스포"
+GET {{host}}/expo?keyword=AI
+
+### 1-3. 카테고리 필터 (희-SRCH-02) — 4 = 취업·교육
+# 기대: 2건 — 커리어 페어 시즌2, 상반기 커리어 페어 (+ AI엑스포도 카테고리 1,4 연결이라 3건)
+GET {{host}}/expo?categoryId=4
+
+### 1-4. 지역 필터 (희-SRCH-03)
+# 기대: 1건 — 광주 미식 위크 (GWANGJU)
+GET {{host}}/expo?regionCode=GWANGJU
+
+### 1-5. 기간 필터 (희-SRCH-04)
+# 기대: 2건 — AI엑스포(9/10~13), 부산 일러스트(9/25~27)
+GET {{host}}/expo?fromDate=2026-09-01&toDate=2026-09-30
+
+### 1-6. 가격 필터 (희-SRCH-05) — 최저가 12,000~18,000
+# 기대: 3건 — AI엑스포(15000), K-뷰티(18000), 미식위크(12000), 부산일러스트(18000) → 4건
+GET {{host}}/expo?minPrice=12000&maxPrice=18000
+
+### 1-7. 판매 상태 필터 (희-SRCH-06)
+# 기대: SOLD_OUT → 1건(미식위크) / UPCOMING → 1건(K-뷰티, 희-SRCH-13 `판매 예정`)
+GET {{host}}/expo?saleStatus=SOLD_OUT
+
+###
+GET {{host}}/expo?saleStatus=UPCOMING
+
+### 1-8. 마감 임박순 (희-SRCH-08) — sales_end_at 오름차순
+# 기대: 1위 = 상반기 커리어(5/31 종료)... 이미 지난 것 포함 전체 정렬.
+#       판매중만 보려면 saleStatus=ON_SALE 조합 → 1위 AI엑스포(9/9 마감)
+GET {{host}}/expo?sort=DEADLINE&saleStatus=ON_SALE
+
+### 1-9. 인기순 (희-SRCH-09) — 누적 판매량
+# 기대: 1위 부산 일러스트(8,400) > 상반기 커리어(3,200) > AI엑스포(1,392)
+GET {{host}}/expo?sort=POPULAR
+
+### 1-10. 페이지네이션 (희-SRCH-10) — page 1부터
+# 기대: size=2 → totalElements=6, totalPages=3
+GET {{host}}/expo?page=1&size=2
+
+### 1-11. 상세 조회 — 판매 상태 자동 계산 (희-EXPO-10) + 이미지·파일·링크
+# 기대: saleStatus=ON_SALE, images 1(THUMBNAIL), files 3(CATALOG/PROMO_VIDEO/LEAFLET), links 2
+GET {{host}}/expo/1
+
+### ---------------------------------------------------------------
+### 2. 개최 신청 라이프사이클 (희-EXPO-01/02/05/06/09/17)
+### ---------------------------------------------------------------
+
+### 2-1. 임시저장 생성 (희-EXPO-01, 희-EXPO-17)
+# 기대: 201 Created, body = 새 requestId (시드가 10까지라 11)
+POST {{host}}/expo/requests
+Content-Type: application/json
+
+{
+  "hostClientId": 2,
+  "title": "2027 스마트홈 & IoT 페어",
+  "description": "스마트홈·IoT 신제품 전시 및 B2B 상담회",
+  "eventStartAt": "2027-04-01T10:00:00+09:00",
+  "eventEndAt": "2027-04-04T18:00:00+09:00",
+  "salesStartAt": "2027-02-01T10:00:00+09:00",
+  "salesEndAt": "2027-03-31T18:00:00+09:00",
+  "desiredVenueId": 1
+}
+
+### 2-2. 승인 전 직접 수정 (희-EXPO-05)
+# 기대: 204 No Content — DRAFT 상태라 수정 허용
+PATCH {{host}}/expo/requests/11
+Content-Type: application/json
+
+{
+  "hostClientId": 2,
+  "title": "2027 스마트홈 & IoT 페어 (수정)"
+}
+
+### 2-3. 심사 요청 (희-EXPO-02)
+# 기대: 204 — DRAFT → SUBMITTED
+POST {{host}}/expo/requests/11/submit?clientId=2
+
+### 2-4. 타인 소유 건 수정 시도 (권한 검증)
+# 기대: 4xx — "본인이 등록한 건만 처리할 수 있습니다"
+PATCH {{host}}/expo/requests/11
+Content-Type: application/json
+
+{
+  "hostClientId": 3,
+  "title": "탈취 시도"
+}
+
+### 2-5. 관리자 승인 → 자동 공개 (희-EXPO-09)
+# 기대: 201, body = 새 expoId(7). regionCode 미지정 → 희망장소(코엑스) SEOUL 자동 해석
+POST {{host}}/expo/requests/11/approve
+Content-Type: application/json
+
+{
+  "adminId": 1,
+  "categoryIds": [1]
+}
+
+### 2-6. 목록 자동 반영 확인 (희-SRCH-12)
+# 기대: 방금 승인한 "스마트홈 & IoT 페어"가 목록 최상단(LATEST)에 노출, 상태 UPCOMING
+GET {{host}}/expo?keyword=스마트홈
+
+### 2-7. 승인 후 직접 수정 시도 → 차단 (희-EXPO-06)
+# 기대: 4xx — "승인된 신청은 직접 수정할 수 없습니다"
+PATCH {{host}}/expo/requests/11
+Content-Type: application/json
+
+{
+  "hostClientId": 2,
+  "title": "승인 후 몰래 수정"
+}
+
+### 2-8. 승인 후 정식 수정 요청 경로 (expo_change_requests)
+# 기대: 201, changeRequestId 반환
+POST {{host}}/expo/7/change-requests
+Content-Type: application/json
+
+{
+  "requesterClientId": 2,
+  "changeReason": "행사 종료 시간을 2시간 연장하고 싶습니다.",
+  "requestedChanges": { "eventEndAt": "2027-04-04T20:00:00+09:00" }
+}
+
+### 2-9. 반려 흐름 (별도 신청으로)
+# 시드의 SUBMITTED 건(id=2)을 반려
+# 기대: 204, 이후 2-10에서 rejectionReason 확인
+POST {{host}}/expo/requests/2/reject
+Content-Type: application/json
+
+{
+  "adminId": 1,
+  "rejectionReason": "판매 기간이 행사 기간과 맞지 않습니다. 조정 후 재요청 바랍니다."
+}
+
+### 2-10. 반려 사유 확인 + 재수정 → 재요청 (REJECTED 는 수정·재제출 가능)
+GET {{host}}/expo/requests/2
+
+### ---------------------------------------------------------------
+### 3. 첨부 자료 (희-EXPO-13/14/15)
+### ---------------------------------------------------------------
+
+### 3-1. 외부 링크 등록 (희-EXPO-13)
+# 기대: 201
+POST {{host}}/expo/7/links
+Content-Type: application/json
+
+{
+  "linkType": "HOMEPAGE",
+  "label": "공식 홈페이지",
+  "url": "https://smarthome-fair.example.com"
+}
+
+### 3-2. 카탈로그 등록 (희-EXPO-15) — fileId 는 file_metadata 에 존재해야 함(시드 7 재사용)
+# 기대: 201
+POST {{host}}/expo/7/files
+Content-Type: application/json
+
+{
+  "fileId": 7,
+  "filePurpose": "CATALOG",
+  "title": "스마트홈 페어 카탈로그"
+}
+
+### 3-3. 대표 이미지(THUMBNAIL) 등록 (희-EXPO-15)
+# 기대: 201. 이후 GET /expo 카드에 썸네일 storage_key 노출
+POST {{host}}/expo/7/images
+Content-Type: application/json
+
+{
+  "fileId": 1,
+  "imageType": "THUMBNAIL",
+  "altText": "스마트홈 페어 대표 이미지"
+}
