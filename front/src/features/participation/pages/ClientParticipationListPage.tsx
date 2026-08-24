@@ -69,6 +69,23 @@ const ClientParticipationListPage = () => {
                     </dd>
                   </div>
                 </dl>
+
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Link
+                    href={`/client/participations/${item.applicationId}`}
+                    className="text-secondary text-label-md underline"
+                  >
+                    신청 상세·수정
+                  </Link>
+                  {item.applicationStatus === 'PAYMENT_PENDING' && item.boothOrderId != null && (
+                    <Link
+                      href={`/client/booth-orders/${item.boothOrderId}`}
+                      className="text-secondary text-label-md underline"
+                    >
+                      결제 계속하기
+                    </Link>
+                  )}
+                </div>
               </Card>
             </li>
           ))}

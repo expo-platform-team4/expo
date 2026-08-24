@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/lib/errorMessage'
 
 import { useAvailableBoothProducts, useCreateParticipationApplication } from '../hooks'
 import { applyParticipationSchema, type ApplyParticipationFormValues } from '../schemas'
+import { BoothProductLayoutPreview } from './BoothProductLayoutPreview'
 
 /**
  * 공고 상세 화면(`/recruitment-notices/{noticeId}`)에 얹는 참여 신청 폼. **로그인한 CLIENT
@@ -26,6 +27,7 @@ export const ParticipationApplyForm = ({ noticeId }: { noticeId: number }) => {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, dirtyFields },
   } = useForm<ApplyParticipationFormValues>({
     resolver: zodResolver(applyParticipationSchema),
@@ -36,6 +38,8 @@ export const ParticipationApplyForm = ({ noticeId }: { noticeId: number }) => {
       selectedBoothProductId: '',
     },
   })
+
+  const selectedBoothProductId = watch('selectedBoothProductId')
 
   // 기업명은 클라이언트 프로필의 회사명으로 미리 채운다. 사용자가 직접 고친 뒤에는 덮어쓰지 않는다.
   useEffect(() => {
@@ -109,6 +113,10 @@ export const ParticipationApplyForm = ({ noticeId }: { noticeId: number }) => {
           </option>
         ))}
       </Select>
+
+      <BoothProductLayoutPreview
+        product={boothProducts?.find((product) => String(product.id) === selectedBoothProductId)}
+      />
 
       {formError && <p className="text-label-sm text-error">{formError}</p>}
 
