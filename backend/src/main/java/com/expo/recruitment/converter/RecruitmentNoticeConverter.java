@@ -9,13 +9,19 @@ import org.springframework.stereotype.Component;
 public class RecruitmentNoticeConverter {
 
     public RecruitmentNoticeResponse toResponse(
-            RecruitmentNotice notice, Long venueHallId, List<Long> venueZoneIds) {
+            RecruitmentNotice notice,
+            Long venueHallId,
+            List<Long> venueZoneIds,
+            Long venueHallLayoutFileId,
+            List<Long> venueZoneLayoutFileIds) {
         return new RecruitmentNoticeResponse(
                 notice.getId(),
                 notice.getRequestId(),
                 notice.getHostClientId(),
                 venueHallId,
+                venueHallLayoutFileId,
                 venueZoneIds,
+                venueZoneLayoutFileIds,
                 notice.getTitle(),
                 notice.getContent(),
                 notice.getEligibility(),

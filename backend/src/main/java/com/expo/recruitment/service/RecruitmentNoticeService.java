@@ -24,9 +24,12 @@ import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
+import com.expo.venue.service.VenueLayoutResolver;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,7 @@ public class RecruitmentNoticeService {
     private final ParticipationApplicationRepository participationApplicationRepository;
     private final VenueReservationRepository venueReservationRepository;
     private final VenueReservationHistoryRepository venueReservationHistoryRepository;
+    private final VenueLayoutResolver venueLayoutResolver;
     private final RecruitmentNoticeConverter recruitmentNoticeConverter;
 
     public RecruitmentNoticeService(
@@ -49,6 +53,7 @@ public class RecruitmentNoticeService {
             ParticipationApplicationRepository participationApplicationRepository,
             VenueReservationRepository venueReservationRepository,
             VenueReservationHistoryRepository venueReservationHistoryRepository,
+            VenueLayoutResolver venueLayoutResolver,
             RecruitmentNoticeConverter recruitmentNoticeConverter) {
         this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
@@ -56,6 +61,7 @@ public class RecruitmentNoticeService {
         this.participationApplicationRepository = participationApplicationRepository;
         this.venueReservationRepository = venueReservationRepository;
         this.venueReservationHistoryRepository = venueReservationHistoryRepository;
+        this.venueLayoutResolver = venueLayoutResolver;
         this.recruitmentNoticeConverter = recruitmentNoticeConverter;
     }
 
@@ -372,31 +378,74 @@ public class RecruitmentNoticeService {
                 notice, venueReservationRepository.findAllByRecruitmentNoticeId(notice.getId()));
     }
 
+    private RecruitmentNoticeResponse toResponseWithVenue(
+            RecruitmentNotice notice, List<VenueReservation> reservations) {
+        Map<Long, List<VenueReservation>> reservationsByNoticeId = new HashMap<>();
+        reservationsByNoticeId.put(notice.getId(), reservations);
+        return toResponsesWithVenue(List.of(notice), reservationsByNoticeId).get(0);
+    }
+
     private List<RecruitmentNoticeResponse> toResponsesWithVenue(List<RecruitmentNotice> notices) {
         List<Long> noticeIds = notices.stream().map(RecruitmentNotice::getId).toList();
         Map<Long, List<VenueReservation>> reservationsByNoticeId =
                 venueReservationRepository.findAllByRecruitmentNoticeIdIn(noticeIds).stream()
                         .collect(Collectors.groupingBy(VenueReservation::getRecruitmentNoticeId));
-        return notices.stream()
-                .map(
-                        notice ->
-                                toResponseWithVenue(
-                                        notice,
-                                        reservationsByNoticeId.getOrDefault(
-                                                notice.getId(), List.of())))
-                .toList();
+        return toResponsesWithVenue(notices, reservationsByNoticeId);
     }
 
-    /** 확정된(취소된 것 제외) 예약들에서 전시관(홀)·구역 목록을 뽑아 응답에 채운다. */
-    private RecruitmentNoticeResponse toResponseWithVenue(
-            RecruitmentNotice notice, List<VenueReservation> reservations) {
-        List<VenueReservation> confirmed =
-                reservations.stream()
-                        .filter(r -> r.getStatus() == VenueReservationStatus.CONFIRMED)
+    /**
+     * 확정된(취소된 것 제외) 예약들에서 전시관(홀)·구역·배치도 파일 목록을 뽑아 응답에 채운다. 목록에 담긴 공고 전체에 걸쳐
+     * 홀·구역 배치도 조회를 한 번에 모아 하므로, 공고마다 따로 부르면 N+1 이 생긴다 - 반드시 이 배치 경로로만 호출한다.
+     */
+    private List<RecruitmentNoticeResponse> toResponsesWithVenue(
+            List<RecruitmentNotice> notices,
+            Map<Long, List<VenueReservation>> reservationsByNoticeId) {
+        Map<Long, List<VenueReservation>> confirmedByNoticeId = new HashMap<>();
+        for (RecruitmentNotice notice : notices) {
+            List<VenueReservation> confirmed =
+                    reservationsByNoticeId.getOrDefault(notice.getId(), List.of()).stream()
+                            .filter(r -> r.getStatus() == VenueReservationStatus.CONFIRMED)
+                            .toList();
+            confirmedByNoticeId.put(notice.getId(), confirmed);
+        }
+        List<Long> hallIds =
+                confirmedByNoticeId.values().stream()
+                        .flatMap(List::stream)
+                        .map(VenueReservation::getVenueHallId)
+                        .filter(Objects::nonNull)
+                        .distinct()
                         .toList();
-        Long venueHallId =
-                confirmed.stream().map(VenueReservation::getVenueHallId).findFirst().orElse(null);
-        List<Long> venueZoneIds = confirmed.stream().map(VenueReservation::getVenueZoneId).toList();
-        return recruitmentNoticeConverter.toResponse(notice, venueHallId, venueZoneIds);
+        List<Long> zoneIds =
+                confirmedByNoticeId.values().stream()
+                        .flatMap(List::stream)
+                        .map(VenueReservation::getVenueZoneId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<Long, Long> hallLayoutFileIds = venueLayoutResolver.hallLayoutFileIdsByHallId(hallIds);
+        Map<Long, Long> zoneLayoutFileIds = venueLayoutResolver.zoneLayoutFileIdsByZoneId(zoneIds);
+        return notices.stream()
+                .map(
+                        notice -> {
+                            List<VenueReservation> confirmed = confirmedByNoticeId.get(notice.getId());
+                            Long venueHallId =
+                                    confirmed.stream()
+                                            .map(VenueReservation::getVenueHallId)
+                                            .findFirst()
+                                            .orElse(null);
+                            List<Long> venueZoneIds =
+                                    confirmed.stream().map(VenueReservation::getVenueZoneId).toList();
+                            Long venueHallLayoutFileId =
+                                    venueHallId == null ? null : hallLayoutFileIds.get(venueHallId);
+                            List<Long> venueZoneLayoutFileIds =
+                                    venueZoneIds.stream().map(zoneLayoutFileIds::get).toList();
+                            return recruitmentNoticeConverter.toResponse(
+                                    notice,
+                                    venueHallId,
+                                    venueZoneIds,
+                                    venueHallLayoutFileId,
+                                    venueZoneLayoutFileIds);
+                        })
+                .toList();
     }
 }

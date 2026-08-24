@@ -70,4 +70,9 @@ public class VenueZone extends BaseTimeEntity {
         zone.operationalStatus = OperationalStatus.ACTIVE;
         return zone;
     }
+
+    /** 배치도 파일 교체. */
+    public void updateLayout(Long layoutFileId) {
+        this.layoutFileId = layoutFileId;
+    }
 }

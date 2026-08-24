@@ -34,8 +34,10 @@ import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
+import com.expo.venue.service.VenueLayoutResolver;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +62,7 @@ class RecruitmentNoticeServiceTest {
     private ParticipationApplicationRepository participationApplicationRepository;
     private VenueReservationRepository venueReservationRepository;
     private VenueReservationHistoryRepository venueReservationHistoryRepository;
+    private VenueLayoutResolver venueLayoutResolver;
     private RecruitmentNoticeService service;
 
     @BeforeEach
@@ -70,6 +73,7 @@ class RecruitmentNoticeServiceTest {
         participationApplicationRepository = mock(ParticipationApplicationRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
         venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
+        venueLayoutResolver = mock(VenueLayoutResolver.class);
         service =
                 new RecruitmentNoticeService(
                         recruitmentNoticeRepository,
@@ -78,6 +82,7 @@ class RecruitmentNoticeServiceTest {
                         participationApplicationRepository,
                         venueReservationRepository,
                         venueReservationHistoryRepository,
+                        venueLayoutResolver,
                         new RecruitmentNoticeConverter());
     }
 
@@ -625,5 +630,23 @@ class RecruitmentNoticeServiceTest {
 
         assertThat(result.activatedNoticeIds()).isEmpty();
         assertThat(result.expiredNoticeIds()).isEmpty();
+    }
+
+    @Test
+    void getFillsVenueLayoutFileIdsFromResolver() throws ReflectiveOperationException {
+        RecruitmentNotice notice = draftNotice();
+        withId(notice, 1L);
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
+                .thenReturn(List.of(confirmedReservation(REQUEST_ID)));
+        when(venueLayoutResolver.hallLayoutFileIdsByHallId(List.of(HALL_ID)))
+                .thenReturn(Map.of(HALL_ID, 200L));
+        when(venueLayoutResolver.zoneLayoutFileIdsByZoneId(List.of(ZONE_ID)))
+                .thenReturn(Map.of(ZONE_ID, 300L));
+
+        RecruitmentNoticeResponse response = service.get(1L);
+
+        assertThat(response.venueHallLayoutFileId()).isEqualTo(200L);
+        assertThat(response.venueZoneLayoutFileIds()).containsExactly(300L);
     }
 }
