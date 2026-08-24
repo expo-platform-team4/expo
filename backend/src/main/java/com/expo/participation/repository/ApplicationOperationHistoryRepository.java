@@ -1,6 +1,8 @@
 package com.expo.participation.repository;
 
+import com.expo.participation.entity.ApplicationOperationActionType;
 import com.expo.participation.entity.ApplicationOperationHistory;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +17,12 @@ public interface ApplicationOperationHistoryRepository
     /** {@code createdAt} 이 같은 이력이 있어도 {@code id} 로 최신 순서를 결정적으로 가린다. */
     Optional<ApplicationOperationHistory> findFirstByApplicationIdOrderByCreatedAtDescIdDesc(
             Long applicationId);
+
+    /**
+     * 주어진 유형들 중 가장 최근 이력만 가린다. 보완 요청·완료 사이에 운영 확인(CHECKED) 등 무관한 이력이
+     * 끼어들어도 보완 요청/완료 흐름 판정에 영향을 주지 않게 하려고 쓴다.
+     */
+    Optional<ApplicationOperationHistory>
+            findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                    Long applicationId, Collection<ApplicationOperationActionType> actionTypes);
 }
