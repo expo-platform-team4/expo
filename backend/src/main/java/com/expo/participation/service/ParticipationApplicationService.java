@@ -6,6 +6,7 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.participation.converter.ParticipationApplicationConverter;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
+import com.expo.participation.dto.UpdateParticipationApplicationRequest;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
@@ -108,5 +109,45 @@ public class ParticipationApplicationService {
                                         new BusinessException(
                                                 ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
         return participationApplicationConverter.toResponse(application);
+    }
+
+    /** 참여 신청서 초안 수정. 초안 상태에서만 가능하다 - 결제가 시작된 뒤에는 주문을 먼저 취소해야 한다. */
+    @Transactional
+    public ParticipationApplicationResponse update(
+            Long applicationId, Long clientUserId, UpdateParticipationApplicationRequest request) {
+        ParticipationApplication application = getOwnedDraft(applicationId, clientUserId);
+        if (request.selectedBoothProductId() != null
+                && !boothProductRepository.existsByIdAndRecruitmentNoticeId(
+                        request.selectedBoothProductId(), application.getRecruitmentNoticeId())) {
+            throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
+        }
+        application.update(
+                request.companyNameSnapshot(),
+                request.participationPurpose(),
+                request.exhibitDescription(),
+                request.selectedBoothProductId());
+        return participationApplicationConverter.toResponse(application);
+    }
+
+    /** 참여 신청 철회. 초안 상태에서만 가능하다 - 결제가 시작된 뒤에는 주문 취소·환불 흐름을 거쳐야 한다. */
+    @Transactional
+    public ParticipationApplicationResponse withdraw(Long applicationId, Long clientUserId) {
+        ParticipationApplication application = getOwnedDraft(applicationId, clientUserId);
+        application.cancel();
+        return participationApplicationConverter.toResponse(application);
+    }
+
+    private ParticipationApplication getOwnedDraft(Long applicationId, Long clientUserId) {
+        ParticipationApplication application =
+                participationApplicationRepository
+                        .findByIdAndClientUserId(applicationId, clientUserId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
+        if (application.getStatus() != ParticipationApplicationStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.PARTICIPATION_APPLICATION_NOT_EDITABLE);
+        }
+        return application;
     }
 }

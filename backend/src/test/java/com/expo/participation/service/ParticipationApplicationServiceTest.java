@@ -15,7 +15,9 @@ import com.expo.common.exception.ErrorCode;
 import com.expo.participation.converter.ParticipationApplicationConverter;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
+import com.expo.participation.dto.UpdateParticipationApplicationRequest;
 import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
@@ -201,5 +203,114 @@ class ParticipationApplicationServiceTest {
         ParticipationApplicationResponse response = service.getMine(1L, CLIENT_USER_ID);
 
         assertThat(response.companyNameSnapshot()).isEqualTo("테스트 참가기업");
+    }
+
+    @Test
+    void updateRejectsWhenNotFoundOrNotOwned() {
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        1L,
+                                        CLIENT_USER_ID,
+                                        new UpdateParticipationApplicationRequest(
+                                                "새 기업명", null, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND);
+    }
+
+    @Test
+    void updateRejectsWhenNotDraft() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, null);
+        application.startPayment(99L);
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.of(application));
+
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        1L,
+                                        CLIENT_USER_ID,
+                                        new UpdateParticipationApplicationRequest(
+                                                "새 기업명", null, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PARTICIPATION_APPLICATION_NOT_EDITABLE);
+    }
+
+    @Test
+    void updateRejectsWhenNewBoothProductNotFound() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, null);
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.of(application));
+        when(boothProductRepository.existsByIdAndRecruitmentNoticeId(BOOTH_PRODUCT_ID, NOTICE_ID))
+                .thenReturn(false);
+
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        1L,
+                                        CLIENT_USER_ID,
+                                        new UpdateParticipationApplicationRequest(
+                                                "새 기업명", null, null, BOOTH_PRODUCT_ID)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    void updateSucceedsWhenDraft() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, null);
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.of(application));
+        when(boothProductRepository.existsByIdAndRecruitmentNoticeId(BOOTH_PRODUCT_ID, NOTICE_ID))
+                .thenReturn(true);
+
+        ParticipationApplicationResponse response =
+                service.update(
+                        1L,
+                        CLIENT_USER_ID,
+                        new UpdateParticipationApplicationRequest(
+                                "새 기업명", "새 목적", "새 설명", BOOTH_PRODUCT_ID));
+
+        assertThat(response.companyNameSnapshot()).isEqualTo("새 기업명");
+        assertThat(response.selectedBoothProductId()).isEqualTo(BOOTH_PRODUCT_ID);
+    }
+
+    @Test
+    void withdrawRejectsWhenNotDraft() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, null);
+        application.startPayment(99L);
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.withdraw(1L, CLIENT_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PARTICIPATION_APPLICATION_NOT_EDITABLE);
+    }
+
+    @Test
+    void withdrawSucceedsWhenDraft() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "테스트 참가기업", null, null, null);
+        when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
+                .thenReturn(Optional.of(application));
+
+        ParticipationApplicationResponse response = service.withdraw(1L, CLIENT_USER_ID);
+
+        assertThat(response.status()).isEqualTo(ParticipationApplicationStatus.CANCELED);
     }
 }

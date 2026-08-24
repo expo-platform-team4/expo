@@ -85,6 +85,18 @@ public class ParticipationApplication extends BaseTimeEntity {
         return application;
     }
 
+    /** 초안 내용 수정. 초안 상태에서만 호출된다 - 서비스가 상태를 먼저 검증한다. */
+    public void update(
+            String companyNameSnapshot,
+            String participationPurpose,
+            String exhibitDescription,
+            Long selectedBoothProductId) {
+        this.companyNameSnapshot = companyNameSnapshot;
+        this.participationPurpose = participationPurpose;
+        this.exhibitDescription = exhibitDescription;
+        this.selectedBoothProductId = selectedBoothProductId;
+    }
+
     /** 부스 주문 생성. 결제 대기 상태로 전이한다. */
     public void startPayment(Long boothOrderId) {
         this.boothOrderId = boothOrderId;
