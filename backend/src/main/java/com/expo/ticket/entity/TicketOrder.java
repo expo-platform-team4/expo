@@ -29,7 +29,7 @@ public class TicketOrder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "order_number", nullable = false, unique = true, length = 40)
+    @Column(name = "order_number", nullable = false, unique = true, length = 50)
     private String orderNumber;
 
     @Column(name = "member_user_id")
@@ -114,5 +114,22 @@ public class TicketOrder extends BaseTimeEntity {
     public void addItem(TicketOrderItem item) {
         items.add(item);
         item.assignOrder(this);
+    }
+
+    /** 결제 승인에 성공한 주문을 결제 완료 상태로 전이한다. */
+    public void markPaid() {
+        this.status = TicketOrderStatus.PAID;
+        this.paidAt = Instant.now();
+    }
+
+    /** 결제 실패로 더 이상 결제할 수 없는 주문 상태로 전이한다. */
+    public void markPaymentFailed() {
+        this.status = TicketOrderStatus.PAYMENT_FAILED;
+    }
+
+    /** 전체 환불 완료로 주문을 취소 상태로 전이한다. */
+    public void cancel() {
+        this.status = TicketOrderStatus.CANCELED;
+        this.canceledAt = Instant.now();
     }
 }

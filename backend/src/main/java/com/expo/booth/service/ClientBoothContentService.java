@@ -108,6 +108,17 @@ public class ClientBoothContentService {
         return toResponseWithFiles(getOwnedEntity(contentId, clientUserId));
     }
 
+    /** 배정 ID로 내 부스 콘텐츠 조회. 상태와 무관하게(초안 포함) 작성 중인 콘텐츠를 다시 찾을 때 쓴다. */
+    @Transactional(readOnly = true)
+    public BoothContentResponse getMineByAllocation(Long boothAllocationId, Long clientUserId) {
+        BoothContent content =
+                boothContentRepository
+                        .findByBoothAllocationIdAndClientUserId(boothAllocationId, clientUserId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_FOUND));
+        return toResponseWithFiles(content);
+    }
+
     /** 공개된 부스 콘텐츠 조회. 참여를 검토하는 방문자가 배정 ID로 조회한다. 내부 필드는 뺀 응답을 돌려준다. */
     @Transactional(readOnly = true)
     public PublicBoothContentResponse getPublished(Long boothAllocationId) {
@@ -142,13 +153,19 @@ public class ClientBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 콘텐츠 검수 요청. 초안·보완 요청 상태에서만 요청할 수 있다. 관리자가 승인해야 실제로 공개된다. */
+    /**
+     * 콘텐츠 검수 요청. 초안·보완 요청 상태에서만 요청할 수 있다. 관리자가 승인해야 실제로 공개된다.
+     *
+     * <p>배정이 취소된 뒤에는 검수 요청도 막는다 - 안 그러면 이미 취소된 배정의 콘텐츠가 관리자 승인을 거쳐 새로 공개될 수
+     * 있다.
+     */
     @Transactional
     public BoothContentResponse submitForReview(Long contentId, Long clientUserId) {
         BoothContent content = getOwnedEntity(contentId, clientUserId);
         if (!EDITABLE_STATUSES.contains(content.getStatus())) {
             throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_SUBMITTABLE);
         }
+        assertAllocationAssigned(content);
         content.submitForReview();
         return toResponseWithFiles(content);
     }
@@ -252,13 +269,30 @@ public class ClientBoothContentService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXTERNAL_LINK_NOT_FOUND));
     }
 
-    /** 소유권과 함께 수정 가능 상태(초안·보완 요청)인지 확인한다. */
+    /**
+     * 소유권과 함께 수정 가능 상태(초안·보완 요청)인지, 배정이 아직 살아있는지 확인한다.
+     *
+     * <p>배정이 관리자 직권으로 취소된 뒤에도 콘텐츠 자체는 DRAFT·CORRECTION_REQUESTED 상태로 남아있을 수 있어,
+     * 콘텐츠 상태만 보면 계속 수정·검수요청이 가능해 보인다. 이미 취소된 배정에 딸린 콘텐츠는 더 손댈 수 없게 막는다.
+     */
     private BoothContent getEditableOwnedEntity(Long contentId, Long clientUserId) {
         BoothContent content = getOwnedEntity(contentId, clientUserId);
         if (!EDITABLE_STATUSES.contains(content.getStatus())) {
             throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_EDITABLE);
         }
+        assertAllocationAssigned(content);
         return content;
+    }
+
+    private void assertAllocationAssigned(BoothContent content) {
+        BoothAllocation allocation =
+                boothAllocationRepository
+                        .findById(content.getBoothAllocationId())
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND));
+        if (allocation.getStatus() != BoothAllocationStatus.ASSIGNED) {
+            throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+        }
     }
 
     private BoothContentResponse toResponseWithFiles(BoothContent content) {

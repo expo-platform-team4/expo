@@ -61,24 +61,30 @@ public class AdminRecruitmentNoticeController {
     @Operation(summary = "기업 모집 공고 내용·조건 수정")
     @PatchMapping("/{noticeId}")
     public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> updateNotice(
+            @AuthenticationPrincipal AuthPrincipal principal,
             @PathVariable Long noticeId,
             @Valid @RequestBody UpdateRecruitmentNoticeRequest request) {
         return ResponseEntity.ok(
-                ApiResponse.ok(recruitmentNoticeService.update(noticeId, request)));
+                ApiResponse.ok(
+                        recruitmentNoticeService.update(
+                                noticeId, principal.getMemberId(), request)));
     }
 
     @Operation(summary = "기업 모집 공고 게시")
     @PostMapping("/{noticeId}/publish")
     public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> publishNotice(
-            @PathVariable Long noticeId) {
-        return ResponseEntity.ok(ApiResponse.ok(recruitmentNoticeService.publish(noticeId)));
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long noticeId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        recruitmentNoticeService.publish(noticeId, principal.getMemberId())));
     }
 
     @Operation(summary = "기업 모집 조기 마감")
     @PostMapping("/{noticeId}/close")
     public ResponseEntity<ApiResponse<RecruitmentNoticeResponse>> closeNotice(
-            @PathVariable Long noticeId) {
-        return ResponseEntity.ok(ApiResponse.ok(recruitmentNoticeService.close(noticeId)));
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long noticeId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(recruitmentNoticeService.close(noticeId, principal.getMemberId())));
     }
 
     @Operation(summary = "기업 모집 공고 직권 취소")

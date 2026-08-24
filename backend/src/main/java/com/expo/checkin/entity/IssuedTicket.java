@@ -114,4 +114,9 @@ public class IssuedTicket extends BaseTimeEntity {
         this.status = IssuedTicketStatus.CHECKED_IN;
         this.checkedInAt = checkedAt;
     }
+
+    /** 환불된 입장권을 취소 상태로 전이한다. */
+    public void cancel() {
+        this.status = IssuedTicketStatus.CANCELED;
+    }
 }

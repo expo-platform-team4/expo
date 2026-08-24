@@ -15,8 +15,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TicketIssueService {
 
     /** 주문 상태가 이 값일 때만 발권한다. {@code ticket_orders.status} 의 CHECK 값이다. */
@@ -59,26 +62,8 @@ public class TicketIssueService {
     private final QrTokenGenerator qrTokenGenerator;
     private final AccessTokenGenerator accessTokenGenerator;
     private final TokenHasher tokenHasher;
+    private final RowLockTimeout rowLockTimeout;
     private final ApplicationEventPublisher eventPublisher;
-
-    public TicketIssueService(
-            TicketIssuanceMapper ticketIssuanceMapper,
-            IssuedTicketRepository issuedTicketRepository,
-            TicketAccessTokenRepository ticketAccessTokenRepository,
-            TicketCodeGenerator ticketCodeGenerator,
-            QrTokenGenerator qrTokenGenerator,
-            AccessTokenGenerator accessTokenGenerator,
-            TokenHasher tokenHasher,
-            ApplicationEventPublisher eventPublisher) {
-        this.ticketIssuanceMapper = ticketIssuanceMapper;
-        this.issuedTicketRepository = issuedTicketRepository;
-        this.ticketAccessTokenRepository = ticketAccessTokenRepository;
-        this.ticketCodeGenerator = ticketCodeGenerator;
-        this.qrTokenGenerator = qrTokenGenerator;
-        this.accessTokenGenerator = accessTokenGenerator;
-        this.tokenHasher = tokenHasher;
-        this.eventPublisher = eventPublisher;
-    }
 
     /**
      * 주문의 구매 수량만큼 입장권을 발급하고, QR 확인 링크용 접근 토큰을 하나 만든다.
@@ -131,7 +116,11 @@ public class TicketIssueService {
      * 명시해 두었다.
      */
     private TicketIssuanceOrder loadPaidOrder(Long ticketOrderId) {
-        TicketIssuanceOrder order = ticketIssuanceMapper.findOrderForIssuance(ticketOrderId);
+        // FOR UPDATE 로 주문 행을 잠근다. 대기 상한이 없으면 앞선 트랜잭션이 멈췄을 때
+        // 결제 웹훅 재시도가 무한정 쌓인다 (이슈 #74).
+        TicketIssuanceOrder order =
+                rowLockTimeout.runWithTimeout(
+                        () -> ticketIssuanceMapper.findOrderForIssuance(ticketOrderId));
         if (order == null) {
             throw new BusinessException(ErrorCode.TICKET_ORDER_NOT_FOUND);
         }
@@ -182,11 +171,23 @@ public class TicketIssueService {
      */
     private String createAccessToken(TicketIssuanceOrder order, Instant issuedAt) {
         String tokenValue = accessTokenGenerator.generate();
-        ticketAccessTokenRepository.save(
-                TicketAccessToken.forOrder(
-                        order.orderId(),
-                        tokenHasher.hash(tokenValue),
-                        accessTokenExpiry(order, issuedAt)));
+        try {
+            // saveAndFlush 로 INSERT 를 여기서 내보낸다. 그냥 save 면 제약 위반이 커밋 시점에
+            // 터져 이 try 를 벗어나고, 서비스 밖에서 잡히는 예외라 500 으로 나간다.
+            ticketAccessTokenRepository.saveAndFlush(
+                    TicketAccessToken.forOrder(
+                            order.orderId(),
+                            tokenHasher.hash(tokenValue),
+                            accessTokenExpiry(order, issuedAt)));
+        } catch (DataIntegrityViolationException e) {
+            // uq_ticket_access_tokens_active_order_view 위반 = 이 주문은 이미 발권됐다(이슈 #75).
+            //
+            // 앞의 countIssuedTickets 검사를 통과하고도 여기까지 오는 경우가 있다 — 잠금 순서나
+            // 격리 수준이 바뀌면 그 검사가 무력해지는데, 그때도 DB 는 막는다. 사용자에게는
+            // 애플리케이션 검사와 같은 메시지가 나가야 한다.
+            log.warn("중복 발권이 DB 제약에서 막혔다 orderId={}", order.orderId(), e);
+            throw new BusinessException(ErrorCode.TICKET_ALREADY_ISSUED);
+        }
         return tokenValue;
     }
 

@@ -2,6 +2,8 @@ package com.expo.expo.repository;
 
 import com.expo.expo.entity.Expo;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -174,4 +176,8 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
             @Param("saleStatus") String saleStatus,
             @Param("sort") String sort,
             Pageable pageable);
+
+    /** 개최 신청 목록에 "승인으로 만들어진 박람회 ID" 를 붙일 때 쓴다. */
+    List<Expo> findByOpeningRequestIdIn(Collection<Long> openingRequestIds);
+
 }

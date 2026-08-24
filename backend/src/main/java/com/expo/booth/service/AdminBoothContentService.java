@@ -4,12 +4,15 @@ import com.expo.booth.converter.BoothContentConverter;
 import com.expo.booth.converter.BoothManagementHistoryConverter;
 import com.expo.booth.dto.BoothContentResponse;
 import com.expo.booth.dto.BoothManagementHistoryResponse;
+import com.expo.booth.entity.BoothAllocation;
+import com.expo.booth.entity.BoothAllocationStatus;
 import com.expo.booth.entity.BoothContent;
 import com.expo.booth.entity.BoothContentFile;
 import com.expo.booth.entity.BoothContentStatus;
 import com.expo.booth.entity.BoothManagementActionType;
 import com.expo.booth.entity.BoothManagementHistory;
 import com.expo.booth.entity.ExternalLink;
+import com.expo.booth.repository.BoothAllocationRepository;
 import com.expo.booth.repository.BoothContentFileRepository;
 import com.expo.booth.repository.BoothContentRepository;
 import com.expo.booth.repository.BoothManagementHistoryRepository;
@@ -31,6 +34,7 @@ public class AdminBoothContentService {
     private final BoothContentRepository boothContentRepository;
     private final BoothContentFileRepository boothContentFileRepository;
     private final ExternalLinkRepository externalLinkRepository;
+    private final BoothAllocationRepository boothAllocationRepository;
     private final BoothManagementHistoryRepository boothManagementHistoryRepository;
     private final BoothContentConverter boothContentConverter;
     private final BoothManagementHistoryConverter boothManagementHistoryConverter;
@@ -39,12 +43,14 @@ public class AdminBoothContentService {
             BoothContentRepository boothContentRepository,
             BoothContentFileRepository boothContentFileRepository,
             ExternalLinkRepository externalLinkRepository,
+            BoothAllocationRepository boothAllocationRepository,
             BoothManagementHistoryRepository boothManagementHistoryRepository,
             BoothContentConverter boothContentConverter,
             BoothManagementHistoryConverter boothManagementHistoryConverter) {
         this.boothContentRepository = boothContentRepository;
         this.boothContentFileRepository = boothContentFileRepository;
         this.externalLinkRepository = externalLinkRepository;
+        this.boothAllocationRepository = boothAllocationRepository;
         this.boothManagementHistoryRepository = boothManagementHistoryRepository;
         this.boothContentConverter = boothContentConverter;
         this.boothManagementHistoryConverter = boothManagementHistoryConverter;
@@ -89,13 +95,18 @@ public class AdminBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 검수 승인. 검수 요청 상태에서만 승인할 수 있고, 승인해야 비로소 공개된다. */
+    /**
+     * 검수 승인. 검수 요청 상태에서만 승인할 수 있고, 승인해야 비로소 공개된다.
+     *
+     * <p>검수 요청 이후 승인 사이에 배정이 취소될 수 있어, 승인 시점에도 배정 상태를 다시 확인한다.
+     */
     @Transactional
     public BoothContentResponse approve(Long contentId, Long adminId) {
         BoothContent content = getEntity(contentId);
         if (content.getStatus() != BoothContentStatus.UNDER_REVIEW) {
             throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_APPROVABLE);
         }
+        assertAllocationAssigned(content);
         content.approve(adminId);
         boothManagementHistoryRepository.save(
                 BoothManagementHistory.create(
@@ -145,13 +156,14 @@ public class AdminBoothContentService {
         return toResponseWithFiles(content);
     }
 
-    /** 숨김 해제. 공개 상태로 복원하고 이력을 남긴다. */
+    /** 숨김 해제. 공개 상태로 복원하고 이력을 남긴다. 배정이 취소된 부스는 복원할 수 없다. */
     @Transactional
     public BoothContentResponse restore(Long contentId, Long adminId, String reason) {
         BoothContent content = getEntity(contentId);
         if (content.getStatus() != BoothContentStatus.HIDDEN) {
             throw new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_RESTORABLE);
         }
+        assertAllocationAssigned(content);
         content.restore();
         boothManagementHistoryRepository.save(
                 BoothManagementHistory.create(
@@ -188,5 +200,16 @@ public class AdminBoothContentService {
         return boothContentRepository
                 .findById(contentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_CONTENT_NOT_FOUND));
+    }
+
+    private void assertAllocationAssigned(BoothContent content) {
+        BoothAllocation allocation =
+                boothAllocationRepository
+                        .findById(content.getBoothAllocationId())
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_FOUND));
+        if (allocation.getStatus() != BoothAllocationStatus.ASSIGNED) {
+            throw new BusinessException(ErrorCode.BOOTH_ALLOCATION_NOT_ASSIGNED);
+        }
     }
 }

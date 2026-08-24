@@ -27,6 +27,9 @@ public interface ParticipationApplicationRepository
             Long clientUserId,
             Collection<ParticipationApplicationStatus> statuses);
 
+    boolean existsByRecruitmentNoticeIdAndStatus(
+            Long recruitmentNoticeId, ParticipationApplicationStatus status);
+
     /** 운영 이력을 읽고 그 결과로 분기하는 처리(보완 완료 등) 앞에서 행 잠금을 걸어 동시 처리를 막는다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM ParticipationApplication a WHERE a.id = :id")

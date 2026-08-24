@@ -116,7 +116,12 @@ public class RecruitmentNotice extends BaseTimeEntity {
         this.publishedAt = Instant.now();
     }
 
-    /** 기업 모집 조기 마감. 신규 결제를 차단한다. */
+    /**
+     * 기업 모집 조기 마감. 신규 신청은 이미 막힌다({@code ParticipationApplicationService.create()} 가
+     * OPEN 상태만 허용). 신규 결제(부스 주문 생성)는 {@code BoothOrderService.create()} 가 여기서 바뀐 상태를
+     * 다시 조회해서 막는다 - 마감 전에 이미 만들어둔 초안 신청서로 결제를 이어가는 걸 막으려면 상태만 바꾸는 것으로는
+     * 부족하다.
+     */
     public void close() {
         this.status = RecruitmentNoticeStatus.CLOSED;
         this.closedAt = Instant.now();

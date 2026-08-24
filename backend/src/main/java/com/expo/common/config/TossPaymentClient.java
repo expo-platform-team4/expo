@@ -13,6 +13,9 @@ public interface TossPaymentClient {
     TossConfirmResult confirmPayment(
             String paymentKey, String orderId, BigDecimal amount, String idempotencyKey);
 
+    /** 승인된 결제를 전액 취소한다. */
+    TossCancelResult cancelPayment(String paymentKey, String cancelReason, String idempotencyKey);
+
     /** 프런트가 결제창을 띄울 때 쓰는 공개 클라이언트 키. */
     String getClientKey();
 }

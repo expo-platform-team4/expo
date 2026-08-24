@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.expo.settlement.repository.SettlementGenerationMapper">
+
+    <!--
+      정산 대상이 될 박람회 (D-API-017).
+
+      "행사 종료 후 7~14일 이내에 대상을 생성한다" 가 명세다(docs/init_table_schema.md 최종 확정 정책).
+      그 7~14 를 조회 조건의 양쪽 끝으로 쓰지 않는다. 상한을 걸면 배치가 하루라도 밀렸을 때
+      그 사이 끝난 박람회가 영원히 정산되지 않는다 - 조용히 빠지고 아무도 모른다.
+
+      그래서 하한만 본다. "종료하고 7일이 지났는데 아직 정산이 없는 것" 이 대상이다.
+      14일은 만들어진 정산을 언제까지 처리해야 하는가(settlement_due_at)에만 쓴다.
+
+      제외 조건 셋
+        CANCELED   열리지 않은 박람회다. 판매분은 일괄 환불로 처리된다
+        미승인     심사를 통과하지 못한 박람회는 매출이 있을 수 없다
+        이미 있음  settlements.expo_id 에 UNIQUE 가 걸려 있어 DB 도 막지만,
+                   여기서 걸러야 "만들려다 실패" 가 아니라 "대상이 아님" 이 된다
+    -->
+    <select id="findDueExpos" resultType="com.expo.settlement.dto.SettlementTarget">
+        SELECT e.id             AS expo_id,
+               e.host_client_id AS host_client_id,
+               e.title          AS expo_title,
+               e.event_end_at   AS event_end_at
+        FROM expos e
+        WHERE e.event_end_at &lt;= #{endedBefore}
+          AND e.event_status &lt;&gt; 'CANCELED'
+          AND e.review_status = 'APPROVED'
+          AND NOT EXISTS (SELECT 1 FROM settlements s WHERE s.expo_id = e.id)
+        ORDER BY e.event_end_at, e.id
+    </select>
+
+</mapper>

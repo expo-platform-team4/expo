@@ -7,8 +7,11 @@ import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
 import com.expo.recruitment.dto.DecideVenueRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeRequestResponse;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.RecruitmentNoticeRequestActionType;
+import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestZone;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.repository.VenueHallRepository;
@@ -24,6 +27,8 @@ public class RecruitmentNoticeRequestService {
 
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private final RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
+    private final RecruitmentNoticeRequestHistoryRepository
+            recruitmentNoticeRequestHistoryRepository;
     private final VirtualVenueRepository virtualVenueRepository;
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
@@ -32,12 +37,14 @@ public class RecruitmentNoticeRequestService {
     public RecruitmentNoticeRequestService(
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
             RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
+            RecruitmentNoticeRequestHistoryRepository recruitmentNoticeRequestHistoryRepository,
             VirtualVenueRepository virtualVenueRepository,
             VenueHallRepository venueHallRepository,
             VenueZoneRepository venueZoneRepository,
             RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter) {
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
+        this.recruitmentNoticeRequestHistoryRepository = recruitmentNoticeRequestHistoryRepository;
         this.virtualVenueRepository = virtualVenueRepository;
         this.venueHallRepository = venueHallRepository;
         this.venueZoneRepository = venueZoneRepository;
@@ -141,7 +148,12 @@ public class RecruitmentNoticeRequestService {
         return toResponseWithZones(request);
     }
 
-    /** 장소 충돌 판정. ALLOWED 또는 CANCELED 만 허용하며, 이미 결정된 요청은 다시 판정할 수 없다. */
+    /**
+     * 장소 충돌 판정. ALLOWED 또는 CANCELED 만 허용하며, 이미 결정된 요청은 다시 판정할 수 없다.
+     *
+     * <p>권한이 걸린 변경이라 변경 전후 상태를 감사 이력({@code recruitment_notice_request_histories})에
+     * 남긴다.
+     */
     @Transactional
     public RecruitmentNoticeRequestResponse decideVenue(
             Long requestId, Long adminId, DecideVenueRequest request) {
@@ -159,7 +171,18 @@ public class RecruitmentNoticeRequestService {
         if (entity.getVenueDecision() != VenueDecision.PENDING) {
             throw new BusinessException(ErrorCode.VENUE_DECISION_ALREADY_MADE);
         }
+        VenueDecision previousDecision = entity.getVenueDecision();
         entity.decideVenue(request.decision(), adminId, request.reason());
+        recruitmentNoticeRequestHistoryRepository.save(
+                RecruitmentNoticeRequestHistory.create(
+                        entity.getId(),
+                        request.decision() == VenueDecision.ALLOWED
+                                ? RecruitmentNoticeRequestActionType.VENUE_ALLOW
+                                : RecruitmentNoticeRequestActionType.VENUE_CANCEL,
+                        previousDecision.name(),
+                        request.decision().name(),
+                        request.reason(),
+                        adminId));
         return toResponseWithZones(entity);
     }
 
