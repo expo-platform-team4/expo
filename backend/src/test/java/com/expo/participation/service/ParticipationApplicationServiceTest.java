@@ -172,17 +172,14 @@ class ParticipationApplicationServiceTest {
     }
 
     @Test
-    void createSucceedsWithoutBoothProduct() {
+    void createRejectsWithoutBoothProduct() {
         when(recruitmentNoticeRepository.findById(NOTICE_ID))
                 .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
-        when(participationApplicationRepository.saveAndFlush(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        ParticipationApplicationResponse response =
-                service.create(CLIENT_USER_ID, requestWithBoothProduct(null));
-
-        assertThat(response.recruitmentNoticeId()).isEqualTo(NOTICE_ID);
-        assertThat(response.companyNameSnapshot()).isEqualTo("테스트 참가기업");
+        assertThatThrownBy(() -> service.create(CLIENT_USER_ID, requestWithBoothProduct(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_SELECTED);
     }
 
     @Test

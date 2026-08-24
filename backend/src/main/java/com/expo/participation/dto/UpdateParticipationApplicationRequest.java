@@ -2,6 +2,7 @@ package com.expo.participation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /** 참여 신청서 수정 요청. 초안 상태에서만 가능하다. */
@@ -13,4 +14,5 @@ public record UpdateParticipationApplicationRequest(
                 String companyNameSnapshot,
         @Schema(description = "참여 목적") String participationPurpose,
         @Schema(description = "전시 품목 설명") String exhibitDescription,
-        @Schema(description = "선택한 부스 상품 ID") Long selectedBoothProductId) {}
+        @Schema(description = "선택한 부스 상품 ID") @NotNull(message = "부스 상품 선택은 필수입니다.")
+                Long selectedBoothProductId) {}

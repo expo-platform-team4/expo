@@ -11,8 +11,8 @@ export const applyParticipationSchema = z.object({
     .max(150, '기업명은 150자 이하여야 합니다.'),
   participationPurpose: z.string().optional(),
   exhibitDescription: z.string().optional(),
-  /** `<select>` 값은 문자열이다. 빈 문자열이면 "선택 안 함". */
-  selectedBoothProductId: z.string().optional(),
+  /** `<select>` 값은 문자열이다. 부스 상품 선택은 필수다 — 백엔드도 같은 규칙을 강제한다. */
+  selectedBoothProductId: z.string().min(1, '부스 상품 선택은 필수입니다.'),
 })
 
 export type ApplyParticipationFormValues = z.infer<typeof applyParticipationSchema>
