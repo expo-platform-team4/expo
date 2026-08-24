@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 
-import { Card, CardTitle, EmptyState } from '@/components/ui'
+import { Card, CardTitle } from '@/components/ui'
 import { formatCurrency } from '@/lib/currency'
 import { formatDateTime } from '@/lib/date'
+import { TossCheckout } from '@/features/payment/components/TossCheckout'
 
 import type { TicketOrder } from '../api'
 import { OrderStatusBadge } from './OrderStatusBadge'
@@ -10,11 +11,8 @@ import { OrderStatusBadge } from './OrderStatusBadge'
 /**
  * 주문 생성 직후 화면. 화면 1·2(회원·비회원 예매)가 공유한다.
  *
- * 결제 연동이 없다(작업 지시의 "Critical scope context" — `backend/.../payment`,
- * `backend/.../refund` 는 `package-info.java` 뿐이고 `TicketOrderStatus` 를 `PAID` 로
- * 옮기는 엔드포인트가 어디에도 없다, GitHub 이슈 #107). 그래서 여기서 끝을 "결제하기"
- * 버튼이 아니라 `EmptyState notReady` 로 정직하게 닫는다 — 가짜 결제 위젯을 만들면 검증하는
- * 사람이 실제로 붙은 줄 오해한다.
+ * `status === 'PENDING'`일 때만 결제위젯(`TossCheckout`)을 띄운다 — 회원·비회원 인증
+ * 방식이 다른 건 `TossCheckout`이 아니라 백엔드가 처리하므로 여기서 분기하지 않는다.
  */
 export const OrderConfirmation = ({
   order,
@@ -74,10 +72,6 @@ export const OrderConfirmation = ({
       )}
     </Card>
 
-    <EmptyState
-      notReady
-      title="결제"
-      description="결제 연동 준비 중입니다. 지금은 주문만 생성되고 결제는 진행할 수 없습니다."
-    />
+    {order.status === 'PENDING' && <TossCheckout orderNumber={order.orderNumber} />}
   </div>
 )
