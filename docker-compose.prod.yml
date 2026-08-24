@@ -32,18 +32,34 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGUSER: ${POSTGRES_USER}
+      # 인코딩을 명시한다. 안 하면 운영 DB 가 로컬과 다른 로케일로 만들어져
+      # 한글 정렬·비교 결과가 달라진다. 로컬 docker-compose.yml 과 같은 값이다.
+      LANG: ko_KR.utf8
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8'
     volumes:
-      - expo_postgres_data:/var/lib/postgresql/data
+      # 마운트 지점이 /var/lib/postgresql 이다. /data 가 아니다.
+      #
+      # postgres 18 부터 이미지가 데이터를 메이저 버전별 하위 디렉터리에 두도록 바뀌었고,
+      # 옛 위치(/var/lib/postgresql/data)에 마운트하면 기동을 거부한다.
+      #   Error: ... there appears to be PostgreSQL data in:
+      #          /var/lib/postgresql/data (unused mount/volume)
+      # 로컬 docker-compose.yml 은 처음부터 이 규칙을 따르고 있었다.
+      - expo_postgres_data:/var/lib/postgresql
     # 포트를 호스트에 열지 않는다. 열면 공인 IP 에 5432 가 그대로 노출된다.
     # 밖에서 봐야 하면 SSH 터널을 쓴다.
     networks:
       - expo-net
     mem_limit: 2g
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
+      # $$ 로 이스케이프해 컨테이너 안에서 풀리게 한다. compose 가 미리 치환하지 않는다.
+      test: ['CMD-SHELL', 'pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}']
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      # 첫 기동은 initdb 가 돌아 몇 초 걸린다. 이게 없으면 그 사이를 실패로 세다가
+      # depends_on 이 먼저 포기한다.
+      start_period: 10s
     logging: &default-logging
       driver: json-file
       options:
