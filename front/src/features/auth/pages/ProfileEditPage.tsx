@@ -139,7 +139,10 @@ const ProfileHeaderCard = ({
   }
 
   const isBusy =
-    isSaving || changeProfileImageMutation.isPending || removeProfileImageMutation.isPending
+    isSaving ||
+    changeProfileImageMutation.isPending ||
+    removeProfileImageMutation.isPending ||
+    changeNicknameMutation.isPending
 
   const onSubmit = async (values: NicknameChangeFormValues) => {
     setImageError(null)
@@ -256,6 +259,7 @@ const ProfileHeaderCard = ({
                   variant="secondary"
                   size="sm"
                   className="mt-6"
+                  disabled={isBusy}
                   loading={nicknameAvailability.checking}
                   onClick={() => nicknameAvailability.check(getValues('nickname'))}
                 >

@@ -59,6 +59,8 @@ export const Header = () => {
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="header-profile-menu"
               className="text-label-md text-on-surface flex items-center gap-2 font-medium"
             >
               <User className="h-5 w-5" aria-hidden />
@@ -66,7 +68,10 @@ export const Header = () => {
             </button>
 
             {menuOpen && (
-              <div className="border-outline-variant bg-surface-container-lowest absolute top-full right-0 z-20 mt-2 w-40 rounded-lg border py-1 shadow-lg">
+              <div
+                id="header-profile-menu"
+                className="border-outline-variant bg-surface-container-lowest absolute top-full right-0 z-20 mt-2 w-40 rounded-lg border py-1 shadow-lg"
+              >
                 <Link
                   href={profileRouteFor(role)}
                   onClick={() => setMenuOpen(false)}
