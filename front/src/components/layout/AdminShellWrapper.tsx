@@ -1,6 +1,15 @@
 'use client'
 
-import { Bell, Building2, LayoutDashboard, ListChecks, Megaphone, Receipt, Tag } from 'lucide-react'
+import {
+  Bell,
+  Building2,
+  LayoutDashboard,
+  ListChecks,
+  MapPin,
+  Megaphone,
+  Receipt,
+  Tag,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { useLogout } from '@/features/auth/hooks'
@@ -23,6 +32,7 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
     title: '시스템 관리',
     items: [
       { label: '카테고리 관리', href: '/admin/categories', icon: Tag },
+      { label: '가상 장소 관리', href: '/admin/venues', icon: MapPin },
       { label: '알림 이력·재발송', href: '/admin/notifications', icon: Bell },
     ],
   },
