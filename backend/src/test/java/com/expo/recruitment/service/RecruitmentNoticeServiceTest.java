@@ -179,6 +179,24 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
     }
 
+    /** 신청 종료일이 실제 장소 사용 시작일보다 늦으면 안 된다 - 장소를 이미 쓰기 시작했는데 신규 신청을 계속 받는 꼴이 된다. */
+    @Test
+    void createRejectsWhenApplicationEndAtAfterVenueUseStartAt() {
+        VenueReservation reservation = confirmedReservation(REQUEST_ID);
+        when(recruitmentNoticeRequestRepository.findById(REQUEST_ID))
+                .thenReturn(Optional.of(allowedNoticeRequest()));
+        when(recruitmentNoticeRepository.existsByRequestId(REQUEST_ID)).thenReturn(false);
+        when(venueReservationRepository.findAllByNoticeRequestId(REQUEST_ID))
+                .thenReturn(List.of(reservation));
+        CreateRecruitmentNoticeRequest request =
+                new CreateRecruitmentNoticeRequest(REQUEST_ID, "제목", "내용", null, null, T1, T4);
+
+        assertThatThrownBy(() -> service.create(ADMIN_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.APPLICATION_PERIOD_EXCEEDS_VENUE_PERIOD);
+    }
+
     /** 예약이 여러 건이어도(구역 여러 개) 전부 이 공고에 연결돼야 한다 - 첫 건만 연결하는 회귀를 잡는다. */
     @Test
     void createSucceedsAsDraftAndLinksAllReservations() throws ReflectiveOperationException {
@@ -263,10 +281,8 @@ class RecruitmentNoticeServiceTest {
                                         history.getActionType()
                                                         == RecruitmentNoticeActionType.UPDATE
                                                 && ADMIN_ID.equals(history.getProcessedByAdminId())
-                                                && "{\"status\": \"DRAFT\"}"
-                                                        .equals(history.getBeforeData())
-                                                && "{\"status\": \"DRAFT\"}"
-                                                        .equals(history.getAfterData())));
+                                                && history.getBeforeData().contains("\"제목\"")
+                                                && history.getAfterData().contains("\"새 제목\"")));
     }
 
     @Test
@@ -430,6 +446,36 @@ class RecruitmentNoticeServiceTest {
 
         assertThat(service.listPublic()).hasSize(1);
         assertThat(service.listPublic().get(0).status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
+    }
+
+    /**
+     * 목록에 공고가 여러 건이면 예약도 한 번에 모아 조회하는데(N+1 방지), 이때 예약이 엉뚱한 공고에 잘못
+     * 매칭되면 안 된다 - 공고별로 정확히 자기 것만 받아야 한다.
+     */
+    @Test
+    void listPublicMatchesReservationsToCorrectNoticeWhenMultipleNoticesExist()
+            throws ReflectiveOperationException {
+        RecruitmentNotice notice1 = draftNotice();
+        notice1.publish();
+        withId(notice1, 1L);
+        RecruitmentNotice notice2 = draftNotice();
+        notice2.publish();
+        withId(notice2, 2L);
+        VenueReservation reservationForNotice2 = confirmedReservation(REQUEST_ID, ZONE_ID);
+        reservationForNotice2.linkToNotice(2L);
+        when(recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN))
+                .thenReturn(List.of(notice1, notice2));
+        when(venueReservationRepository.findAllByRecruitmentNoticeIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(reservationForNotice2));
+
+        List<RecruitmentNoticeResponse> responses = service.listPublic();
+
+        RecruitmentNoticeResponse response1 =
+                responses.stream().filter(r -> r.id().equals(1L)).findFirst().orElseThrow();
+        RecruitmentNoticeResponse response2 =
+                responses.stream().filter(r -> r.id().equals(2L)).findFirst().orElseThrow();
+        assertThat(response1.venueZoneIds()).isEmpty();
+        assertThat(response2.venueZoneIds()).containsExactly(ZONE_ID);
     }
 
     /** 초안·마감 등 게시 중이 아닌 공고는 공개 상세 조회에서 볼 수 없어야 한다. */
