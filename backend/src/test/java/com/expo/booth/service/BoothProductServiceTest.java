@@ -18,6 +18,7 @@ import com.expo.booth.repository.BoothProductRepository;
 import com.expo.booth.repository.BoothRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.venue.entity.VenueHall;
@@ -78,6 +79,22 @@ class BoothProductServiceTest {
                 true);
     }
 
+    private RecruitmentNotice noticeWithStatus(RecruitmentNoticeStatus status) {
+        try {
+            java.lang.reflect.Constructor<RecruitmentNotice> constructor =
+                    RecruitmentNotice.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            RecruitmentNotice notice = constructor.newInstance();
+            java.lang.reflect.Field statusField =
+                    RecruitmentNotice.class.getDeclaredField("status");
+            statusField.setAccessible(true);
+            statusField.set(notice, status);
+            return notice;
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private BoothProduct product() {
         return BoothProduct.create(
                         NOTICE_ID,
@@ -101,12 +118,12 @@ class BoothProductServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_SALES_PERIOD_INVALID);
-        verify(recruitmentNoticeRepository, never()).existsById(any());
+        verify(recruitmentNoticeRepository, never()).findById(any());
     }
 
     @Test
     void createRejectsWhenNoticeNotFound() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(false);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(request()))
                 .isInstanceOf(BusinessException.class)
@@ -115,8 +132,21 @@ class BoothProductServiceTest {
     }
 
     @Test
+    void createRejectsWhenNoticeAlreadyClosed() {
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.CLOSED)));
+
+        assertThatThrownBy(() -> service.create(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_PRODUCT_CREATION_NOT_ALLOWED);
+        verify(boothRepository, never()).existsById(any());
+    }
+
+    @Test
     void createRejectsWhenBoothNotFound() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> service.create(request()))
@@ -127,7 +157,8 @@ class BoothProductServiceTest {
 
     @Test
     void createRejectsDuplicateBoothProduct() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(true);
@@ -141,7 +172,8 @@ class BoothProductServiceTest {
 
     @Test
     void createRejectsWhenBoothInUseByOtherActiveNotice() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);
@@ -162,7 +194,8 @@ class BoothProductServiceTest {
     /** 다른 공고가 이미 취소됐다면, 그 공고의 부스 상품이 취소되지 않은 채 남아있어도 재사용을 막지 않는다. */
     @Test
     void createAllowsBoothWhenOtherNoticeIsCanceled() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);
@@ -201,7 +234,8 @@ class BoothProductServiceTest {
                 withId(VenueZone.create(hallId, "ZONE-1", "1구역", 10, null, null, null), zoneId);
         VenueHall hall = withId(VenueHall.create(1L, "HALL-A", "A홀", null, null, null), hallId);
 
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);
@@ -230,7 +264,8 @@ class BoothProductServiceTest {
 
     @Test
     void createSucceedsAndComputesTotalPrice() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);
@@ -246,7 +281,8 @@ class BoothProductServiceTest {
     /** 사전 중복 검사를 통과해도 동시 삽입으로 제약 위반이 나면 같은 오류로 변환돼야 한다. */
     @Test
     void createTranslatesConstraintViolationToDuplicate() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);
@@ -264,7 +300,8 @@ class BoothProductServiceTest {
 
     @Test
     void createRethrowsUnrelatedConstraintViolation() {
-        when(recruitmentNoticeRepository.existsById(NOTICE_ID)).thenReturn(true);
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
         when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
         when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
                 .thenReturn(false);

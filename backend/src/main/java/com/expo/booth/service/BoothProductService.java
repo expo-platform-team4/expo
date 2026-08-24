@@ -10,6 +10,7 @@ import com.expo.booth.repository.BoothProductRepository;
 import com.expo.booth.repository.BoothRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.venue.entity.VenueHall;
@@ -37,6 +38,13 @@ public class BoothProductService {
                     BoothSalesStatus.AVAILABLE,
                     BoothSalesStatus.UNAVAILABLE,
                     BoothSalesStatus.CANCELED);
+
+    /** 이미 끝난 공고에는 새 부스 상품을 등록해도 팔 방법이 없다. */
+    private static final Set<RecruitmentNoticeStatus> NOTICE_STATUSES_CLOSED_FOR_NEW_PRODUCTS =
+            Set.of(
+                    RecruitmentNoticeStatus.CLOSED,
+                    RecruitmentNoticeStatus.CANCELED,
+                    RecruitmentNoticeStatus.ARCHIVED);
 
     private final BoothProductRepository boothProductRepository;
     private final BoothRepository boothRepository;
@@ -68,8 +76,15 @@ public class BoothProductService {
                 && !request.salesEndAt().isAfter(request.salesStartAt())) {
             throw new BusinessException(ErrorCode.BOOTH_SALES_PERIOD_INVALID);
         }
-        if (!recruitmentNoticeRepository.existsById(request.recruitmentNoticeId())) {
-            throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND);
+        RecruitmentNotice notice =
+                recruitmentNoticeRepository
+                        .findById(request.recruitmentNoticeId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
+        if (NOTICE_STATUSES_CLOSED_FOR_NEW_PRODUCTS.contains(notice.getStatus())) {
+            throw new BusinessException(ErrorCode.BOOTH_PRODUCT_CREATION_NOT_ALLOWED);
         }
         if (!boothRepository.existsById(request.boothId())) {
             throw new BusinessException(ErrorCode.BOOTH_NOT_FOUND);
