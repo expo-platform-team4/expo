@@ -2,6 +2,7 @@ package com.expo.recruitment.repository;
 
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +18,12 @@ public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNo
     Optional<RecruitmentNotice> findByIdAndStatus(Long id, RecruitmentNoticeStatus status);
 
     boolean existsByIdInAndStatusNot(Collection<Long> ids, RecruitmentNoticeStatus status);
+
+    /** 신청 시작일이 지났는데 아직 SCHEDULED 인 공고. OPEN 자동 전환 대상 조회용. */
+    List<RecruitmentNotice> findAllByStatusAndApplicationStartAtBefore(
+            RecruitmentNoticeStatus status, Instant applicationStartAt);
+
+    /** 신청 종료일이 지났는데 아직 OPEN 인 공고. 자동 마감 대상 조회용. */
+    List<RecruitmentNotice> findAllByStatusAndApplicationEndAtBefore(
+            RecruitmentNoticeStatus status, Instant applicationEndAt);
 }

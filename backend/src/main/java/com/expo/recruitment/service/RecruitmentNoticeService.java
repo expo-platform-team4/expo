@@ -7,6 +7,7 @@ import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.converter.RecruitmentNoticeConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequest;
 import com.expo.recruitment.dto.RecruitmentNoticeResponse;
+import com.expo.recruitment.dto.RecruitmentNoticeScheduleSweepResult;
 import com.expo.recruitment.dto.UpdateRecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeActionType;
@@ -23,6 +24,7 @@ import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -157,13 +159,29 @@ public class RecruitmentNoticeService {
         return toResponseWithVenue(notice);
     }
 
-    /** 공고 게시. 초안 상태에서만 가능하다. */
+    /**
+     * 공고 게시. 초안 상태에서만 가능하다.
+     *
+     * <p>신청 시작일이 아직 안 됐으면 SCHEDULED 로만 전환되고, 실제로 신청이 열리는 OPEN 전환은 {@link
+     * #processSchedule()} 이 시작일 도래를 보고 별도로 처리한다.
+     *
+     * <p>{@code create()} 때 확정돼 있던 장소 예약이 초안으로 대기하는 사이 해제됐을 수 있어, 게시 직전에 다시
+     * 확인한다.
+     */
     @Transactional
     public RecruitmentNoticeResponse publish(Long noticeId, Long adminId) {
         RecruitmentNotice notice = getEntity(noticeId);
         RecruitmentNoticeStatus previousStatus = notice.getStatus();
         if (previousStatus != RecruitmentNoticeStatus.DRAFT) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_PUBLISHABLE);
+        }
+        List<VenueReservation> reservations =
+                venueReservationRepository.findAllByRecruitmentNoticeId(noticeId);
+        boolean anyNotConfirmed =
+                reservations.stream()
+                        .anyMatch(r -> r.getStatus() != VenueReservationStatus.CONFIRMED);
+        if (anyNotConfirmed) {
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
         notice.publish();
         recruitmentNoticeHistoryRepository.save(
@@ -195,6 +213,60 @@ public class RecruitmentNoticeService {
                         null,
                         adminId));
         return toResponseWithVenue(notice);
+    }
+
+    /**
+     * 예정된 게시 시작·신청 마감을 일괄 처리한다. SCHEDULED 인 공고 중 신청 시작일이 지난 것은 OPEN 으로,
+     * OPEN 인 공고 중 신청 종료일이 지난 것은 CLOSED 로 자동 전환한다.
+     *
+     * <p>사람이 직접 처리한 게 아니라 시스템 판단이라 처리자 없이 남길 수 없는 이력({@code
+     * processed_by_admin_id} NOT NULL)은 공고를 만든 관리자 ID로 남긴다.
+     *
+     * <p>여러 번 호출해도 안전하다 - 이미 전환된 공고는 대상 조회 조건(SCHEDULED/OPEN)에서 다시 걸리지 않는다.
+     * 다중 인스턴스에서의 중복 실행 방지 장치가 없어 아직 스케줄러는 붙이지 않았다({@code
+     * InternalSettlementController} 와 동일한 판단).
+     */
+    @Transactional
+    public RecruitmentNoticeScheduleSweepResult processSchedule() {
+        Instant now = Instant.now();
+        List<Long> activatedIds =
+                recruitmentNoticeRepository
+                        .findAllByStatusAndApplicationStartAtBefore(
+                                RecruitmentNoticeStatus.SCHEDULED, now)
+                        .stream()
+                        .map(
+                                notice -> {
+                                    notice.activate();
+                                    recruitmentNoticeHistoryRepository.save(
+                                            RecruitmentNoticeHistory.create(
+                                                    notice.getId(),
+                                                    RecruitmentNoticeActionType.ACTIVATE,
+                                                    "{\"status\": \"SCHEDULED\"}",
+                                                    "{\"status\": \"OPEN\"}",
+                                                    "예정된 신청 시작일 도래로 자동 게시",
+                                                    notice.getCreatedByAdminId()));
+                                    return notice.getId();
+                                })
+                        .toList();
+        List<Long> expiredIds =
+                recruitmentNoticeRepository
+                        .findAllByStatusAndApplicationEndAtBefore(RecruitmentNoticeStatus.OPEN, now)
+                        .stream()
+                        .map(
+                                notice -> {
+                                    notice.expire();
+                                    recruitmentNoticeHistoryRepository.save(
+                                            RecruitmentNoticeHistory.create(
+                                                    notice.getId(),
+                                                    RecruitmentNoticeActionType.CLOSE,
+                                                    "{\"status\": \"OPEN\"}",
+                                                    "{\"status\": \"CLOSED\"}",
+                                                    "신청 종료일 경과로 자동 마감",
+                                                    notice.getCreatedByAdminId()));
+                                    return notice.getId();
+                                })
+                        .toList();
+        return new RecruitmentNoticeScheduleSweepResult(activatedIds, expiredIds);
     }
 
     /**

@@ -110,10 +110,21 @@ public class RecruitmentNotice extends BaseTimeEntity {
         this.applicationEndAt = applicationEndAt;
     }
 
-    /** 공고 게시. */
+    /**
+     * 공고 게시. 신청 시작일이 이미 지났으면 바로 OPEN, 아직 안 됐으면 SCHEDULED(게시는 됐지만 신청은 아직 안
+     * 열림)로 전환한다 - 시작일을 미래로 정해도 게시 버튼을 누르는 즉시 신청이 열려버리는 걸 막는다.
+     */
     public void publish() {
-        this.status = RecruitmentNoticeStatus.OPEN;
+        this.status =
+                Instant.now().isBefore(applicationStartAt)
+                        ? RecruitmentNoticeStatus.SCHEDULED
+                        : RecruitmentNoticeStatus.OPEN;
         this.publishedAt = Instant.now();
+    }
+
+    /** 예정된 신청 시작일이 도래해 시스템이 SCHEDULED 를 OPEN 으로 전환. */
+    public void activate() {
+        this.status = RecruitmentNoticeStatus.OPEN;
     }
 
     /**
@@ -123,6 +134,12 @@ public class RecruitmentNotice extends BaseTimeEntity {
      * 부족하다.
      */
     public void close() {
+        this.status = RecruitmentNoticeStatus.CLOSED;
+        this.closedAt = Instant.now();
+    }
+
+    /** 신청 종료일이 지나 시스템이 자동으로 마감 처리. 관리자 직권 조기 마감({@link #close()})과 결과 상태는 같다. */
+    public void expire() {
         this.status = RecruitmentNoticeStatus.CLOSED;
         this.closedAt = Instant.now();
     }
