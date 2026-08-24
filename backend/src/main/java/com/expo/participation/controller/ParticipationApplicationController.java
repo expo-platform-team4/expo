@@ -4,6 +4,7 @@ import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
+import com.expo.participation.dto.UpdateParticipationApplicationRequest;
 import com.expo.participation.service.ParticipationApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,6 +52,28 @@ public class ParticipationApplicationController {
         return ResponseEntity.ok(
                 ApiResponse.ok(
                         participationApplicationService.getMine(
+                                applicationId, principal.getMemberId())));
+    }
+
+    @Operation(summary = "참여 신청서 초안 수정", description = "초안 상태에서만 수정할 수 있다.")
+    @PatchMapping("/{applicationId}")
+    public ResponseEntity<ApiResponse<ParticipationApplicationResponse>> update(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable Long applicationId,
+            @Valid @RequestBody UpdateParticipationApplicationRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        participationApplicationService.update(
+                                applicationId, principal.getMemberId(), request)));
+    }
+
+    @Operation(summary = "참여 신청 철회", description = "초안 상태에서만 철회할 수 있다.")
+    @PostMapping("/{applicationId}/withdraw")
+    public ResponseEntity<ApiResponse<ParticipationApplicationResponse>> withdraw(
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long applicationId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        participationApplicationService.withdraw(
                                 applicationId, principal.getMemberId())));
     }
 }

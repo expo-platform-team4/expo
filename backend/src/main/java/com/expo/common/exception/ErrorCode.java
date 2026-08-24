@@ -181,6 +181,7 @@ public enum ErrorCode {
     DUPLICATE_PARTICIPATION_APPLICATION(HttpStatus.CONFLICT, "이미 해당 공고에 유효한 참여 신청서가 있습니다."),
     CORRECTION_NOT_REQUESTED(HttpStatus.CONFLICT, "보완 요청이 없는 신청서는 보완 완료 처리할 수 없습니다."),
     CANNOT_APPLY_TO_OWN_NOTICE(HttpStatus.FORBIDDEN, "본인이 개최 요청한 공고에는 참여 신청할 수 없습니다."),
+    PARTICIPATION_APPLICATION_NOT_EDITABLE(HttpStatus.CONFLICT, "초안 상태에서만 신청서를 수정·철회할 수 있습니다."),
 
     // --- 발권 · QR ---
     TICKET_ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 주문입니다."),
