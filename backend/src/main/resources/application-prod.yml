@@ -27,6 +27,15 @@ spring:
       credentials:
         access-key: ${AWS_ACCESS_KEY_ID}
         secret-key: ${AWS_SECRET_ACCESS_KEY}
+      s3:
+        # 이 설정이 없으면 실제 AWS S3(s3.<region>.amazonaws.com)로 붙는다.
+        # OCI 배포는 같은 네트워크의 s3mock 컨테이너를 쓰므로 반드시 지정해야 한다.
+        #   AWS_S3_ENDPOINT=http://expo-s3mock:9090
+        # 진짜 AWS S3 로 옮길 때는 이 두 줄을 지운다 (엔드포인트를 비우는 것이 아니라).
+        endpoint: ${AWS_S3_ENDPOINT}
+        # 에뮬레이터는 bucket.s3.amazonaws.com 같은 가상 호스트 주소를 쓰지 않는다.
+        # path-style(=/{bucket}/{key}) 이 아니면 요청이 엉뚱한 호스트로 나간다.
+        path-style-access-enabled: ${AWS_S3_PATH_STYLE:true}
 
 # 운영에서는 Swagger UI 를 닫는다.
 springdoc:

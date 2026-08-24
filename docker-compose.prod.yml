@@ -1,0 +1,122 @@
+# OCI 인스턴스용 배포 구성. 서버의 /home/opc/expo/ 에 두고 돌린다.
+#
+# 이 인스턴스에는 이미 handdam 스택이 돌고 있고 80·443 은 handdam-caddy 가 쥐고 있다.
+# 그래서 여기서 Caddy 를 띄우지 않는다 — 기존 Caddy 에 사이트 블록만 추가한다.
+#
+# 네트워크를 둘로 나눈 이유
+#   expo-net       우리 스택 내부용. postgres·s3mock 은 여기에만 있다
+#   handdam-net    기존 Caddy 가 붙어 있는 망. front·backend 만 얹는다
+#
+# 이렇게 하면 Caddy 는 설정 변경 없이 우리 컨테이너를 이름으로 찾고,
+# 우리 DB 는 handdam 쪽에서 보이지 않는다.
+#
+# 반대로 "expo 전용 망을 만들고 caddy 를 docker network connect 로 붙이는" 방식은
+# handdam 을 다시 올릴 때 컨테이너가 재생성되면서 그 연결이 사라진다. 그날 502 가 난다.
+#
+# 서비스 이름에 expo- 를 붙인 이유 (container_name 만으로는 부족하다)
+#   Compose 는 "서비스 이름" 을 네트워크 별칭으로 자동 등록한다. handdam 의 Caddy 는
+#   reverse_proxy backend:8080 처럼 서비스 이름으로 컨테이너를 찾으므로, 우리 서비스도
+#   backend 라고 두면 공유 망에 backend 가 둘이 되어 Docker DNS 가 라운드로빈한다.
+#   handdam 요청의 절반이 우리 백엔드로 새고, 간헐적이라 원인 찾기가 가장 어렵다.
+
+name: expo
+
+services:
+  expo-postgres:
+    image: postgres:18-alpine
+    container_name: expo-postgres
+    restart: unless-stopped
+    # 18 이어야 한다. 정산 항목 제약이 PostgreSQL 15+ 의 NULLS NOT DISTINCT 를 쓰고,
+    # 로컬·CI 도 18 이다. 같은 인스턴스의 handdam 은 16 이지만 별도 컨테이너라 무관하다.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - expo_postgres_data:/var/lib/postgresql/data
+    # 포트를 호스트에 열지 않는다. 열면 공인 IP 에 5432 가 그대로 노출된다.
+    # 밖에서 봐야 하면 SSH 터널을 쓴다.
+    networks:
+      - expo-net
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: &default-logging
+      driver: json-file
+      options:
+        # 로그 상한을 안 걸면 컨테이너 로그가 디스크를 채운다.
+        # 조용히 쌓이다가 어느 날 디스크가 꽉 차서 전부 멈춘다.
+        max-size: "10m"
+        max-file: "3"
+
+  expo-s3mock:
+    image: adobe/s3mock:5.1.0
+    container_name: expo-s3mock
+    restart: unless-stopped
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${AWS_S3_BUCKET:-expo-local}
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3data
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+    volumes:
+      # 볼륨을 안 붙이면 업로드한 파일이 컨테이너 재시작에 사라진다.
+      - expo_s3mock_data:/s3data
+    networks:
+      - expo-net
+    mem_limit: 512m
+    logging: *default-logging
+
+  expo-backend:
+    image: ghcr.io/expo-platform-team4/expo-backend:${EXPO_IMAGE_TAG:-dev}
+    container_name: expo-backend
+    restart: unless-stopped
+    # 비밀값은 이미지에 넣지 않는다. 서버의 .env 에서 읽는다.
+    # 이 파일은 커밋되지 않고 서버에만 있다 (env.sample 참고).
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # DB·S3 접속점은 컨테이너 이름이다. .env 에 적지 않고 여기서 고정한다 —
+      # 서버 사람이 바꿀 값이 아니고, 바꾸면 오히려 깨진다.
+      POSTGRES_HOST: expo-postgres
+      POSTGRES_PORT: 5432
+    depends_on:
+      expo-postgres:
+        # 마이그레이션이 첫 기동에 도므로 DB 가 준비된 뒤에 떠야 한다.
+        condition: service_healthy
+    networks:
+      - expo-net
+      - handdam-net
+    mem_limit: 2g
+    logging: *default-logging
+
+  expo-front:
+    image: ghcr.io/expo-platform-team4/expo-front:${EXPO_IMAGE_TAG:-dev}
+    container_name: expo-front
+    restart: unless-stopped
+    environment:
+      # 서버 사이드 렌더링이 백엔드를 부를 때 쓴다.
+      # 브라우저 쪽 호출은 /api 로 나가고 Caddy 가 백엔드로 보낸다 — 이 값과 무관하다.
+      BACKEND_ORIGIN: http://expo-backend:8080
+    depends_on:
+      - expo-backend
+    networks:
+      - expo-net
+      - handdam-net
+    mem_limit: 512m
+    logging: *default-logging
+
+networks:
+  expo-net:
+    driver: bridge
+  handdam-net:
+    # 이미 존재하는 망에 얹는다. compose 가 만들지 않는다.
+    # 이름은 handdam 스택의 compose 프로젝트명이 붙은 실제 이름이다.
+    external: true
+    name: handdam_handdam-net
+
+volumes:
+  expo_postgres_data:
+  expo_s3mock_data:

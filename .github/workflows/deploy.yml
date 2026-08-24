@@ -1,0 +1,168 @@
+# dev 에 머지되면 이미지를 만들어 GHCR 에 올리고 OCI 인스턴스에 반영한다.
+#
+# ci.yml 이 끝난 뒤에 돈다(workflow_run). push 트리거를 쓰지 않는 이유는
+# **테스트를 통과하지 않은 코드를 배포하지 않기 위해서**다. push 로 걸면 CI 와 배포가
+# 나란히 시작해서, 테스트가 깨지는 커밋도 서버에 올라간다.
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev]
+  # 같은 커밋을 다시 올리거나 롤백할 때 손으로 돌린다.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "배포할 커밋 SHA (비우면 dev 최신)"
+        required: false
+
+concurrency:
+  # 배포가 겹치면 나중 것이 먼저 끝나 옛 이미지가 남을 수 있다.
+  group: deploy-oci
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/expo-backend
+  FRONT_IMAGE: ghcr.io/${{ github.repository_owner }}/expo-front
+
+jobs:
+  build:
+    # CI 가 성공했을 때만. workflow_run 은 실패한 실행에도 트리거되므로 여기서 거른다.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    # ARM 러너다. OCI 인스턴스가 Ampere A1(arm64)이라 이미지도 arm64 여야 한다.
+    # 기본 x86 러너로 빌드하면 서버에서 exec format error 로 뜨지 않고,
+    # QEMU 에뮬레이션으로 우회하면 Gradle 빌드가 몇 배 느려진다.
+    # 공개 저장소라 ARM 러너가 무료다.
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: 배포할 커밋 결정
+        id: meta
+        run: |
+          if [ -n "${{ inputs.ref }}" ]; then
+            SHA="${{ inputs.ref }}"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            SHA="${{ github.sha }}"
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          # 커밋 SHA 를 태그로 쓴다. dev 태그만 쓰면 "지금 서버에 올라간 게 어느 커밋인지"
+          # 를 알 수 없고 롤백할 대상도 지목할 수 없다.
+          echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          # 저장소에 딸린 토큰이다. 따로 만들 필요가 없다.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 백엔드 이미지
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:dev
+          # Actions 캐시를 쓴다. Gradle 의존성 레이어가 재사용되어 빌드가 크게 줄어든다.
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: 프론트 이미지
+        uses: docker/build-push-action@v6
+        with:
+          context: ./front
+          push: true
+          tags: |
+            ${{ env.FRONT_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.FRONT_IMAGE }}:dev
+          build-args: |
+            NEXT_PUBLIC_TOSS_CLIENT_KEY=${{ secrets.NEXT_PUBLIC_TOSS_CLIENT_KEY }}
+          # NEXT_PUBLIC_* 는 번들에 박히므로 빌드 타임에만 넣을 수 있다.
+          # compose 의 environment 로는 못 바꾼다 — 그래서 이 값만 Secrets 에 있다.
+          cache-from: type=gha,scope=front
+          cache-to: type=gha,scope=front,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 준비
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # 호스트 키를 미리 고정한다. StrictHostKeyChecking=no 로 열어 두면
+          # 중간자 공격을 그대로 받는다. 값은 ssh-keyscan 으로 한 번 떠서 Secret 에 넣는다.
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: 배포
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          ssh -i ~/.ssh/id_deploy \
+              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+              "EXPO_IMAGE_TAG=$TAG bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd /home/opc/expo
+
+          echo "▶ 배포 태그: ${EXPO_IMAGE_TAG}"
+
+          # .env 는 서버에서 사람이 관리한다. 워크플로가 만들지도 고치지도 않는다.
+          # 새 환경변수가 생겼는데 .env 에 없으면 여기서 기동이 실패한다 — 의도된 것이다.
+          if [ ! -f .env ]; then
+            echo "✖ /home/opc/expo/.env 가 없다. 배포를 멈춘다." >&2
+            exit 1
+          fi
+
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d
+
+          echo "▶ 백엔드가 healthy 가 될 때까지 기다린다"
+          # 마이그레이션이 기동 때 돈다. 마이그레이션이 깨지면 컨테이너가 뜨지 않으므로
+          # 여기서 걸려야 한다. 기다리지 않으면 실패한 배포가 성공으로 보고된다.
+          for i in $(seq 1 60); do
+            STATUS=$(docker inspect expo-backend --format '{{.State.Health.Status}}' 2>/dev/null || echo "none")
+            [ "$STATUS" = "healthy" ] && break
+            sleep 5
+          done
+
+          if [ "$STATUS" != "healthy" ]; then
+            echo "✖ 백엔드가 뜨지 않았다 (상태: $STATUS). 최근 로그:" >&2
+            docker logs --tail 60 expo-backend >&2 || true
+            exit 1
+          fi
+
+          # 떠 있지 않은 이미지 레이어를 정리한다. 안 하면 배포마다 쌓여 디스크를 채운다.
+          # dangling 만 지우므로 handdam 이미지는 건드리지 않는다.
+          docker image prune -f >/dev/null
+
+          echo "✔ 배포 완료"
+          docker compose -f docker-compose.prod.yml ps
+          REMOTE
+
+      - name: 실패 시 안내
+        if: failure()
+        run: |
+          echo "배포가 실패했다. 자동 롤백은 하지 않는다." >&2
+          echo "마이그레이션이 스키마를 바꾼 뒤라면 옛 이미지로 되돌려도 맞지 않기 때문이다." >&2
+          echo "서버에서 로그를 보고 판단한다:  docker logs expo-backend" >&2
