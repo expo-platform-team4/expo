@@ -123,6 +123,7 @@ public enum ErrorCode {
     BOOTH_ALLOCATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "이미 취소된 배정입니다."),
     BOOTH_ALLOCATION_NOT_ASSIGNED(HttpStatus.CONFLICT, "확정 배정 상태에서만 부스 콘텐츠를 작성·수정할 수 있습니다."),
     BOOTH_ALLOCATION_NOT_REASSIGNABLE(HttpStatus.CONFLICT, "확정 배정 상태에서만 다른 부스 상품으로 재배정할 수 있습니다."),
+    BOOTH_REASSIGN_NOTICE_MISMATCH(HttpStatus.CONFLICT, "재배정 대상 부스 상품은 같은 모집공고 소속이어야 합니다."),
     PAYMENT_RESERVATION_NOT_FOUND(HttpStatus.CONFLICT, "결제 가능한 재고 예약을 찾을 수 없습니다."),
     TICKET_ORDER_ACCESS_DENIED(HttpStatus.NOT_FOUND, "주문 정보를 확인할 수 없습니다."),
 

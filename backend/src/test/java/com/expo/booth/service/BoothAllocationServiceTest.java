@@ -49,6 +49,7 @@ class BoothAllocationServiceTest {
     private static final Long ADMIN_ID = 6L;
     private static final Long NEW_BOOTH_PRODUCT_ID = 7L;
     private static final Long NOTICE_ID = 8L;
+    private static final Long OTHER_NOTICE_ID = 10L;
     private static final Long BOOTH_ID = 9L;
 
     private BoothAllocationRepository boothAllocationRepository;
@@ -92,9 +93,13 @@ class BoothAllocationServiceTest {
     }
 
     private BoothProduct product(BoothSalesStatus status) {
+        return productForNotice(NOTICE_ID, status);
+    }
+
+    private BoothProduct productForNotice(Long noticeId, BoothSalesStatus status) {
         BoothProduct product =
                 BoothProduct.create(
-                        NOTICE_ID, BOOTH_ID, BigDecimal.valueOf(100000), null, true, null);
+                        noticeId, BOOTH_ID, BigDecimal.valueOf(100000), null, true, null);
         if (status != BoothSalesStatus.AVAILABLE) {
             product.changeSalesStatus(status);
         }
@@ -368,6 +373,27 @@ class BoothAllocationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_AVAILABLE);
+    }
+
+    /** 다른 모집공고 소속 부스 상품으로는 재배정할 수 없어야 한다. */
+    @Test
+    void reassignRejectsWhenNewProductBelongsToDifferentNotice() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID))
+                .thenReturn(
+                        Optional.of(productForNotice(OTHER_NOTICE_ID, BoothSalesStatus.AVAILABLE)));
+        when(boothProductRepository.findById(BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(product(BoothSalesStatus.SOLD)));
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_REASSIGN_NOTICE_MISMATCH);
+        verify(boothAllocationRepository, never()).saveAndFlush(any());
     }
 
     @Test

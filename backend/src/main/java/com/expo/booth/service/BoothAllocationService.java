@@ -142,6 +142,9 @@ public class BoothAllocationService {
      * <p>기존 상품은 판매 가능 상태로 되돌리고 새 상품은 판매 완료로 확정한다. 사전 검사를 통과해도 동시에 같은 상품으로
      * 재배정하려는 요청이 있으면 {@code booth_allocations_booth_product_id_key} 유니크 제약이 최종적으로 막는다.
      *
+     * <p>새 상품은 반드시 기존 상품과 같은 모집공고 소속이어야 한다 - 다른 공고의 상품으로 재배정하면 신청서·결제는
+     * 원래 공고에 남은 채로 부스만 엉뚱한 공고 소속이 되어 정산·모집 결과 집계가 어긋난다.
+     *
      * <p>권한이 걸린 변경이라 처리 관리자·사유를 감사 이력({@code booth_management_histories})에 남긴다.
      */
     @Transactional
@@ -169,6 +172,9 @@ public class BoothAllocationService {
                         .findById(previousBoothProductId)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND));
+        if (!previousProduct.getRecruitmentNoticeId().equals(newProduct.getRecruitmentNoticeId())) {
+            throw new BusinessException(ErrorCode.BOOTH_REASSIGN_NOTICE_MISMATCH);
+        }
         allocation.reassign(newBoothProductId);
         try {
             boothAllocationRepository.saveAndFlush(allocation);
