@@ -135,7 +135,7 @@ public class RecruitmentNoticeService {
         return toResponseWithVenue(saved, reservations);
     }
 
-    /** 관리자용 기업 모집 공고 목록 조회. N+1 을 피하려고 목록에 담긴 공고들의 장소 예약을 한 번에 모아 조회한다. */
+    /** 관리자용 기업 모집 공고 목록 조회. N+1 을 피하려고 목록에 담긴 공고들의 장소 예약·배치도를 한 번에 모아 조회한다. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> list() {
         return toResponsesWithVenue(recruitmentNoticeRepository.findAll());
@@ -353,7 +353,7 @@ public class RecruitmentNoticeService {
                 + "\"}";
     }
 
-    /** 게시 중인 기업 모집 공고 목록 조회 (공개). N+1 을 피하려고 목록에 담긴 공고들의 장소 예약을 한 번에 모아 조회한다. */
+    /** 게시 중인 기업 모집 공고 목록 조회 (공개). N+1 을 피하려고 목록에 담긴 공고들의 장소 예약·배치도를 한 번에 모아 조회한다. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> listPublic() {
         return toResponsesWithVenue(
@@ -427,14 +427,17 @@ public class RecruitmentNoticeService {
         return notices.stream()
                 .map(
                         notice -> {
-                            List<VenueReservation> confirmed = confirmedByNoticeId.get(notice.getId());
+                            List<VenueReservation> confirmed =
+                                    confirmedByNoticeId.get(notice.getId());
                             Long venueHallId =
                                     confirmed.stream()
                                             .map(VenueReservation::getVenueHallId)
                                             .findFirst()
                                             .orElse(null);
                             List<Long> venueZoneIds =
-                                    confirmed.stream().map(VenueReservation::getVenueZoneId).toList();
+                                    confirmed.stream()
+                                            .map(VenueReservation::getVenueZoneId)
+                                            .toList();
                             Long venueHallLayoutFileId =
                                     venueHallId == null ? null : hallLayoutFileIds.get(venueHallId);
                             List<Long> venueZoneLayoutFileIds =
