@@ -6,7 +6,9 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { Button, Card, EmptyState, Input, PageHeader } from '@/components/ui'
+import { Button, Card, Input, PageHeader } from '@/components/ui'
+import { TossCheckout } from '@/features/payment/components/TossCheckout'
+import { GuestRefundPanel } from '@/features/refund/components/GuestRefundPanel'
 import { formatCurrency } from '@/lib/currency'
 import { getErrorMessage } from '@/lib/errorMessage'
 
@@ -30,8 +32,10 @@ import { useGuestOrderLookupStore } from '../store'
  * 가짜 GET 상세 API 를 만들지 않고 실제로 있는 조회 API 를 재사용하는 쪽을 골랐다 — 이
  * 화면만 다른 인증 규칙을 흉내 내면 "링크만 알면 남의 주문도 보인다" 는 구멍이 생긴다.
  *
- * "환불 신청" 은 백엔드에 아예 없다(`backend/.../refund` 는 `package-info.java` 뿐) —
- * 이 액션 하나만 `EmptyState notReady` 로 막고, 나머지(주문 정보·티켓 목록)는 실 데이터다.
+ * "환불 신청" 은 `GuestRefundPanel` 이 처리한다 — 연락처·비밀번호를 다시 입력받아
+ * `POST /api/orders/guest/refund-eligibility` 로 가능 여부를 먼저 확인하고,
+ * `POST /api/orders/guest/refunds` 로 실제 요청을 보낸다(둘 다 위 재조회 폼과 같은
+ * "조합 자체가 인증" 규칙을 쓴다).
  */
 const GuestOrderDetailPage = () => {
   const { orderNumber } = useParams<{ orderNumber: string }>()
@@ -120,52 +124,61 @@ const ReLookupForm = ({
   )
 }
 
-const OrderDetail = ({ result }: { result: GuestOrderSearchResult }) => (
-  <div className="flex flex-col gap-4">
-    <Card className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-label-md text-on-surface-variant font-mono">{result.orderNumber}</p>
-        <OrderStatusBadge status={result.status} />
-      </div>
+const OrderDetail = ({ result }: { result: GuestOrderSearchResult }) => {
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
-      <ul className="divide-outline-variant divide-y">
-        {result.items.map((item) => (
-          <li key={item.ticketProductId} className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-body-md text-on-surface">{item.ticketName}</p>
-              <p className="text-label-sm text-on-surface-variant">
-                {formatCurrency(item.unitPrice)} × {item.quantity}매
+  return (
+    <div className="flex flex-col gap-4">
+      <Card className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-label-md text-on-surface-variant font-mono">{result.orderNumber}</p>
+          <OrderStatusBadge status={result.status} />
+        </div>
+
+        <ul className="divide-outline-variant divide-y">
+          {result.items.map((item) => (
+            <li key={item.ticketProductId} className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-body-md text-on-surface">{item.ticketName}</p>
+                <p className="text-label-sm text-on-surface-variant">
+                  {formatCurrency(item.unitPrice)} × {item.quantity}매
+                </p>
+              </div>
+              <p className="text-body-md text-on-surface font-medium">
+                {formatCurrency(item.itemSubtotalAmount)}
               </p>
-            </div>
-            <p className="text-body-md text-on-surface font-medium">
-              {formatCurrency(item.itemSubtotalAmount)}
-            </p>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
 
-      <div className="border-outline-variant flex flex-col gap-1 border-t pt-3">
-        <div className="text-label-md text-on-surface-variant flex justify-between">
-          <span>티켓 소계</span>
-          <span>{formatCurrency(result.ticketSubtotalAmount)}</span>
+        <div className="border-outline-variant flex flex-col gap-1 border-t pt-3">
+          <div className="text-label-md text-on-surface-variant flex justify-between">
+            <span>티켓 소계</span>
+            <span>{formatCurrency(result.ticketSubtotalAmount)}</span>
+          </div>
+          <div className="text-label-md text-on-surface-variant flex justify-between">
+            <span>예약 수수료</span>
+            <span>{formatCurrency(result.bookingFeeAmount)}</span>
+          </div>
+          <div className="text-title-lg text-on-surface flex justify-between font-semibold">
+            <span>총 결제 금액</span>
+            <span>{formatCurrency(result.totalAmount)}</span>
+          </div>
         </div>
-        <div className="text-label-md text-on-surface-variant flex justify-between">
-          <span>예약 수수료</span>
-          <span>{formatCurrency(result.bookingFeeAmount)}</span>
-        </div>
-        <div className="text-title-lg text-on-surface flex justify-between font-semibold">
-          <span>총 결제 금액</span>
-          <span>{formatCurrency(result.totalAmount)}</span>
-        </div>
-      </div>
-    </Card>
+      </Card>
 
-    <EmptyState
-      notReady
-      title="환불 신청"
-      description="환불 신청 기능은 아직 연결되지 않았습니다."
-    />
-  </div>
-)
+      {/* PENDING(결제 대기)이면 재조회로 다시 들어왔을 때도 만료 전까지는 이어서 결제할 수
+          있어야 한다 — 주문 생성 직후 화면(OrderConfirmation)에만 있으면 안 된다. */}
+      {result.status === 'PENDING' && !checkoutOpen && (
+        <Button onClick={() => setCheckoutOpen(true)}>다시 결제하기</Button>
+      )}
+      {result.status === 'PENDING' && checkoutOpen && (
+        <TossCheckout orderNumber={result.orderNumber} />
+      )}
+
+      {result.status === 'PAID' && <GuestRefundPanel orderNumber={result.orderNumber} />}
+    </div>
+  )
+}
 
 export default GuestOrderDetailPage
