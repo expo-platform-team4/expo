@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -232,10 +233,24 @@ class RecruitmentNoticeServiceTest {
         return RecruitmentNotice.create(REQUEST_ID, HOST_CLIENT_ID, "제목", "내용", T1, T2, ADMIN_ID);
     }
 
+    /** 신청 시작일이 이미 지난 채로 게시(→OPEN)된 공고. OPEN 상태를 전제로 하는 테스트의 기본 픽스처. */
+    private RecruitmentNotice openNotice() {
+        RecruitmentNotice notice =
+                RecruitmentNotice.create(
+                        REQUEST_ID,
+                        HOST_CLIENT_ID,
+                        "제목",
+                        "내용",
+                        Instant.now().minusSeconds(3600),
+                        T2,
+                        ADMIN_ID);
+        notice.publish();
+        return notice;
+    }
+
     @Test
     void updateRejectsWhenNotDraft() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
         UpdateRecruitmentNoticeRequest request =
                 new UpdateRecruitmentNoticeRequest("새 제목", "새 내용", null, null, T1, T2);
@@ -271,8 +286,7 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void publishRejectsWhenNotDraft() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
         assertThatThrownBy(() -> service.publish(1L, ADMIN_ID))
@@ -281,6 +295,10 @@ class RecruitmentNoticeServiceTest {
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_PUBLISHABLE);
     }
 
+    /**
+     * 신청 시작일이 아직 안 된 공고를 게시하면, 바로 신청을 받는 OPEN 이 아니라 SCHEDULED 로만 전환돼야 한다 -
+     * 시작일을 미래로 정한 의미가 없어지는 걸 막는다.
+     */
     @Test
     void publishSucceedsFromDraft() {
         RecruitmentNotice notice = draftNotice();
@@ -288,7 +306,7 @@ class RecruitmentNoticeServiceTest {
 
         RecruitmentNoticeResponse response = service.publish(1L, ADMIN_ID);
 
-        assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
+        assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.SCHEDULED);
         assertThat(response.publishedAt()).isNotNull();
         verify(recruitmentNoticeHistoryRepository)
                 .save(
@@ -299,8 +317,27 @@ class RecruitmentNoticeServiceTest {
                                                 && ADMIN_ID.equals(history.getProcessedByAdminId())
                                                 && "{\"status\": \"DRAFT\"}"
                                                         .equals(history.getBeforeData())
-                                                && "{\"status\": \"OPEN\"}"
+                                                && "{\"status\": \"SCHEDULED\"}"
                                                         .equals(history.getAfterData())));
+    }
+
+    /** 신청 시작일이 이미 지난 공고는 게시하는 즉시 OPEN 이 되어야 한다(예약 단계를 거칠 필요가 없다). */
+    @Test
+    void publishOpensImmediatelyWhenApplicationAlreadyStarted() {
+        RecruitmentNotice notice =
+                RecruitmentNotice.create(
+                        REQUEST_ID,
+                        HOST_CLIENT_ID,
+                        "제목",
+                        "내용",
+                        Instant.now().minusSeconds(3600),
+                        T2,
+                        ADMIN_ID);
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+
+        RecruitmentNoticeResponse response = service.publish(1L, ADMIN_ID);
+
+        assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
     }
 
     @Test
@@ -316,8 +353,7 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void closeSucceedsFromOpen() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
         RecruitmentNoticeResponse response = service.close(1L, ADMIN_ID);
@@ -337,8 +373,7 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void cancelRejectsWhenClosed() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         notice.close();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
 
@@ -355,8 +390,7 @@ class RecruitmentNoticeServiceTest {
      */
     @Test
     void cancelRejectsWhenSubmittedApplicationsExist() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
         when(participationApplicationRepository.existsByRecruitmentNoticeIdAndStatus(
                         1L, ParticipationApplicationStatus.SUBMITTED))
@@ -373,8 +407,7 @@ class RecruitmentNoticeServiceTest {
     /** 예약이 여러 건이어도(구역 여러 개) 전부 해제돼야 한다 - 첫 건만 해제하는 회귀를 잡는다. */
     @Test
     void cancelSucceedsFromOpenAndLogsHistoryAndReleasesReservations() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         VenueReservation reservation1 = confirmedReservation(REQUEST_ID, ZONE_ID);
         VenueReservation reservation2 = confirmedReservation(REQUEST_ID, OTHER_ZONE_ID);
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
@@ -405,8 +438,7 @@ class RecruitmentNoticeServiceTest {
     /** 취소 사유를 안 넣어도(reason == null) 이력에 문자열 "null" 이 그대로 붙으면 안 된다. */
     @Test
     void cancelWithoutReasonDoesNotLeakNullIntoReleaseHistoryReason() {
-        RecruitmentNotice notice = draftNotice();
-        notice.publish();
+        RecruitmentNotice notice = openNotice();
         VenueReservation reservation = confirmedReservation(REQUEST_ID, ZONE_ID);
         when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
         when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
@@ -423,8 +455,7 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void listPublicReturnsOnlyOpenNotices() {
-        RecruitmentNotice published = draftNotice();
-        published.publish();
+        RecruitmentNotice published = openNotice();
         when(recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN))
                 .thenReturn(List.of(published));
 
@@ -446,13 +477,86 @@ class RecruitmentNoticeServiceTest {
 
     @Test
     void getPublicReturnsOpenNotice() {
-        RecruitmentNotice published = draftNotice();
-        published.publish();
+        RecruitmentNotice published = openNotice();
         when(recruitmentNoticeRepository.findByIdAndStatus(1L, RecruitmentNoticeStatus.OPEN))
                 .thenReturn(Optional.of(published));
 
         RecruitmentNoticeResponse response = service.getPublic(1L);
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
+    }
+
+    /** 신청 시작일이 지난 SCHEDULED 공고는 일괄 처리에서 OPEN 으로 전환돼야 한다. */
+    @Test
+    void processScheduleActivatesScheduledNoticePastStartDate()
+            throws ReflectiveOperationException {
+        RecruitmentNotice notice = draftNotice();
+        notice.publish();
+        withId(notice, 5L);
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationStartAtBefore(
+                        eq(RecruitmentNoticeStatus.SCHEDULED), any()))
+                .thenReturn(List.of(notice));
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationEndAtBefore(
+                        eq(RecruitmentNoticeStatus.OPEN), any()))
+                .thenReturn(List.of());
+
+        var result = service.processSchedule();
+
+        assertThat(result.activatedNoticeIds()).containsExactly(5L);
+        assertThat(result.expiredNoticeIds()).isEmpty();
+        assertThat(notice.getStatus()).isEqualTo(RecruitmentNoticeStatus.OPEN);
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType()
+                                                        == RecruitmentNoticeActionType.ACTIVATE
+                                                && Long.valueOf(5L)
+                                                        .equals(history.getRecruitmentNoticeId())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
+    }
+
+    /** 신청 종료일이 지난 OPEN 공고는 일괄 처리에서 CLOSED 로 자동 마감돼야 한다. */
+    @Test
+    void processScheduleExpiresOpenNoticePastEndDate() throws ReflectiveOperationException {
+        RecruitmentNotice notice = openNotice();
+        withId(notice, 7L);
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationStartAtBefore(
+                        eq(RecruitmentNoticeStatus.SCHEDULED), any()))
+                .thenReturn(List.of());
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationEndAtBefore(
+                        eq(RecruitmentNoticeStatus.OPEN), any()))
+                .thenReturn(List.of(notice));
+
+        var result = service.processSchedule();
+
+        assertThat(result.expiredNoticeIds()).containsExactly(7L);
+        assertThat(result.activatedNoticeIds()).isEmpty();
+        assertThat(notice.getStatus()).isEqualTo(RecruitmentNoticeStatus.CLOSED);
+        verify(recruitmentNoticeHistoryRepository)
+                .save(
+                        argThat(
+                                (RecruitmentNoticeHistory history) ->
+                                        history.getActionType() == RecruitmentNoticeActionType.CLOSE
+                                                && Long.valueOf(7L)
+                                                        .equals(history.getRecruitmentNoticeId())
+                                                && ADMIN_ID.equals(
+                                                        history.getProcessedByAdminId())));
+    }
+
+    @Test
+    void processScheduleReturnsEmptyWhenNothingDue() {
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationStartAtBefore(
+                        eq(RecruitmentNoticeStatus.SCHEDULED), any()))
+                .thenReturn(List.of());
+        when(recruitmentNoticeRepository.findAllByStatusAndApplicationEndAtBefore(
+                        eq(RecruitmentNoticeStatus.OPEN), any()))
+                .thenReturn(List.of());
+
+        var result = service.processSchedule();
+
+        assertThat(result.activatedNoticeIds()).isEmpty();
+        assertThat(result.expiredNoticeIds()).isEmpty();
     }
 }

@@ -4,6 +4,7 @@ package com.expo.recruitment.entity;
 public enum RecruitmentNoticeActionType {
     CREATE,
     PUBLISH,
+    ACTIVATE,
     UPDATE,
     CLOSE,
     CANCEL,
