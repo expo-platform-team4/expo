@@ -18,6 +18,7 @@ import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,6 +72,51 @@ public class BoothProductService {
     /** 부스 상품 등록. 같은 공고 안에서 같은 부스에 상품을 두 번 등록할 수 없다. */
     @Transactional
     public BoothProductResponse create(CreateBoothProductRequest request) {
+        BoothProduct product = validateAndBuild(request);
+        try {
+            BoothProduct saved = boothProductRepository.saveAndFlush(product);
+            return toResponseWithLocation(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_booth_products_booth")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
+            }
+            log.warn(
+                    "부스 상품 저장 중 예상하지 못한 무결성 제약 위반. recruitmentNoticeId={}, boothId={}",
+                    request.recruitmentNoticeId(),
+                    request.boothId(),
+                    e);
+            throw e;
+        }
+    }
+
+    /**
+     * 부스 상품 일괄 등록. 배치 안에서 같은 (공고, 부스) 조합이 두 번 들어오는 것과 기존 등록분과의 중복을 요청 전체에
+     * 대해 먼저 검증한 뒤, 하나라도 걸리면 아무것도 저장하지 않는다.
+     */
+    @Transactional
+    public List<BoothProductResponse> createBulk(List<CreateBoothProductRequest> requests) {
+        Set<String> seenInBatch = new HashSet<>();
+        for (CreateBoothProductRequest request : requests) {
+            if (!seenInBatch.add(request.recruitmentNoticeId() + ":" + request.boothId())) {
+                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
+            }
+        }
+        List<BoothProduct> products = requests.stream().map(this::validateAndBuild).toList();
+        try {
+            List<BoothProduct> saved = boothProductRepository.saveAllAndFlush(products);
+            return toResponsesWithLocation(saved);
+        } catch (DataIntegrityViolationException e) {
+            String cause = e.getMostSpecificCause().getMessage();
+            if (cause != null && cause.contains("uq_booth_products_booth")) {
+                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
+            }
+            log.warn("부스 상품 일괄 저장 중 예상하지 못한 무결성 제약 위반.", e);
+            throw e;
+        }
+    }
+
+    private BoothProduct validateAndBuild(CreateBoothProductRequest request) {
         if (request.salesStartAt() != null
                 && request.salesEndAt() != null
                 && !request.salesEndAt().isAfter(request.salesStartAt())) {
@@ -103,33 +149,14 @@ public class BoothProductService {
                         otherNoticeIds, RecruitmentNoticeStatus.CANCELED)) {
             throw new BusinessException(ErrorCode.BOOTH_IN_USE_BY_OTHER_NOTICE);
         }
-        BoothProduct product =
-                BoothProduct.create(
-                                request.recruitmentNoticeId(),
-                                request.boothId(),
-                                request.supplyPrice(),
-                                request.vatAmount(),
-                                request.vatIncluded(),
-                                request.includedItems())
-                        .schedule(
-                                request.salesStartAt(),
-                                request.salesEndAt(),
-                                request.paymentEnabled());
-        try {
-            BoothProduct saved = boothProductRepository.saveAndFlush(product);
-            return toResponseWithLocation(saved);
-        } catch (DataIntegrityViolationException e) {
-            String cause = e.getMostSpecificCause().getMessage();
-            if (cause != null && cause.contains("uq_booth_products_booth")) {
-                throw new BusinessException(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
-            }
-            log.warn(
-                    "부스 상품 저장 중 예상하지 못한 무결성 제약 위반. recruitmentNoticeId={}, boothId={}",
-                    request.recruitmentNoticeId(),
-                    request.boothId(),
-                    e);
-            throw e;
-        }
+        return BoothProduct.create(
+                        request.recruitmentNoticeId(),
+                        request.boothId(),
+                        request.supplyPrice(),
+                        request.vatAmount(),
+                        request.vatIncluded(),
+                        request.includedItems())
+                .schedule(request.salesStartAt(), request.salesEndAt(), request.paymentEnabled());
     }
 
     /** 공고별 부스 상품 목록 조회 (관리자, 전체 상태). */

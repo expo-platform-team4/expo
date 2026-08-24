@@ -1,6 +1,7 @@
 package com.expo.booth.controller;
 
 import com.expo.booth.dto.BoothResponse;
+import com.expo.booth.dto.BulkCreateBoothRequest;
 import com.expo.booth.dto.CreateBoothRequest;
 import com.expo.booth.service.BoothService;
 import com.expo.common.response.ApiResponse;
@@ -35,6 +36,14 @@ public class BoothController {
             @PathVariable Long zoneId, @Valid @RequestBody CreateBoothRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(boothService.create(zoneId, request)));
+    }
+
+    @Operation(summary = "구역 안에 부스 공간 일괄 등록")
+    @PostMapping("/bulk")
+    public ResponseEntity<ApiResponse<List<BoothResponse>>> createBoothsBulk(
+            @PathVariable Long zoneId, @Valid @RequestBody BulkCreateBoothRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(boothService.createBulk(zoneId, request.booths())));
     }
 
     @Operation(summary = "구역 내 부스 공간 목록 조회")

@@ -6,6 +6,7 @@ import {
   createRecruitmentNoticeRequest,
   getMyRecruitmentNoticeRequest,
   getPublicRecruitmentNotice,
+  listAdminRecruitmentNotices,
   listMyRecruitmentNoticeRequests,
   listPublicRecruitmentNotices,
   listVenueHalls,
@@ -27,6 +28,13 @@ export const useRecruitmentNotice = (noticeId: number | null) =>
     queryKey: recruitmentKeys.noticeDetail(noticeId ?? 0),
     queryFn: () => getPublicRecruitmentNotice(noticeId as number),
     enabled: noticeId !== null && Number.isFinite(noticeId),
+  })
+
+/** `/admin/recruitment-notices` 목록. 상태 무관 전체. ADMIN 전용. */
+export const useAdminRecruitmentNotices = () =>
+  useQuery({
+    queryKey: recruitmentKeys.adminNotices(),
+    queryFn: listAdminRecruitmentNotices,
   })
 
 /** 내 모집공고 생성 요청 목록. `/client/recruitment-notice-requests` 화면 아래에서만 쓴다(CLIENT 전용). */

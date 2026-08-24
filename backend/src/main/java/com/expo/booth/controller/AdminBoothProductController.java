@@ -1,6 +1,7 @@
 package com.expo.booth.controller;
 
 import com.expo.booth.dto.BoothProductResponse;
+import com.expo.booth.dto.BulkCreateBoothProductRequest;
 import com.expo.booth.dto.CreateBoothProductRequest;
 import com.expo.booth.dto.UpdateBoothProductSalesStatusRequest;
 import com.expo.booth.service.BoothProductService;
@@ -38,6 +39,14 @@ public class AdminBoothProductController {
             @Valid @RequestBody CreateBoothProductRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(boothProductService.create(request)));
+    }
+
+    @Operation(summary = "부스 상품 일괄 등록")
+    @PostMapping("/bulk")
+    public ResponseEntity<ApiResponse<List<BoothProductResponse>>> createBulk(
+            @Valid @RequestBody BulkCreateBoothProductRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(boothProductService.createBulk(request.boothProducts())));
     }
 
     @Operation(summary = "공고별 부스 상품 목록 조회")

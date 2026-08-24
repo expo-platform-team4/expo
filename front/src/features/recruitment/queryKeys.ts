@@ -2,6 +2,7 @@
 export const recruitmentKeys = {
   all: ['recruitment'] as const,
   notices: () => [...recruitmentKeys.all, 'notices'] as const,
+  adminNotices: () => [...recruitmentKeys.all, 'admin-notices'] as const,
   noticeDetail: (noticeId: number) => [...recruitmentKeys.all, 'notice', noticeId] as const,
   requests: () => [...recruitmentKeys.all, 'requests'] as const,
   requestDetail: (requestId: number) => [...recruitmentKeys.all, 'request', requestId] as const,

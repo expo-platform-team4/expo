@@ -39,6 +39,12 @@ export const getPublicRecruitmentNotice = async (noticeId: number): Promise<Recr
   return data.data
 }
 
+/** `GET /api/admin/recruitment-notices` — 상태 무관 전체 공고 목록. ADMIN 전용. */
+export const listAdminRecruitmentNotices = async (): Promise<RecruitmentNotice[]> => {
+  const { data } = await api.get<ApiEnvelope<RecruitmentNotice[]>>('/admin/recruitment-notices')
+  return data.data
+}
+
 /** `com.expo.recruitment.entity.RecruitmentNoticeRequestStatus`. */
 export type RecruitmentNoticeRequestStatus =
   'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELED'
