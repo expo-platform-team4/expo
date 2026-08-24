@@ -7,6 +7,9 @@ import {
   getMyParticipationApplication,
   listAvailableBoothProducts,
   listMyParticipations,
+  updateParticipationApplication,
+  withdrawParticipationApplication,
+  type UpdateParticipationApplicationPayload,
 } from './api'
 import { participationKeys } from './queryKeys'
 
@@ -48,3 +51,33 @@ export const useAvailableBoothProducts = (recruitmentNoticeId: number | null) =>
     queryFn: () => listAvailableBoothProducts(recruitmentNoticeId as number),
     enabled: recruitmentNoticeId !== null && Number.isFinite(recruitmentNoticeId),
   })
+
+/** 참여 신청서 초안 수정. 성공하면 상세·목록 캐시를 무효화한다. */
+export const useUpdateParticipationApplication = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: number
+      payload: UpdateParticipationApplicationPayload
+    }) => updateParticipationApplication(applicationId, payload),
+    onSuccess: (application) => {
+      queryClient.invalidateQueries({ queryKey: participationKeys.detail(application.id) })
+      queryClient.invalidateQueries({ queryKey: participationKeys.myList() })
+    },
+  })
+}
+
+/** 참여 신청 철회. 성공하면 상세·목록 캐시를 무효화한다. */
+export const useWithdrawParticipationApplication = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: withdrawParticipationApplication,
+    onSuccess: (application) => {
+      queryClient.invalidateQueries({ queryKey: participationKeys.detail(application.id) })
+      queryClient.invalidateQueries({ queryKey: participationKeys.myList() })
+    },
+  })
+}

@@ -50,6 +50,40 @@ export const getMyParticipationApplication = async (
   return data.data
 }
 
+/** `PATCH /api/client/participation-applications/{applicationId}` 요청 바디. 초안 상태에서만 가능하다. */
+export type UpdateParticipationApplicationPayload = {
+  companyNameSnapshot: string
+  participationPurpose?: string
+  exhibitDescription?: string
+  selectedBoothProductId?: number
+}
+
+/** `PATCH /api/client/participation-applications/{applicationId}` — 참여 신청서 초안 수정. */
+export const updateParticipationApplication = async (
+  applicationId: number,
+  payload: UpdateParticipationApplicationPayload
+): Promise<ParticipationApplication> => {
+  const { data } = await api.patch<ApiEnvelope<ParticipationApplication>>(
+    `/client/participation-applications/${applicationId}`,
+    payload
+  )
+  return data.data
+}
+
+/**
+ * `POST /api/client/participation-applications/{applicationId}/withdraw` — 참여 신청 철회.
+ * 초안 상태에서만 가능하다 — 결제가 시작된 뒤에는 주문(`/client/booth-orders/{id}`)을 먼저
+ * 취소해야 한다.
+ */
+export const withdrawParticipationApplication = async (
+  applicationId: number
+): Promise<ParticipationApplication> => {
+  const { data } = await api.post<ApiEnvelope<ParticipationApplication>>(
+    `/client/participation-applications/${applicationId}/withdraw`
+  )
+  return data.data
+}
+
 /**
  * 참여 신청 목록 한 행. `com.expo.booth.dto.ClientDashboardBoothResponse` 와 대응한다.
  *
