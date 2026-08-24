@@ -23,6 +23,9 @@ import com.expo.booth.repository.BoothManagementHistoryRepository;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.entity.ParticipationApplication;
+import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ParticipationApplicationRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,11 +49,13 @@ class BoothAllocationServiceTest {
     private static final Long ADMIN_ID = 6L;
     private static final Long NEW_BOOTH_PRODUCT_ID = 7L;
     private static final Long NOTICE_ID = 8L;
+    private static final Long OTHER_NOTICE_ID = 10L;
     private static final Long BOOTH_ID = 9L;
 
     private BoothAllocationRepository boothAllocationRepository;
     private BoothContentRepository boothContentRepository;
     private BoothProductRepository boothProductRepository;
+    private ParticipationApplicationRepository participationApplicationRepository;
     private BoothManagementHistoryRepository boothManagementHistoryRepository;
     private BoothAllocationService service;
 
@@ -59,14 +64,18 @@ class BoothAllocationServiceTest {
         boothAllocationRepository = mock(BoothAllocationRepository.class);
         boothContentRepository = mock(BoothContentRepository.class);
         boothProductRepository = mock(BoothProductRepository.class);
+        participationApplicationRepository = mock(ParticipationApplicationRepository.class);
         boothManagementHistoryRepository = mock(BoothManagementHistoryRepository.class);
         service =
                 new BoothAllocationService(
                         boothAllocationRepository,
                         boothContentRepository,
                         boothProductRepository,
+                        participationApplicationRepository,
                         boothManagementHistoryRepository,
                         new BoothAllocationConverter());
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(submittedApplication()));
     }
 
     private BoothAllocation allocation() {
@@ -84,13 +93,26 @@ class BoothAllocationServiceTest {
     }
 
     private BoothProduct product(BoothSalesStatus status) {
+        return productForNotice(NOTICE_ID, status);
+    }
+
+    private BoothProduct productForNotice(Long noticeId, BoothSalesStatus status) {
         BoothProduct product =
                 BoothProduct.create(
-                        NOTICE_ID, BOOTH_ID, BigDecimal.valueOf(100000), null, true, null);
+                        noticeId, BOOTH_ID, BigDecimal.valueOf(100000), null, true, null);
         if (status != BoothSalesStatus.AVAILABLE) {
             product.changeSalesStatus(status);
         }
         return product;
+    }
+
+    private ParticipationApplication submittedApplication() {
+        ParticipationApplication application =
+                ParticipationApplication.create(
+                        NOTICE_ID, CLIENT_USER_ID, "회사", null, null, BOOTH_PRODUCT_ID);
+        application.startPayment(ORDER_ID);
+        application.submit();
+        return application;
     }
 
     @Test
@@ -170,17 +192,38 @@ class BoothAllocationServiceTest {
                 .isEqualTo(ErrorCode.BOOTH_ALLOCATION_NOT_CANCELABLE);
     }
 
-    /** 재판매 보상 흐름이 없어 부스 상품 상태는 건드리지 않고 배정만 취소 기록으로 남겨야 한다. */
     @Test
-    void cancelSucceedsWithoutTouchingBoothProduct() {
+    void cancelRejectsWhenApplicationNotFound() {
         BoothAllocation allocation = allocation();
         when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
                 .thenReturn(Optional.of(allocation));
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND);
+    }
+
+    /**
+     * 재판매 보상 흐름이 없어 부스 상품 상태는 건드리지 않고 배정만 취소 기록으로 남겨야 한다. 딸린 참여
+     * 신청서는 실제로 없는 부스를 확정된 것처럼 보여주지 않도록 같이 취소돼야 한다.
+     */
+    @Test
+    void cancelSucceedsWithoutTouchingBoothProduct() {
+        BoothAllocation allocation = allocation();
+        ParticipationApplication application = submittedApplication();
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation));
+        when(participationApplicationRepository.findById(APPLICATION_ID))
+                .thenReturn(Optional.of(application));
 
         var response = service.cancel(ALLOCATION_ID, ADMIN_ID, "이중 배정 정정");
 
         assertThat(response.cancelReason()).isEqualTo("이중 배정 정정");
         assertThat(response.status().name()).isEqualTo("CANCELED");
+        assertThat(application.getStatus()).isEqualTo(ParticipationApplicationStatus.CANCELED);
         verify(boothManagementHistoryRepository)
                 .save(
                         argThat(
@@ -330,6 +373,27 @@ class BoothAllocationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_AVAILABLE);
+    }
+
+    /** 다른 모집공고 소속 부스 상품으로는 재배정할 수 없어야 한다. */
+    @Test
+    void reassignRejectsWhenNewProductBelongsToDifferentNotice() {
+        when(boothAllocationRepository.findByIdForUpdate(ALLOCATION_ID))
+                .thenReturn(Optional.of(allocation()));
+        when(boothProductRepository.findById(NEW_BOOTH_PRODUCT_ID))
+                .thenReturn(
+                        Optional.of(productForNotice(OTHER_NOTICE_ID, BoothSalesStatus.AVAILABLE)));
+        when(boothProductRepository.findById(BOOTH_PRODUCT_ID))
+                .thenReturn(Optional.of(product(BoothSalesStatus.SOLD)));
+
+        assertThatThrownBy(
+                        () ->
+                                service.reassign(
+                                        ALLOCATION_ID, NEW_BOOTH_PRODUCT_ID, ADMIN_ID, "이중 배정 정정"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_REASSIGN_NOTICE_MISMATCH);
+        verify(boothAllocationRepository, never()).saveAndFlush(any());
     }
 
     @Test

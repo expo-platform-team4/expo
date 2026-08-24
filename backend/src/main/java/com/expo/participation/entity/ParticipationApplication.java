@@ -113,4 +113,9 @@ public class ParticipationApplication extends BaseTimeEntity {
     public void updateMemo(String memo) {
         this.adminMemo = memo;
     }
+
+    /** 신청 취소. 확정 배정이 관리자 직권으로 취소되는 등, 이 신청이 더는 유효하지 않게 됐을 때 쓴다. */
+    public void cancel() {
+        this.status = ParticipationApplicationStatus.CANCELED;
+    }
 }
