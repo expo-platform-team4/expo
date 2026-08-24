@@ -12,6 +12,7 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.converter.VenueHallConverter;
 import com.expo.venue.dto.CreateVenueHallRequest;
+import com.expo.venue.dto.UpdateVenueLayoutRequest;
 import com.expo.venue.dto.VenueHallResponse;
 import com.expo.venue.entity.VenueHall;
 import com.expo.venue.repository.VenueHallRepository;
@@ -179,5 +180,46 @@ class VenueHallServiceTest {
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.hallCode()).isEqualTo("HALL-A");
+    }
+
+    @Test
+    void updateLayoutRejectsWhenVenueNotFound() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(false);
+
+        assertThatThrownBy(
+                        () ->
+                                service.updateLayout(
+                                        VENUE_ID, 10L, new UpdateVenueLayoutRequest(99L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
+    }
+
+    @Test
+    void updateLayoutRejectsWhenHallNotFound() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueHallRepository.findByIdAndVenueId(10L, VENUE_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                service.updateLayout(
+                                        VENUE_ID, 10L, new UpdateVenueLayoutRequest(99L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_NOT_FOUND);
+    }
+
+    @Test
+    void updateLayoutReplacesLayoutFileId() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        VenueHall hall =
+                VenueHall.create(VENUE_ID, "HALL-A", "A홀", BigDecimal.TEN, BigDecimal.TEN, null);
+        withId(hall, 10L);
+        when(venueHallRepository.findByIdAndVenueId(10L, VENUE_ID)).thenReturn(Optional.of(hall));
+
+        VenueHallResponse response =
+                service.updateLayout(VENUE_ID, 10L, new UpdateVenueLayoutRequest(99L));
+
+        assertThat(response.layoutFileId()).isEqualTo(99L);
     }
 }

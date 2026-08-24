@@ -65,4 +65,9 @@ public class VenueHall extends BaseTimeEntity {
         hall.operationalStatus = OperationalStatus.ACTIVE;
         return hall;
     }
+
+    /** 배치도 파일 교체. */
+    public void updateLayout(Long layoutFileId) {
+        this.layoutFileId = layoutFileId;
+    }
 }

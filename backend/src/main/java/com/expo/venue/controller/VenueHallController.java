@@ -2,6 +2,7 @@ package com.expo.venue.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.venue.dto.CreateVenueHallRequest;
+import com.expo.venue.dto.UpdateVenueLayoutRequest;
 import com.expo.venue.dto.VenueHallResponse;
 import com.expo.venue.service.VenueHallService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,5 +50,15 @@ public class VenueHallController {
     public ResponseEntity<ApiResponse<VenueHallResponse>> get(
             @PathVariable Long venueId, @PathVariable Long hallId) {
         return ResponseEntity.ok(ApiResponse.ok(venueHallService.get(venueId, hallId)));
+    }
+
+    @Operation(summary = "홀 배치도 파일 교체")
+    @PatchMapping("/{hallId}/layout")
+    public ResponseEntity<ApiResponse<VenueHallResponse>> updateLayout(
+            @PathVariable Long venueId,
+            @PathVariable Long hallId,
+            @Valid @RequestBody UpdateVenueLayoutRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(venueHallService.updateLayout(venueId, hallId, request)));
     }
 }

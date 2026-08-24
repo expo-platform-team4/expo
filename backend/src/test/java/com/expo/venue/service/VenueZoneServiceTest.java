@@ -12,6 +12,7 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.converter.VenueZoneConverter;
 import com.expo.venue.dto.CreateVenueZoneRequest;
+import com.expo.venue.dto.UpdateVenueLayoutRequest;
 import com.expo.venue.dto.VenueZoneResponse;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
@@ -182,5 +183,43 @@ class VenueZoneServiceTest {
 
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.zoneCode()).isEqualTo("ZONE-1");
+    }
+
+    @Test
+    void updateLayoutRejectsWhenHallNotFound() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(false);
+
+        assertThatThrownBy(
+                        () -> service.updateLayout(HALL_ID, 10L, new UpdateVenueLayoutRequest(99L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_HALL_NOT_FOUND);
+    }
+
+    @Test
+    void updateLayoutRejectsWhenZoneNotFound() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueZoneRepository.findByIdAndHallId(10L, HALL_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () -> service.updateLayout(HALL_ID, 10L, new UpdateVenueLayoutRequest(99L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+    }
+
+    @Test
+    void updateLayoutReplacesLayoutFileId() {
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        VenueZone zone =
+                VenueZone.create(
+                        HALL_ID, "ZONE-1", "1구역", 50, BigDecimal.TEN, BigDecimal.TEN, null);
+        withId(zone, 10L);
+        when(venueZoneRepository.findByIdAndHallId(10L, HALL_ID)).thenReturn(Optional.of(zone));
+
+        VenueZoneResponse response =
+                service.updateLayout(HALL_ID, 10L, new UpdateVenueLayoutRequest(99L));
+
+        assertThat(response.layoutFileId()).isEqualTo(99L);
     }
 }

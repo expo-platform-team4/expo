@@ -4,6 +4,7 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.venue.converter.VenueZoneConverter;
 import com.expo.venue.dto.CreateVenueZoneRequest;
+import com.expo.venue.dto.UpdateVenueLayoutRequest;
 import com.expo.venue.dto.VenueZoneResponse;
 import com.expo.venue.entity.VenueZone;
 import com.expo.venue.repository.VenueHallRepository;
@@ -93,6 +94,21 @@ public class VenueZoneService {
                 venueZoneRepository
                         .findByIdAndHallId(zoneId, hallId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND));
+        return venueZoneConverter.toResponse(zone);
+    }
+
+    /** 구역 배치도 파일 교체. */
+    @Transactional
+    public VenueZoneResponse updateLayout(
+            Long hallId, Long zoneId, UpdateVenueLayoutRequest request) {
+        if (!venueHallRepository.existsById(hallId)) {
+            throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
+        }
+        VenueZone zone =
+                venueZoneRepository
+                        .findByIdAndHallId(zoneId, hallId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND));
+        zone.updateLayout(request.layoutFileId());
         return venueZoneConverter.toResponse(zone);
     }
 }
