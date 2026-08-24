@@ -17,6 +17,7 @@ import com.expo.participation.entity.ApplicationOperationHistory;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ApplicationOperationHistoryRepository;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -113,12 +114,18 @@ class AdminParticipationApplicationServiceTest {
                                 ADMIN_ID));
     }
 
+    private static final EnumSet<ApplicationOperationActionType> CORRECTION_EVENT_TYPES =
+            EnumSet.of(
+                    ApplicationOperationActionType.CORRECTION_REQUESTED,
+                    ApplicationOperationActionType.CORRECTION_COMPLETED);
+
     @Test
     void completeCorrectionRejectsWhenNoCorrectionWasRequested() {
         when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
         when(applicationOperationHistoryRepository
-                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(APPLICATION_ID))
+                        .findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                                APPLICATION_ID, CORRECTION_EVENT_TYPES))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.completeCorrection(APPLICATION_ID, ADMIN_ID, "완료"))
@@ -128,7 +135,54 @@ class AdminParticipationApplicationServiceTest {
     }
 
     @Test
-    void completeCorrectionRejectsWhenLatestHistoryIsNotCorrectionRequest() {
+    void completeCorrectionRejectsWhenLatestCorrectionEventIsAlreadyCompleted() {
+        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
+                .thenReturn(Optional.of(application()));
+        when(applicationOperationHistoryRepository
+                        .findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                                APPLICATION_ID, CORRECTION_EVENT_TYPES))
+                .thenReturn(
+                        Optional.of(
+                                ApplicationOperationHistory.create(
+                                        APPLICATION_ID,
+                                        ApplicationOperationActionType.CORRECTION_COMPLETED,
+                                        null,
+                                        ADMIN_ID)));
+
+        assertThatThrownBy(() -> service.completeCorrection(APPLICATION_ID, ADMIN_ID, "완료"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CORRECTION_NOT_REQUESTED);
+    }
+
+    @Test
+    void completeCorrectionSucceedsWhenLatestCorrectionEventIsRequested() {
+        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
+                .thenReturn(Optional.of(application()));
+        when(applicationOperationHistoryRepository
+                        .findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                                APPLICATION_ID, CORRECTION_EVENT_TYPES))
+                .thenReturn(
+                        Optional.of(
+                                ApplicationOperationHistory.create(
+                                        APPLICATION_ID,
+                                        ApplicationOperationActionType.CORRECTION_REQUESTED,
+                                        "보완 요청",
+                                        ADMIN_ID)));
+
+        service.completeCorrection(APPLICATION_ID, ADMIN_ID, "보완 완료됨");
+
+        verify(applicationOperationHistoryRepository)
+                .save(
+                        argThatActionType(
+                                ApplicationOperationActionType.CORRECTION_COMPLETED,
+                                APPLICATION_ID,
+                                ADMIN_ID));
+    }
+
+    /** 보완 요청 뒤 무관한 운영 확인(CHECKED)이 끼어들어도 보완 완료 처리가 막히지 않아야 한다 - M-1 회귀 테스트. */
+    @Test
+    void completeCorrectionSucceedsEvenWhenCheckedHistoryIntervenes() {
         when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
                 .thenReturn(Optional.of(application()));
         when(applicationOperationHistoryRepository
@@ -140,19 +194,9 @@ class AdminParticipationApplicationServiceTest {
                                         ApplicationOperationActionType.CHECKED,
                                         null,
                                         ADMIN_ID)));
-
-        assertThatThrownBy(() -> service.completeCorrection(APPLICATION_ID, ADMIN_ID, "완료"))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CORRECTION_NOT_REQUESTED);
-    }
-
-    @Test
-    void completeCorrectionSucceedsWhenLatestHistoryIsCorrectionRequest() {
-        when(participationApplicationRepository.findByIdForUpdate(APPLICATION_ID))
-                .thenReturn(Optional.of(application()));
         when(applicationOperationHistoryRepository
-                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(APPLICATION_ID))
+                        .findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                                APPLICATION_ID, CORRECTION_EVENT_TYPES))
                 .thenReturn(
                         Optional.of(
                                 ApplicationOperationHistory.create(

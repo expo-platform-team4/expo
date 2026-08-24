@@ -11,6 +11,7 @@ import com.expo.participation.entity.ApplicationOperationHistory;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ApplicationOperationHistoryRepository;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import java.util.EnumSet;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,7 +82,11 @@ public class AdminParticipationApplicationService {
     }
 
     /**
-     * 보완 완료 처리. 가장 최근 이력이 보완 요청이어야 한다.
+     * 보완 완료 처리. 가장 최근의 보완 요청/완료 이력이 보완 요청이어야 한다.
+     *
+     * <p>운영 확인(CHECKED)·메모 갱신처럼 보완과 무관한 이력이 그 사이에 끼어들 수 있어, 전체 이력 중 가장 최근
+     * 한 건이 아니라 보완 요청·완료 이력만 걸러서 가장 최근 것을 본다 - 안 그러면 무관한 확인 한 번으로 정당한
+     * 보완 완료 처리가 막힌다.
      *
      * <p>이력 조회와 그 결과로 완료 이력을 남기는 것 사이에 신청서 행 잠금을 걸어, 동시에 들어온 두 완료 요청이 같은 보완 요청
      * 이력을 보고 둘 다 통과하지 못하게 막는다.
@@ -96,12 +101,17 @@ public class AdminParticipationApplicationService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
-        ApplicationOperationHistory latest =
+        ApplicationOperationHistory latestCorrectionEvent =
                 applicationOperationHistoryRepository
-                        .findFirstByApplicationIdOrderByCreatedAtDescIdDesc(applicationId)
+                        .findFirstByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                                applicationId,
+                                EnumSet.of(
+                                        ApplicationOperationActionType.CORRECTION_REQUESTED,
+                                        ApplicationOperationActionType.CORRECTION_COMPLETED))
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.CORRECTION_NOT_REQUESTED));
-        if (latest.getActionType() != ApplicationOperationActionType.CORRECTION_REQUESTED) {
+        if (latestCorrectionEvent.getActionType()
+                != ApplicationOperationActionType.CORRECTION_REQUESTED) {
             throw new BusinessException(ErrorCode.CORRECTION_NOT_REQUESTED);
         }
         applicationOperationHistoryRepository.save(
