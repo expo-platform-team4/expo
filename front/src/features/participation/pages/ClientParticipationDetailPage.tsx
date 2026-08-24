@@ -29,7 +29,16 @@ import {
   useWithdrawParticipationApplication,
 } from '../hooks'
 import { applyParticipationSchema, type ApplyParticipationFormValues } from '../schemas'
-import type { ParticipationApplicationStatus } from '../api'
+import type { ParticipationApplication, ParticipationApplicationStatus } from '../api'
+
+const toFormValues = (application: ParticipationApplication): ApplyParticipationFormValues => ({
+  companyNameSnapshot: application.companyNameSnapshot,
+  participationPurpose: application.participationPurpose ?? '',
+  exhibitDescription: application.exhibitDescription ?? '',
+  selectedBoothProductId: application.selectedBoothProductId
+    ? String(application.selectedBoothProductId)
+    : '',
+})
 
 const statusLabel = (status: ParticipationApplicationStatus): string => {
   switch (status) {
@@ -111,14 +120,7 @@ const ClientParticipationDetailPage = () => {
 
   useEffect(() => {
     if (!application) return
-    reset({
-      companyNameSnapshot: application.companyNameSnapshot,
-      participationPurpose: application.participationPurpose ?? '',
-      exhibitDescription: application.exhibitDescription ?? '',
-      selectedBoothProductId: application.selectedBoothProductId
-        ? String(application.selectedBoothProductId)
-        : '',
-    })
+    reset(toFormValues(application))
   }, [application, reset])
 
   const selectedBoothProductId = watch('selectedBoothProductId')
@@ -220,7 +222,14 @@ const ClientParticipationDetailPage = () => {
                 <Button type="submit" loading={updateMutation.isPending}>
                   저장
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    reset(toFormValues(application))
+                    setEditing(false)
+                  }}
+                >
                   취소
                 </Button>
               </div>
