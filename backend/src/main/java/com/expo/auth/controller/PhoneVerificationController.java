@@ -37,7 +37,8 @@ public class PhoneVerificationController {
 
           - 동일 번호로 재요청 시 기존 REQUESTED 건은 EXPIRED 로 만료 처리합니다.
           - 인증번호 유효 시간은 기본 3분입니다 (환경변수로 변경 가능).
-          - MVP 단계: 외부 SMS API 미연동. 테스트용 고정 인증번호 `123456`으로 검증합니다.
+          - 무작위 6자리 인증번호를 SMS 로 발송합니다. 응답에는 인증번호가 들어 있지 않습니다.
+          - 같은 번호로 재요청하려면 기본 60초를 기다려야 합니다 (429).
           """)
     @PostMapping
     public ResponseEntity<ApiResponse<PhoneVerificationCreateResponse>> requestVerification(
@@ -55,8 +56,7 @@ public class PhoneVerificationController {
                     """
           발송된 인증번호를 검증하고 본인인증을 완료합니다.
 
-          - 요청 API에서 받은 verificationId와 6자리 인증번호가 필요합니다.
-          - MVP 단계: 외부 SMS API 미연동. 테스트용 고정 인증번호 `123456`으로 검증합니다.
+          - 요청 API에서 받은 verificationId와 문자로 받은 6자리 인증번호가 필요합니다.
           - 성공 시 회원가입 등 후속 API에서 사용할 signupVerificationToken을 발급합니다.
           """)
     @PostMapping("/confirm")
@@ -68,7 +68,7 @@ public class PhoneVerificationController {
                 ApiResponse.ok(
                         phoneVerificationService.confirmVerification(
                                 // verificationId() — 요청 API가 준 ID verificationCode() — 사용자가 입력한 6자리
-                                // 번호 (MVP에서는 123456)
+                                // 번호 (문자로 받은 값)
                                 request.verificationId(), request.verificationCode())));
     }
 }
