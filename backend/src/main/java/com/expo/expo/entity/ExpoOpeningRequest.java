@@ -13,6 +13,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
 import java.time.OffsetDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -22,21 +24,26 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.OffsetDateTime;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 /**
- * 주최 클라이언트의 박람회 개최 신청과 관리자 심사 결과.
+ * 박람회 개최 신청 (V1: expo_opening_requests)
  *
- * <p>테이블은 V1 부터 있었지만 Java 계층이 비어 있었다(이슈 #116). 스키마를 그대로 매핑한다 — 마이그레이션을 새로 만들지
- * 않았다.
+ * 임시저장(희-EXPO-01)·심사요청(희-EXPO-02)·개최신청(희-EXPO-17) 흐름을 담당.
+ * 승인되면 별도의 expos 레코드가 생성되어 공개·판매의 기준이 된다.
  *
- * <p><b>희망 장소를 필수로 받는다.</b> 테이블상으로는 {@code desired_venue_id} 가 nullable 이지만, 승인 시 만들
- * {@code expos} 행의 {@code region_code} 가 NOT NULL 인데 신청서에는 지역 컬럼이 없다. 장소에서 지역을 파생시키는 것이
- * 유일하게 값을 조작하지 않는 방법이라 서비스에서 필수로 강제한다.
+ * ※ V1 스키마는 title/description/행사·판매일시가 전부 NOT NULL 이므로
+ *   임시저장(DRAFT) 단계에서도 이 값들은 입력되어야 한다. (정의서 v2와 다른 점)
  */
+@Getter
 @Entity
 @Table(name = "expo_opening_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ExpoOpeningRequest extends BaseTimeEntity {
+public class ExpoOpeningRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,17 +65,17 @@ public class ExpoOpeningRequest extends BaseTimeEntity {
 
     /** 행사 시작·종료 일시 (CHECK: end > start) */
     @Column(name = "event_start_at", nullable = false)
-    private Instant eventStartAt;
+    private OffsetDateTime eventStartAt;
 
     @Column(name = "event_end_at", nullable = false)
-    private Instant eventEndAt;
+    private OffsetDateTime eventEndAt;
 
     /** 판매 시작·종료 일시 (희-EXPO-10 의 기준, CHECK: end > start) */
     @Column(name = "sales_start_at", nullable = false)
-    private Instant salesStartAt;
+    private OffsetDateTime salesStartAt;
 
     @Column(name = "sales_end_at", nullable = false)
-    private Instant salesEndAt;
+    private OffsetDateTime salesEndAt;
 
     /** 희망 장소 (venue → hall → zone 계층, zone 은 hall 필수 — DB CHECK) */
     @Column(name = "desired_venue_id")
@@ -85,13 +92,13 @@ public class ExpoOpeningRequest extends BaseTimeEntity {
     private OpeningRequestStatus status = OpeningRequestStatus.DRAFT;
 
     @Column(name = "submitted_at")
-    private Instant submittedAt;
+    private OffsetDateTime submittedAt;
 
     @Column(name = "reviewed_by_admin_id")
     private Long reviewedByAdminId;
 
     @Column(name = "reviewed_at")
-    private Instant reviewedAt;
+    private OffsetDateTime reviewedAt;
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
@@ -226,8 +233,8 @@ public class ExpoOpeningRequest extends BaseTimeEntity {
         this.status = OpeningRequestStatus.APPROVED;
         this.status = ExpoOpeningRequestStatus.APPROVED;
         this.reviewedByAdminId = adminId;
-        this.reviewedAt = now;
-        this.rejectionReason = null;
+                    this.reviewedAt = now;
+                    this.rejectionReason = null;
     }
 
     /** 반려 */

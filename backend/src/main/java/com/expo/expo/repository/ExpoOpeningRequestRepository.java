@@ -2,11 +2,12 @@ package com.expo.expo.repository;
 
 import com.expo.expo.entity.ExpoEnums;
 import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
-import com.expo.expo.entity.ExpoOpeningRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.expo.expo.entity.ExpoOpeningRequestStatus;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ExpoOpeningRequestRepository extends JpaRepository<ExpoOpeningRequest, Long> {
@@ -16,6 +17,7 @@ public interface ExpoOpeningRequestRepository extends JpaRepository<ExpoOpeningR
             OpeningRequestStatus status, Pageable pageable);
     /** 주최사 본인의 신청 목록. 최근 것부터. */
     List<ExpoOpeningRequest> findByHostClientIdOrderByIdDesc(Long hostClientId);
+    Page<ExpoOpeningRequest> findByHostClientId(Long hostClientId, Pageable pageable);
 
     /**
      * 관리자 심사 목록. 상태를 안 주면 전체.
@@ -25,4 +27,6 @@ public interface ExpoOpeningRequestRepository extends JpaRepository<ExpoOpeningR
     List<ExpoOpeningRequest> findByStatusOrderByIdDesc(OpeningRequestStatus status);
 
     List<ExpoOpeningRequest> findAllByOrderByIdDesc();
+    Page<ExpoOpeningRequest> findByStatusOrderBySubmittedAtAsc(
+            OpeningRequestStatus status, Pageable pageable);
 }

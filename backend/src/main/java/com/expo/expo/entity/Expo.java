@@ -16,20 +16,21 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 
 import jakarta.persistence.Version;
+import java.time.OffsetDateTime;
+
+import jakarta.persistence.Version;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
- * 박람회.
+ * 박람회 원본 (V1: expos)
  *
- * <p>원래 {@code id}·{@code hostClientId} 만 매핑한 스텁이었다. 개최 신청 승인이 이 행을 만들어야 해서(이슈 #116)
- * NOT NULL 컬럼과 승인 흔적을 채울 만큼만 넓혔다. 여전히 전체 컬럼을 다 매핑하지는 않는다 — {@code ddl-auto: validate}
- * 는 매핑한 컬럼이 실제로 있는지만 보고 빠짐은 문제 삼지 않는다.
- *
- * <p>상태 세 가지는 {@code expos} 의 CHECK 제약과 값이 같아야 해서 문자열로 다룬다. 전용 enum 은 이 값을 쓰는 쪽이
- * 늘어날 때 만든다 — 지금 만들면 쓰는 곳이 여기 하나뿐이다.
+ * 개최 신청(expo_opening_requests)이 승인되는 시점에 생성되며,
+ * 티켓 판매·검색 노출·체크인의 기준이 된다.
+ * 승인과 동시에 visibility_status=PUBLIC 으로 자동 공개된다 (희-EXPO-09 → 희-SRCH-12).
  */
 @Entity
 @Table(name = "expos")
@@ -45,58 +46,76 @@ public class Expo {
     @Column(name = "host_client_id", nullable = false)
     private Long hostClientId;
 
-    /** 이 박람회를 만들어 낸 개최 신청. UNIQUE 라 신청 1건당 박람회 1개다. */
-    @Column(name = "opening_request_id")
+    /** 원천 개최 신청 — FK(expo_opening_requests.id), UNIQUE */
+    @Column(name = "opening_request_id", unique = true)
     private Long openingRequestId;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", length = 255, nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(name = "region_code", nullable = false, length = 30)
+    /** 검색·필터용 지역 코드 (희-SRCH-03) — 확정 장소의 virtual_venues.region_code 에서 복사 */
+    @Column(name = "region_code", length = 30, nullable = false)
     private String regionCode;
 
     @Column(name = "event_start_at", nullable = false)
-    private Instant eventStartAt;
+    private OffsetDateTime eventStartAt;
 
     @Column(name = "event_end_at", nullable = false)
-    private Instant eventEndAt;
+    private OffsetDateTime eventEndAt;
 
+    /** 판매 시작·종료 (희-EXPO-10 판매 상태 자동 계산의 기준) */
     @Column(name = "sales_start_at", nullable = false)
-    private Instant salesStartAt;
+    private OffsetDateTime salesStartAt;
 
     @Column(name = "sales_end_at", nullable = false)
-    private Instant salesEndAt;
+    private OffsetDateTime salesEndAt;
 
-    @Column(name = "review_status", nullable = false, length = 20)
-    private String reviewStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", length = 20, nullable = false)
+    private ReviewStatus reviewStatus;
 
-    @Column(name = "visibility_status", nullable = false, length = 20)
-    private String visibilityStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility_status", length = 20, nullable = false)
+    private VisibilityStatus visibilityStatus;
 
-    @Column(name = "event_status", nullable = false, length = 20)
-    private String eventStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_status", length = 20, nullable = false)
+    private EventStatus eventStatus;
 
     @Column(name = "approved_by_admin_id")
     private Long approvedByAdminId;
 
     @Column(name = "approved_at")
-    private Instant approvedAt;
+    private OffsetDateTime approvedAt;
 
-    protected Expo() {}
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "canceled_at")
+    private OffsetDateTime canceledAt;
+
+    /** 낙관적 락 (V1: version BIGINT DEFAULT 0) */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
     /**
-     * 승인된 개최 신청으로부터 박람회를 만든다.
+     * 승인된 개최 신청으로부터 공개 박람회를 생성한다 (희-EXPO-09 승인 시 자동 공개).
      *
-     * <p>상태 셋은 고정이다 — 승인 직후이므로 심사는 APPROVED, 아직 행사 전이라 SCHEDULED, 그리고 승인됐으면 공개하는
-     * 것이 자연스러워 PUBLIC 으로 연다. 비공개로 두고 주최사가 따로 여는 흐름은 화면이 없어 만들지 않았다.
-     *
-     * @param regionCode 희망 장소({@code virtual_venues.region_code})에서 파생한 값. 신청서에는 지역 컬럼이 없다.
+     * @param regionCode 확정(또는 희망) 장소의 지역 코드
      */
-    public static Expo createFromOpeningRequest(
-            ExpoOpeningRequest request, String regionCode, Long approvedByAdminId, Instant now) {
+    public static Expo publishFrom(ExpoOpeningRequest request, String regionCode, Long adminId) {
         Expo expo = new Expo();
         expo.hostClientId = request.getHostClientId();
         expo.openingRequestId = request.getId();
@@ -107,11 +126,11 @@ public class Expo {
         expo.eventEndAt = request.getEventEndAt();
         expo.salesStartAt = request.getSalesStartAt();
         expo.salesEndAt = request.getSalesEndAt();
-        expo.reviewStatus = "APPROVED";
-        expo.visibilityStatus = "PUBLIC";
-        expo.eventStatus = "SCHEDULED";
-        expo.approvedByAdminId = approvedByAdminId;
-        expo.approvedAt = now;
+        expo.reviewStatus = ReviewStatus.APPROVED;
+        expo.visibilityStatus = VisibilityStatus.PUBLIC; // 승인 = 자동 공개 → 목록 자동 반영 (희-SRCH-12)
+        expo.eventStatus = EventStatus.SCHEDULED;
+        expo.approvedByAdminId = adminId;
+        expo.approvedAt = OffsetDateTime.now();
         return expo;
     }
 
