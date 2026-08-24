@@ -26,6 +26,8 @@ import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +64,9 @@ public class RecruitmentNoticeService {
      *
      * <p>이 요청이 승인된 뒤 확정한 장소 예약(구역마다 한 건씩)을 전부 찾아 이 공고에 연결한다. 예약은 홀 확정
      * 단계({@code VenueReservationService.create()})에서 이미 만들어져 있어야 한다.
+     *
+     * <p>신청 종료일이 실제 장소 사용 시작일보다 늦으면 안 된다 - 행사장 사용이 이미 시작됐는데도 신규 신청을
+     * 계속 받는 꼴이 된다. 예약이 여러 건(구역별)이면 가장 이른 사용 시작일을 기준으로 삼는다.
      */
     @Transactional
     public RecruitmentNoticeResponse create(
@@ -93,6 +98,14 @@ public class RecruitmentNoticeService {
         if (anyNotConfirmed) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
+        Instant earliestVenueUseStartAt =
+                reservations.stream()
+                        .map(VenueReservation::getUseStartAt)
+                        .min(Instant::compareTo)
+                        .orElseThrow();
+        if (request.applicationEndAt().isAfter(earliestVenueUseStartAt)) {
+            throw new BusinessException(ErrorCode.APPLICATION_PERIOD_EXCEEDS_VENUE_PERIOD);
+        }
         RecruitmentNotice notice =
                 RecruitmentNotice.create(
                                 request.requestId(),
@@ -116,12 +129,10 @@ public class RecruitmentNoticeService {
         return toResponseWithVenue(saved, reservations);
     }
 
-    /** 관리자용 기업 모집 공고 목록 조회. */
+    /** 관리자용 기업 모집 공고 목록 조회. N+1 을 피하려고 목록에 담긴 공고들의 장소 예약을 한 번에 모아 조회한다. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> list() {
-        return recruitmentNoticeRepository.findAll().stream()
-                .map(this::toResponseWithVenue)
-                .toList();
+        return toResponsesWithVenue(recruitmentNoticeRepository.findAll());
     }
 
     /** 관리자용 기업 모집 공고 상세 조회. */
@@ -141,6 +152,7 @@ public class RecruitmentNoticeService {
         if (notice.getStatus() != RecruitmentNoticeStatus.DRAFT) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_EDITABLE);
         }
+        String beforeData = noticeSnapshot(notice);
         notice.update(
                 request.title(),
                 request.content(),
@@ -152,8 +164,8 @@ public class RecruitmentNoticeService {
                 RecruitmentNoticeHistory.create(
                         notice.getId(),
                         RecruitmentNoticeActionType.UPDATE,
-                        "{\"status\": \"" + notice.getStatus() + "\"}",
-                        "{\"status\": \"" + notice.getStatus() + "\"}",
+                        beforeData,
+                        noticeSnapshot(notice),
                         null,
                         adminId));
         return toResponseWithVenue(notice);
@@ -324,12 +336,22 @@ public class RecruitmentNoticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_FOUND));
     }
 
-    /** 게시 중인 기업 모집 공고 목록 조회 (공개). */
+    /** {@code update()} 감사 이력에 남길 스냅샷 - 상태만으론 실제로 뭐가 바뀌었는지 알 수 없어 수정 대상 필드를 담는다. */
+    private String noticeSnapshot(RecruitmentNotice notice) {
+        return "{\"title\": \""
+                + notice.getTitle()
+                + "\", \"applicationStartAt\": \""
+                + notice.getApplicationStartAt()
+                + "\", \"applicationEndAt\": \""
+                + notice.getApplicationEndAt()
+                + "\"}";
+    }
+
+    /** 게시 중인 기업 모집 공고 목록 조회 (공개). N+1 을 피하려고 목록에 담긴 공고들의 장소 예약을 한 번에 모아 조회한다. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeResponse> listPublic() {
-        return recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN).stream()
-                .map(this::toResponseWithVenue)
-                .toList();
+        return toResponsesWithVenue(
+                recruitmentNoticeRepository.findAllByStatus(RecruitmentNoticeStatus.OPEN));
     }
 
     /** 기업 모집 공고 상세 조회 (공개). 게시 중인 공고만 조회할 수 있다. */
@@ -348,6 +370,21 @@ public class RecruitmentNoticeService {
     private RecruitmentNoticeResponse toResponseWithVenue(RecruitmentNotice notice) {
         return toResponseWithVenue(
                 notice, venueReservationRepository.findAllByRecruitmentNoticeId(notice.getId()));
+    }
+
+    private List<RecruitmentNoticeResponse> toResponsesWithVenue(List<RecruitmentNotice> notices) {
+        List<Long> noticeIds = notices.stream().map(RecruitmentNotice::getId).toList();
+        Map<Long, List<VenueReservation>> reservationsByNoticeId =
+                venueReservationRepository.findAllByRecruitmentNoticeIdIn(noticeIds).stream()
+                        .collect(Collectors.groupingBy(VenueReservation::getRecruitmentNoticeId));
+        return notices.stream()
+                .map(
+                        notice ->
+                                toResponseWithVenue(
+                                        notice,
+                                        reservationsByNoticeId.getOrDefault(
+                                                notice.getId(), List.of())))
+                .toList();
     }
 
     /** 확정된(취소된 것 제외) 예약들에서 전시관(홀)·구역 목록을 뽑아 응답에 채운다. */
