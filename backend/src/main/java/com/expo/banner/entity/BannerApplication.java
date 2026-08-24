@@ -1,15 +1,22 @@
 package com.expo.banner.entity;
 
-import com.expo.banner.entity.BannerApplication.ReviewStatus;
 import com.expo.banner.exception.BannerStateException;
-import jakarta.persistence.*;
-import java.time.OffsetDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.OffsetDateTime;
 
 /**
  * 광고 배너 노출 신청 (V1: banner_applications)

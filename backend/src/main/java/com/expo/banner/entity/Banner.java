@@ -1,14 +1,21 @@
 package com.expo.banner.entity;
 
-import com.expo.banner.entity.Banner.DisplayStatus;
 import com.expo.banner.exception.BannerStateException;
-import jakarta.persistence.*;
-import java.time.OffsetDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.OffsetDateTime;
 
 /**
  * 승인과 동시에 자동 생성되는 실제 노출 배너 (V1: banners)

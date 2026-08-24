@@ -1,12 +1,18 @@
 package com.expo.banner.entity;
 
-import jakarta.persistence.*;
-import java.time.OffsetDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.OffsetDateTime;
 
 /**
  * 배너 노출 위치와 최대 동시 노출 수 (V1: banner_slots)

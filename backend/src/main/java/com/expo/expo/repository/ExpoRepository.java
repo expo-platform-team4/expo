@@ -14,9 +14,9 @@ import org.springframework.data.repository.query.Param;
 /**
  * ExpoRepository — 공개 박람회(expos) JPA Repository (V1 스키마 기준)
  *
- * 검색(희-SRCH-01~13)은 카테고리 N:M, 티켓 최저가/재고 집계, 썸네일, 확정 장소명이
- * 필요해 PostgreSQL 네이티브 쿼리로 구현. 판매 상태(희-EXPO-10)는 V1 의
- * sales_start_at / sales_end_at 실컬럼과 ticket_inventories.available_quantity 로 계산한다.
+ * <p>검색(희-SRCH-01~13)은 카테고리 N:M, 티켓 최저가/재고 집계, 썸네일, 확정 장소명이 필요해 PostgreSQL 네이티브 쿼리로 구현.
+ * 판매 상태(희-EXPO-10)는 V1 의 sales_start_at / sales_end_at 실컬럼과 ticket_inventories.available_quantity 로
+ * 계산한다.
  */
 public interface ExpoRepository extends JpaRepository<Expo, Long> {
 
@@ -33,22 +33,16 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
     /**
      * 공개 박람회 목록 검색 (희-SRCH-01 ~ 13)
      *
-     * 노출 조건(희-SRCH-12): visibility_status='PUBLIC' AND review_status='APPROVED'
-     *                        AND event_status <> 'CANCELED'  → 승인 즉시 자동 반영
-     * 필터: 제목(01) · 카테고리(02, expo_categories EXISTS) · 지역(03, region_code)
-     *      · 기간(04, 행사기간 겹침) · 가격(05, MIN(price)) · 판매상태(06)
-     * 정렬(:sort): LATEST 최신순(07, approved_at DESC) · DEADLINE 마감임박순(08, sales_end_at ASC)
-     *            · POPULAR 인기순(09, SUM(sold_quantity) DESC)
-     * 페이지네이션(10): Pageable 페이지 번호 방식
-     * 카드(11): 제목·기간·장소명·최저가·판매상태·썸네일(file_metadata 연결)
+     * <p>노출 조건(희-SRCH-12): visibility_status='PUBLIC' AND review_status='APPROVED' AND
+     * event_status &lt;&gt; 'CANCELED' → 승인 즉시 자동 반영
      *
-     * 판매 상태 CASE (희-EXPO-10 / 희-SRCH-13):
-     *   event_status='ENDED' 또는 행사 종료일 경과 → EVENT_ENDED(행사종료)
-     *   현재 < sales_start_at                     → UPCOMING(판매예정)
-     *   현재 > sales_end_at                       → SALE_ENDED(판매종료)
-     *   전 상품 available_quantity=0              → SOLD_OUT(매진)
-     *   그 외                                     → ON_SALE(판매중)
+     * <p>필터: 제목(01) · 카테고리(02) · 지역(03) · 기간(04) · 가격(05) · 판매상태(06)
+     *
+     * <p>정렬: LATEST(07) · DEADLINE(08) · POPULAR(09)
+     *
+     * <p>파라미터가 10개인 것은 네이티브 쿼리라 값 객체로 묶을 수 없기 때문이다.
      */
+    // spotless:off
     @Query(
             value =
                     """
@@ -107,8 +101,10 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
                        SELECT 1 FROM expo_categories ec
                        WHERE ec.expo_id = e.id AND ec.category_id = :categoryId))
               AND (:regionCode IS NULL OR e.region_code = CAST(:regionCode AS TEXT))
-              AND (CAST(:fromDate AS DATE) IS NULL OR (e.event_end_at   AT TIME ZONE 'Asia/Seoul')::date >= CAST(:fromDate AS DATE))
-              AND (CAST(:toDate   AS DATE) IS NULL OR (e.event_start_at AT TIME ZONE 'Asia/Seoul')::date <= CAST(:toDate   AS DATE))
+              AND (CAST(:fromDate AS DATE) IS NULL
+                   OR (e.event_end_at AT TIME ZONE 'Asia/Seoul')::date >= CAST(:fromDate AS DATE))
+              AND (CAST(:toDate AS DATE) IS NULL
+                   OR (e.event_start_at AT TIME ZONE 'Asia/Seoul')::date <= CAST(:toDate AS DATE))
               AND (:minPrice IS NULL OR t.min_price >= :minPrice)
               AND (:maxPrice IS NULL OR t.min_price <= :maxPrice)
               AND (
@@ -149,8 +145,10 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
                        SELECT 1 FROM expo_categories ec
                        WHERE ec.expo_id = e.id AND ec.category_id = :categoryId))
               AND (:regionCode IS NULL OR e.region_code = CAST(:regionCode AS TEXT))
-              AND (CAST(:fromDate AS DATE) IS NULL OR (e.event_end_at   AT TIME ZONE 'Asia/Seoul')::date >= CAST(:fromDate AS DATE))
-              AND (CAST(:toDate   AS DATE) IS NULL OR (e.event_start_at AT TIME ZONE 'Asia/Seoul')::date <= CAST(:toDate   AS DATE))
+              AND (CAST(:fromDate AS DATE) IS NULL
+                   OR (e.event_end_at AT TIME ZONE 'Asia/Seoul')::date >= CAST(:fromDate AS DATE))
+              AND (CAST(:toDate AS DATE) IS NULL
+                   OR (e.event_start_at AT TIME ZONE 'Asia/Seoul')::date <= CAST(:toDate AS DATE))
               AND (:minPrice IS NULL OR t.min_price >= :minPrice)
               AND (:maxPrice IS NULL OR t.min_price <= :maxPrice)
               AND (
@@ -165,6 +163,7 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
               )
             """,
             nativeQuery = true)
+    // CHECKSTYLE:OFF ParameterNumber
     Page<ExpoCardProjection> searchPublic(
             @Param("keyword") String keyword,
             @Param("categoryId") Long categoryId,
@@ -176,6 +175,8 @@ public interface ExpoRepository extends JpaRepository<Expo, Long> {
             @Param("saleStatus") String saleStatus,
             @Param("sort") String sort,
             Pageable pageable);
+    // CHECKSTYLE:ON ParameterNumber
+    // spotless:on
 
     /** 개최 신청 목록에 "승인으로 만들어진 박람회 ID" 를 붙일 때 쓴다. */
     List<Expo> findByOpeningRequestIdIn(Collection<Long> openingRequestIds);
