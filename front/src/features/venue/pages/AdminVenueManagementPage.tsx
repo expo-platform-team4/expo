@@ -37,7 +37,7 @@ const LayoutUploader = ({
   isSaving,
 }: {
   layoutFileId: number | null
-  onUpload: (fileId: number) => void
+  onUpload: (fileId: number) => Promise<unknown>
   isSaving: boolean
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -51,15 +51,14 @@ const LayoutUploader = ({
     if (!file) return
 
     setError(null)
-    if (file.type.startsWith('image/')) {
-      setPreviewUrl(URL.createObjectURL(file))
-    }
+    setPreviewUrl(URL.createObjectURL(file))
     setIsUploading(true)
     try {
       const uploaded = await uploadFile(file, 'VENUE_LAYOUT')
-      onUpload(uploaded.fileId)
+      await onUpload(uploaded.fileId)
     } catch (err) {
       setError(getErrorMessage(err))
+      setPreviewUrl(null)
     } finally {
       setIsUploading(false)
     }
@@ -72,7 +71,7 @@ const LayoutUploader = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,application/pdf"
+        accept="image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={handleFileSelected}
       />
@@ -112,7 +111,9 @@ const ZoneCard = ({ hallId, zone }: { hallId: number; zone: VenueZone }) => {
       <LayoutUploader
         layoutFileId={zone.layoutFileId}
         isSaving={updateLayoutMutation.isPending}
-        onUpload={(layoutFileId) => updateLayoutMutation.mutate({ zoneId: zone.id, layoutFileId })}
+        onUpload={(layoutFileId) =>
+          updateLayoutMutation.mutateAsync({ zoneId: zone.id, layoutFileId })
+        }
       />
       <p className="text-label-md mt-2 font-medium">{zone.name}</p>
       <p className="text-label-sm text-on-surface-variant">부스 최대 {zone.maxBoothCount}개</p>
@@ -133,7 +134,7 @@ const HallSection = ({ venueId, hall }: { venueId: number; hall: VenueHall }) =>
             layoutFileId={hall.layoutFileId}
             isSaving={updateLayoutMutation.isPending}
             onUpload={(layoutFileId) =>
-              updateLayoutMutation.mutate({ hallId: hall.id, layoutFileId })
+              updateLayoutMutation.mutateAsync({ hallId: hall.id, layoutFileId })
             }
           />
         </div>
