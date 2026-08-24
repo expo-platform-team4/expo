@@ -1,6 +1,7 @@
 package com.expo.recruitment.repository;
 
 import com.expo.recruitment.entity.RecruitmentNoticeRequestZone;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,4 +17,6 @@ public interface RecruitmentNoticeRequestZoneRepository
             "SELECT z.id.venueZoneId FROM RecruitmentNoticeRequestZone z "
                     + "WHERE z.id.requestId = :requestId")
     List<Long> findVenueZoneIdsByRequestId(@Param("requestId") Long requestId);
+
+    List<RecruitmentNoticeRequestZone> findAllByIdRequestIdIn(Collection<Long> requestIds);
 }

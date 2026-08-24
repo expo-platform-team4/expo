@@ -21,6 +21,8 @@ import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,9 +134,8 @@ public class RecruitmentNoticeRequestService {
     /** 주최 클라이언트 본인이 작성한 모집공고 생성 요청 목록 조회. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeRequestResponse> listMine(Long hostClientId) {
-        return recruitmentNoticeRequestRepository.findAllByHostClientId(hostClientId).stream()
-                .map(this::toResponseWithZones)
-                .toList();
+        return toResponsesWithZones(
+                recruitmentNoticeRequestRepository.findAllByHostClientId(hostClientId));
     }
 
     /** 주최 클라이언트 본인이 작성한 모집공고 생성 요청 상세 조회. */
@@ -153,9 +154,7 @@ public class RecruitmentNoticeRequestService {
     /** 관리자용 모집공고 생성 요청 목록 조회. */
     @Transactional(readOnly = true)
     public List<RecruitmentNoticeRequestResponse> listForAdmin() {
-        return recruitmentNoticeRequestRepository.findAll().stream()
-                .map(this::toResponseWithZones)
-                .toList();
+        return toResponsesWithZones(recruitmentNoticeRequestRepository.findAll());
     }
 
     /** 관리자용 모집공고 생성 요청 상세 조회. */
@@ -213,5 +212,26 @@ public class RecruitmentNoticeRequestService {
         List<Long> venueZoneIds =
                 recruitmentNoticeRequestZoneRepository.findVenueZoneIdsByRequestId(request.getId());
         return recruitmentNoticeRequestConverter.toResponse(request, venueZoneIds);
+    }
+
+    private List<RecruitmentNoticeRequestResponse> toResponsesWithZones(
+            List<RecruitmentNoticeRequest> requests) {
+        List<Long> requestIds = requests.stream().map(RecruitmentNoticeRequest::getId).toList();
+        Map<Long, List<Long>> zoneIdsByRequestId =
+                recruitmentNoticeRequestZoneRepository.findAllByIdRequestIdIn(requestIds).stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        RecruitmentNoticeRequestZone::getRequestId,
+                                        Collectors.mapping(
+                                                RecruitmentNoticeRequestZone::getVenueZoneId,
+                                                Collectors.toList())));
+        return requests.stream()
+                .map(
+                        request ->
+                                recruitmentNoticeRequestConverter.toResponse(
+                                        request,
+                                        zoneIdsByRequestId.getOrDefault(
+                                                request.getId(), List.of())))
+                .toList();
     }
 }

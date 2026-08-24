@@ -22,7 +22,9 @@ import com.expo.recruitment.repository.RecruitmentResultItemRepository;
 import com.expo.recruitment.repository.RecruitmentResultRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -120,21 +122,34 @@ public class AdminRecruitmentResultService {
 
     private List<RecruitmentResultItem> buildItems(
             Long recruitmentResultId, List<ParticipationApplication> applications) {
+        List<Long> applicationIds =
+                applications.stream().map(ParticipationApplication::getId).toList();
+        Map<Long, BoothAllocation> assignedAllocationByApplicationId =
+                boothAllocationRepository.findAllByApplicationIdIn(applicationIds).stream()
+                        .filter(
+                                allocation ->
+                                        allocation.getStatus() == BoothAllocationStatus.ASSIGNED)
+                        .collect(Collectors.toMap(BoothAllocation::getApplicationId, a -> a));
+        List<Long> boothOrderIds =
+                assignedAllocationByApplicationId.values().stream()
+                        .map(BoothAllocation::getBoothOrderId)
+                        .toList();
+        Map<Long, BoothOrder> orderById =
+                boothOrderRepository.findAllById(boothOrderIds).stream()
+                        .collect(Collectors.toMap(BoothOrder::getId, o -> o));
         return applications.stream()
                 .map(
                         application ->
-                                boothAllocationRepository
-                                        .findByApplicationId(application.getId())
-                                        .filter(
-                                                allocation ->
-                                                        allocation.getStatus()
-                                                                == BoothAllocationStatus.ASSIGNED)
+                                Optional.ofNullable(
+                                                assignedAllocationByApplicationId.get(
+                                                        application.getId()))
                                         .map(
                                                 allocation ->
                                                         toResultItem(
                                                                 recruitmentResultId,
                                                                 application,
-                                                                allocation)))
+                                                                allocation,
+                                                                orderById)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
@@ -143,11 +158,12 @@ public class AdminRecruitmentResultService {
     private RecruitmentResultItem toResultItem(
             Long recruitmentResultId,
             ParticipationApplication application,
-            BoothAllocation allocation) {
-        BoothOrder order =
-                boothOrderRepository
-                        .findById(allocation.getBoothOrderId())
-                        .orElseThrow(() -> new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND));
+            BoothAllocation allocation,
+            Map<Long, BoothOrder> orderById) {
+        BoothOrder order = orderById.get(allocation.getBoothOrderId());
+        if (order == null) {
+            throw new BusinessException(ErrorCode.BOOTH_ORDER_NOT_FOUND);
+        }
         return RecruitmentResultItem.create(
                 recruitmentResultId,
                 application.getId(),
@@ -166,12 +182,17 @@ public class AdminRecruitmentResultService {
     /** 모집 결과 목록 조회 (페이지 단위). */
     @Transactional(readOnly = true)
     public Page<RecruitmentResultResponse> list(Pageable pageable) {
-        return recruitmentResultRepository
-                .findAll(pageable)
-                .map(
-                        result ->
-                                recruitmentResultConverter.toResponse(
-                                        result, getItems(result.getId())));
+        Page<RecruitmentResult> results = recruitmentResultRepository.findAll(pageable);
+        List<Long> resultIds = results.map(RecruitmentResult::getId).toList();
+        Map<Long, List<RecruitmentResultItem>> itemsByResultId =
+                recruitmentResultItemRepository.findAllByRecruitmentResultIdIn(resultIds).stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        RecruitmentResultItem::getRecruitmentResultId));
+        return results.map(
+                result ->
+                        recruitmentResultConverter.toResponse(
+                                result, itemsByResultId.getOrDefault(result.getId(), List.of())));
     }
 
     /** 관리자 직권 취소. 이미 확정·박람회 반영된 결과는 취소할 수 없다. */

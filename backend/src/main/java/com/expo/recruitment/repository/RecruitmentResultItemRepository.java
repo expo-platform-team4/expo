@@ -1,6 +1,7 @@
 package com.expo.recruitment.repository;
 
 import com.expo.recruitment.entity.RecruitmentResultItem;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,7 @@ public interface RecruitmentResultItemRepository
         extends JpaRepository<RecruitmentResultItem, Long> {
 
     List<RecruitmentResultItem> findAllByRecruitmentResultId(Long recruitmentResultId);
+
+    List<RecruitmentResultItem> findAllByRecruitmentResultIdIn(
+            Collection<Long> recruitmentResultIds);
 }

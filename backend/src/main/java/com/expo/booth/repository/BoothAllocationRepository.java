@@ -2,6 +2,8 @@ package com.expo.booth.repository;
 
 import com.expo.booth.entity.BoothAllocation;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,6 +16,8 @@ public interface BoothAllocationRepository extends JpaRepository<BoothAllocation
     Optional<BoothAllocation> findByIdAndClientUserId(Long id, Long clientUserId);
 
     Optional<BoothAllocation> findByApplicationId(Long applicationId);
+
+    List<BoothAllocation> findAllByApplicationIdIn(Collection<Long> applicationIds);
 
     /** 상태를 읽고 그 결과로 취소하는 처리 앞에서 행 잠금을 걸어 동시 취소를 막는다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
