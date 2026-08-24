@@ -20,11 +20,13 @@ import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestActionType;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestStatus;
+import com.expo.recruitment.entity.VenueConflictStatus;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.time.Instant;
@@ -53,6 +55,7 @@ class RecruitmentNoticeRequestServiceTest {
     private VirtualVenueRepository virtualVenueRepository;
     private VenueHallRepository venueHallRepository;
     private VenueZoneRepository venueZoneRepository;
+    private VenueReservationRepository venueReservationRepository;
     private RecruitmentNoticeRequestService service;
 
     @BeforeEach
@@ -64,6 +67,7 @@ class RecruitmentNoticeRequestServiceTest {
         virtualVenueRepository = mock(VirtualVenueRepository.class);
         venueHallRepository = mock(VenueHallRepository.class);
         venueZoneRepository = mock(VenueZoneRepository.class);
+        venueReservationRepository = mock(VenueReservationRepository.class);
         service =
                 new RecruitmentNoticeRequestService(
                         recruitmentNoticeRequestRepository,
@@ -72,6 +76,7 @@ class RecruitmentNoticeRequestServiceTest {
                         virtualVenueRepository,
                         venueHallRepository,
                         venueZoneRepository,
+                        venueReservationRepository,
                         new RecruitmentNoticeRequestConverter());
     }
 
@@ -170,7 +175,7 @@ class RecruitmentNoticeRequestServiceTest {
     }
 
     @Test
-    void createSucceedsAsDraftWithClearAndPendingAndSavesEachZone() {
+    void createSucceedsAsSubmittedWithClearConflictAndSavesEachZone() {
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
         when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
         when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
@@ -183,11 +188,35 @@ class RecruitmentNoticeRequestServiceTest {
                 service.create(
                         HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
 
-        assertThat(response.status()).isEqualTo(RecruitmentNoticeRequestStatus.DRAFT);
+        assertThat(response.status()).isEqualTo(RecruitmentNoticeRequestStatus.SUBMITTED);
+        assertThat(response.venueConflictStatus()).isEqualTo(VenueConflictStatus.CLEAR);
         assertThat(response.venueDecision()).isEqualTo(VenueDecision.PENDING);
         assertThat(response.hostClientId()).isEqualTo(HOST_CLIENT_ID);
         assertThat(response.venueZoneIds()).containsExactlyInAnyOrder(ZONE_ID, OTHER_ZONE_ID);
         verify(recruitmentNoticeRequestZoneRepository, times(2)).save(any());
+    }
+
+    /**
+     * 고른 구역 중 하나라도 희망 기간에 이미 확정된 예약과 겹치면, 실제로 예약을 막지는 않되(그건 예약 확정
+     * 시점의 몫이다) 관리자가 참고하도록 CONFLICT_PENDING 으로 남겨야 한다.
+     */
+    @Test
+    void createMarksConflictPendingWhenAnyZoneOverlapsExistingReservation() {
+        when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(true);
+        when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
+        when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
+        when(venueZoneRepository.existsByIdAndHallId(ZONE_ID, HALL_ID)).thenReturn(true);
+        when(venueZoneRepository.existsByIdAndHallId(OTHER_ZONE_ID, HALL_ID)).thenReturn(true);
+        when(venueReservationRepository.existsOverlapping(VENUE_ID, HALL_ID, OTHER_ZONE_ID, T3, T4))
+                .thenReturn(true);
+        when(recruitmentNoticeRequestRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecruitmentNoticeRequestResponse response =
+                service.create(
+                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
+
+        assertThat(response.venueConflictStatus()).isEqualTo(VenueConflictStatus.CONFLICT_PENDING);
     }
 
     @Test

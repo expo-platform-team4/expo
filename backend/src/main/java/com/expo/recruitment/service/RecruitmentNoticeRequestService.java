@@ -10,11 +10,13 @@ import com.expo.recruitment.entity.RecruitmentNoticeRequest;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestActionType;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestZone;
+import com.expo.recruitment.entity.VenueConflictStatus;
 import com.expo.recruitment.entity.VenueDecision;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.repository.VenueHallRepository;
+import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.util.LinkedHashSet;
@@ -32,6 +34,7 @@ public class RecruitmentNoticeRequestService {
     private final VirtualVenueRepository virtualVenueRepository;
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
+    private final VenueReservationRepository venueReservationRepository;
     private final RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter;
 
     public RecruitmentNoticeRequestService(
@@ -41,6 +44,7 @@ public class RecruitmentNoticeRequestService {
             VirtualVenueRepository virtualVenueRepository,
             VenueHallRepository venueHallRepository,
             VenueZoneRepository venueZoneRepository,
+            VenueReservationRepository venueReservationRepository,
             RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter) {
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
@@ -48,15 +52,20 @@ public class RecruitmentNoticeRequestService {
         this.virtualVenueRepository = virtualVenueRepository;
         this.venueHallRepository = venueHallRepository;
         this.venueZoneRepository = venueZoneRepository;
+        this.venueReservationRepository = venueReservationRepository;
         this.recruitmentNoticeRequestConverter = recruitmentNoticeRequestConverter;
     }
 
     /**
-     * 모집공고 생성 요청 작성. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가 올바른지
-     * 검증한다.
+     * 모집공고 생성 요청 작성 및 제출. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가
+     * 올바른지 검증한다. 별도의 초안 수정 단계가 없어 작성과 동시에 제출된다.
      *
      * <p>고른 구역이 전시관 소속인지는 서비스에서도 먼저 확인하지만, DB의 복합 FK({@code
      * fk_notice_request_zones_zone_in_hall})가 최종 방어선이다.
+     *
+     * <p>고른 구역 중 하나라도 희망 기간에 이미 확정된 예약과 겹치면 장소 충돌 상태를 CONFLICT_PENDING 으로
+     * 남긴다 - 관리자가 {@link #decideVenue} 로 검토할 때 참고하도록. 최종 방어는 여전히 예약 확정 시점의 DB
+     * EXCLUDE 제약이 맡는다.
      */
     @Transactional
     public RecruitmentNoticeRequestResponse create(
@@ -83,6 +92,16 @@ public class RecruitmentNoticeRequestService {
                 throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
             }
         }
+        boolean anyZoneOverlapsExistingReservation =
+                venueZoneIds.stream()
+                        .anyMatch(
+                                zoneId ->
+                                        venueReservationRepository.existsOverlapping(
+                                                request.virtualVenueId(),
+                                                request.venueHallId(),
+                                                zoneId,
+                                                request.eventStartAt(),
+                                                request.eventEndAt()));
         RecruitmentNoticeRequest entity =
                 RecruitmentNoticeRequest.create(
                                 hostClientId,
@@ -97,6 +116,10 @@ public class RecruitmentNoticeRequestService {
                                 request.venueHallId(),
                                 request.targetCompanyCount(),
                                 request.requestedBoothConfig());
+        entity.submit(
+                anyZoneOverlapsExistingReservation
+                        ? VenueConflictStatus.CONFLICT_PENDING
+                        : VenueConflictStatus.CLEAR);
         RecruitmentNoticeRequest saved = recruitmentNoticeRequestRepository.save(entity);
         for (Long zoneId : venueZoneIds) {
             recruitmentNoticeRequestZoneRepository.save(
