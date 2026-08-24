@@ -137,6 +137,13 @@ const ClientExpoListPage = () => {
                     <Button
                       size="sm"
                       variant="secondary"
+                      onClick={() => router.push(`/client/expos/${expo.expoId}/tickets`)}
+                    >
+                      티켓 상품 관리
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => router.push(`/expos/${expo.expoId}`)}
                     >
                       공개 화면 보기
