@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import * as ticketApi from './api'
 import { ticketKeys } from './queryKeys'
@@ -46,3 +46,60 @@ export const useMyTickets = () =>
     queryKey: ticketKeys.myTickets(),
     queryFn: ticketApi.fetchMyTickets,
   })
+
+// ---------------------------------------------------------------------------
+// 주최사(CLIENT) — 티켓 상품 관리
+// ---------------------------------------------------------------------------
+
+/** 주최사 본인 박람회의 티켓 상품 목록. `GET /api/client/expos/{expoId}/ticket-search`. */
+export const useClientTicketProducts = (expoId: number) =>
+  useQuery({
+    queryKey: ticketKeys.clientTicketProducts(expoId),
+    queryFn: () => ticketApi.fetchClientTicketProducts(expoId),
+  })
+
+/** 티켓 상품 생성. 성공하면 목록을 다시 불러온다. */
+export const useCreateTicketProduct = (expoId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: ticketApi.CreateTicketProductPayload) =>
+      ticketApi.createTicketProduct(expoId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.clientTicketProducts(expoId) })
+    },
+  })
+}
+
+/** 티켓 상품 가격·재고 수정(`DRAFT` 상태만 허용). 성공하면 목록을 다시 불러온다. */
+export const useUpdateTicketProduct = (expoId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ticketProductId,
+      payload,
+    }: {
+      ticketProductId: number
+      payload: ticketApi.UpdateTicketProductPayload
+    }) => ticketApi.updateTicketProduct(expoId, ticketProductId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.clientTicketProducts(expoId) })
+    },
+  })
+}
+
+/** 티켓 상품 판매 상태 전환(게시·판매 취소). 성공하면 목록을 다시 불러온다. */
+export const useUpdateTicketProductStatus = (expoId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ticketProductId,
+      status,
+    }: {
+      ticketProductId: number
+      status: ticketApi.UpdateTicketProductStatusPayload['status']
+    }) => ticketApi.updateTicketProductStatus(expoId, ticketProductId, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.clientTicketProducts(expoId) })
+    },
+  })
+}

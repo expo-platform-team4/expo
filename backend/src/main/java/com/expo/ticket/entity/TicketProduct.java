@@ -89,5 +89,9 @@ public class TicketProduct extends BaseTimeEntity {
         this.price = price;
     }
 
+    public void changeStatus(TicketProductStatus status) {
+        this.status = status;
+    }
+
     protected TicketProduct() {}
 }

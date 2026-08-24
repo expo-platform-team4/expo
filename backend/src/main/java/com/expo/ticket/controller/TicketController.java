@@ -6,10 +6,12 @@ import com.expo.ticket.dto.PurchasableTicketProductResponse;
 import com.expo.ticket.dto.TicketProductCreateRequest;
 import com.expo.ticket.dto.TicketProductCreateResponse;
 import com.expo.ticket.dto.TicketProductSearchResponse;
+import com.expo.ticket.dto.TicketProductStatusUpdateRequest;
 import com.expo.ticket.dto.TicketUpdateRequest;
 import com.expo.ticket.dto.TicketUpdateResponse;
 import com.expo.ticket.service.PurchasableTicketProductService;
 import com.expo.ticket.service.TicketProductCreateService;
+import com.expo.ticket.service.TicketProductStatusService;
 import com.expo.ticket.service.TicketProductUpdateService;
 import com.expo.ticket.service.TicketSearchService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,6 +40,7 @@ public class TicketController {
     private final TicketProductCreateService ticketProductCreateService;
     private final TicketSearchService ticketSearchService;
     private final TicketProductUpdateService ticketProductUpdateService;
+    private final TicketProductStatusService ticketProductStatusService;
     private final PurchasableTicketProductService purchasableTicketProductService;
 
     @PostMapping("/client/expos/{expoId}/ticket-products")
@@ -70,6 +73,19 @@ public class TicketController {
         TicketUpdateResponse response =
                 ticketProductUpdateService.ticketUpdate(
                         authPrincipal.getMemberId(), expoId, ticketProductId, request);
+
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @PatchMapping("/client/expos/{expoId}/ticket-products/{ticketProductId}/status")
+    public ResponseEntity<ApiResponse<TicketProductSearchResponse>> updateStatus(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long expoId,
+            @PathVariable Long ticketProductId,
+            @Valid @RequestBody TicketProductStatusUpdateRequest request) {
+        TicketProductSearchResponse response =
+                ticketProductStatusService.changeStatus(
+                        authPrincipal.getMemberId(), expoId, ticketProductId, request.status());
 
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

@@ -10,7 +10,7 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 디자인 | Stitch 프로젝트 `엑스포티켓(ExpoTicket)` · `projects/9433856227347358698` |
 | 화면 | **33개** (캔버스 인스턴스는 238개지만 재생성 이력이고, 최종 화면은 33개다) |
 | 프론트 | 라우트 **38개** · `features` 모듈 11개 (`venue` 만 스텁) |
-| 상태 | Function.md 가 정의한 화면 **전부 연결 완료.** 남은 것은 백엔드 API 가 없어 "준비 중" 인 6개 화면뿐 |
+| 상태 | Function.md 가 정의한 33개 화면 **전부 연결 완료.** 배너 3개만 도메인 자체가 없어 제외(7-1). 그 밖에 화면 계획엔 없었지만 관리자 운영에 필요한 API 4개가 화면 없이 백엔드만 있음(4절 마지막 참고) |
 
 **상태 표기** — ✅ 실제 API 연결 완료 · ⚠️ 화면은 있으나 API 가 없어 "준비 중" 표시
 (전부 [이슈 #107](https://github.com/expo-platform-team4/expo/issues/107) 로 추적)
@@ -31,10 +31,10 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 일반회원 가입 | `7eb82549` | `/signup/member` | `auth` | `POST /api/auth/signup` · `email-availability` · `nickname-availability` · `phone-verifications` | ✅ |
 | 기업회원 가입 | `14b50137` | `/signup/client` | `auth` | `POST /api/auth/client-signup` · `business-number-availability` | ✅ |
 | 소셜 로그인 콜백 | `2e17f073` | `/auth/callback` | `auth` | OAuth2 리다이렉트 | ✅ (계약 미확정, 아래 주) |
-| 티켓 예매 (회원) | `d3c2aaf3` | `/orders?expoId=` | `ticket` | `POST /api/orders/member` | 주문 ✅ / 결제 ⚠️ |
-| 티켓 예매 (비회원) | `2fd025bd` | `/orders/guest?expoId=` | `ticket` | `POST /api/orders/guest` | 주문 ✅ / 결제 ⚠️ |
+| 티켓 예매 (회원) | `d3c2aaf3` | `/orders?expoId=` | `ticket` | `POST /api/orders/member` + `payment` 도메인 | ✅ |
+| 티켓 예매 (비회원) | `2fd025bd` | `/orders/guest?expoId=` | `ticket` | `POST /api/orders/guest` + `payment` 도메인 | ✅ |
 | 비회원 주문 조회 | `119d7f0f` | `/orders/guest/search` | `ticket` | `POST /api/orders/search/guest` | ✅ |
-| 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/[orderNumber]` | `ticket` | 위 검색 API 재사용 | 조회 ✅ / 환불 ⚠️ |
+| 비회원 주문 상세 | `d25ce9bc` | `/orders/guest/[orderNumber]` | `ticket` | 위 검색 API 재사용 + `refund` 도메인 | ✅ |
 | 예매 내역 | `50b7de2e` | `/mypage/orders` | `ticket` | `GET /api/users/me/orders` | ✅ |
 | 나의 티켓 | `66513a65` | `/mypage/tickets` | `ticket` | `GET /api/users/me/tickets` | ✅ |
 | 프로필 수정 | 대응 없음 | `/mypage/profile` | `auth` | 닉네임·비밀번호 변경, 회원 탈퇴 | ✅ |
@@ -60,7 +60,7 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 클라이언트 대시보드 | `0ae4be64` | `/client/dashboard` | `client` | `GET /api/client/me/dashboard` · `/me/expos` · `/me/booths` · `/me/recruitment-results` | ✅ |
 | 내 박람회 | `f83a3d68` | `/client/expos` | `client` | `GET /api/client/me/expos` + `/api/client/settlements` (매출 요약 조인) | ✅ |
 | 박람회 이미지·자료 관리 | 대응 없음 | `/client/expos/[expoId]/content` | `client` | `POST /api/files` + `/api/client/expos/{id}/images` · `/files` | ✅ |
-| 박람회 개최 신청 | `13484d75` | `/client/expos/new` | `client` | 개최 신청 **없음** | ⚠️ |
+| 박람회 개최 신청 | `13484d75` | `/client/expos/new` | `client` | `POST/GET/PATCH /api/client/expo-opening-requests` · `/submit` · `/cancel` (이슈 #116, PR #117) | ✅ |
 | 부스 관리 | 대응 없음 | `/client/booths` | `booth` | `GET /api/client/me/booths` · `/booth-allocations/{id}` · `/booth-contents/**` | ✅ |
 | 모집공고 요청 관리 | `fe000d47` | `/client/recruitment-notice-requests`<br>`/[requestId]` | `recruitment` | `GET /api/client/recruitment-notice-requests` · `/{id}` | ✅ |
 | 공고 생성 요청 | `533717af` | `/client/recruitment-notice-requests/new` | `recruitment` | `POST /api/client/recruitment-notice-requests`<br>+ `GET /api/virtual-venues` · `/{id}/halls` · `/api/venue-halls/{id}/zones` | ✅ |
@@ -83,7 +83,7 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 화면 | ID | 라우트 | 모듈 | 백엔드 API | 상태 |
 |-|-|-|-|-|-|
 | 관리자 대시보드 | `ecafe136` | `/admin` | `admin` | `GET /api/admin/dashboard/summary` · `/pending-tasks` | ✅ |
-| 박람회 개최 승인 관리 | `262c25c5` | `/admin/expos` | `admin` | 개최 승인 **없음** | ⚠️ |
+| 박람회 개최 승인 관리 | `262c25c5` | `/admin/expos` | `admin` | `GET /api/admin/expo-opening-requests` · `/{id}` · `/approve` · `/reject` (이슈 #116, PR #117) | ✅ |
 | 공고 신청 관리 | `0f675bf6` | `/admin/recruitment-notice-requests` | `admin` | `GET /api/admin/recruitment-notice-requests` · `PATCH .../venue-decision` | ✅ |
 | 공고 모집 관리 | `a3059378` | `/admin/recruitment-notices`<br>`/new` | `admin` | `GET/POST /api/admin/recruitment-notices` · `publish` · `close` · `cancel` | ✅ |
 | 카테고리 관리 | `b1690b49` | `/admin/categories` | `admin` | `GET/POST/PATCH/DELETE /api/admin/categories` | ✅ |
@@ -104,17 +104,15 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 화면은 만들어 두고 `EmptyState notReady` 로 "준비 중" 을 명시한다 — 조용히 빈 목록을
 보여주지 않는다(Function.md 7절).
 
-| 화면 | 없는 API | 메모 |
-|-|-|-|
-| 결제 완료 · 환불 | 결제·환불 도메인 전체 | `payment`·`refund` 패키지가 `package-info.java` 뿐이다. **주문을 `PAID` 로 만드는 경로가 없어** 발권·정산·체크인이 실데이터로는 SQL 시드 없이 막힌다 |
-
-> **이슈 #107 은 대부분 해소됐다. 남은 것은 위 표 한 줄(결제·환불)뿐이다.**
+> **이슈 #107 은 완전히 해소됐다.** Function.md 가 정의한 33개 화면 전부 실제 API 로
+> 연결됐다.
 >
 > | 무엇 | 어떻게 |
 > |-|-|
 > | 홈 · 박람회 목록 · 박람회 상세(헤더) | `GET /api/expos`, `GET /api/expos/{expoId}` (2026-08-20) |
 > | 예매 내역 · 나의 티켓 | `GET /api/users/me/orders`, `/tickets` (PR #118) |
 > | 박람회 개최 신청 · 승인 관리 | 이슈 #116 (PR #117) |
+> | 결제 완료 · 환불 | `payment`·`refund` 도메인 (2026-08-23~24, 프론트 연동 + `GuestTicketRefundEligibilityService` 읽기전용 트랜잭션 버그 수정 포함) |
 >
 > 공개 박람회 목록은 예상대로 `v_public_expo_cards` 뷰 위에 컨트롤러·매퍼만 얹으면 되는
 > 일이었다.
@@ -123,6 +121,22 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 
 `banner` 도메인은 DB·일부 엔티티만 있고 컨트롤러가 없다. 이번 범위에서 완전히 뺐다 —
 [이슈 #103](https://github.com/expo-platform-team4/expo/issues/103).
+
+### 관리자 운영 API — 화면 없이 백엔드만 있는 4개 (신규 발견, 2026-08-24 QA)
+
+Function.md 33개 화면에 애초에 없던 것들이라 이슈 #107 대상은 아니지만, **정상적인
+"신청 → 심사 → 배정" 파이프라인이 관리자 쪽에서 전부 막혀 있다는 걸 QA 중 확인했다.**
+지금 seed 데이터에 있는 배정된 부스·확정된 정산 등은 전부 이 화면들 없이 SQL/API 직접
+호출로 만든 것이다 — 실제 운영에서도 관리자가 Postman 등으로 직접 호출해야 한다는 뜻.
+
+| 무엇 | API는 있음 | 화면 없음 |
+|-|-|-|
+| 장소 예약 확정 | `POST /api/admin/venue-reservations` | 모집공고 생성 전에 반드시 거쳐야 하는데 화면이 없어 관리자가 API 직접 호출 |
+| 참여 신청 심사 | `AdminParticipationApplicationController` (목록·상세·이력·체크·보완요청·보완완료·메모) | admin 사이드바 "공고 신청 관리"는 이것과 다른 화면(모집공고 **요청** 관리)이라 헷갈리기 쉽다 |
+| 모집 결과 생성(합격/불합격 확정) | `AdminRecruitmentResultService` | CLIENT용 조회 화면만 있고 admin 쪽 생성 화면 없음 |
+| 부스 콘텐츠 검수 | `AdminBoothContentController` (check·approve·request-correction·hide·restore) | 부스 소개 콘텐츠가 "검수 중"에서 영원히 안 넘어감 |
+
+새 이슈로 등록할지, #107 처럼 별도 추적할지는 팀 판단 필요.
 
 ---
 
