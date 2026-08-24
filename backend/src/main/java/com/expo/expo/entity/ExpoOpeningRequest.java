@@ -2,7 +2,6 @@ package com.expo.expo.entity;
 
 import com.expo.expo.entity.ExpoEnums.OpeningRequestStatus;
 import com.expo.expo.exception.ExpoStateException;
-import com.expo.common.entity.BaseTimeEntity;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import jakarta.persistence.Column;
@@ -14,17 +13,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
-import java.time.OffsetDateTime;
-import lombok.AccessLevel;
-import lombok.Builder;
-import java.time.Instant;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.time.Instant;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -41,7 +33,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Getter
 @Entity
 @Table(name = "expo_opening_requests")
-@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExpoOpeningRequest {
 
@@ -103,8 +94,6 @@ public class ExpoOpeningRequest {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
-    /** 값 객체로 받아 필드에 옮긴다. 파라미터를 늘어놓지 않으려고 무인자 생성자 + 대입을 쓴다. */
-    private ExpoOpeningRequest() {}
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
