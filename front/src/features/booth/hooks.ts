@@ -3,10 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/lib/auth'
 
 import {
+  cancelBoothOrder,
+  confirmBoothPayment,
   createBoothContent,
+  createBoothOrder,
   getMyBoothAllocation,
   getMyBoothContentByAllocation,
+  getMyBoothOrder,
   getPublishedBoothContent,
+  initiateBoothPayment,
   listMyConfirmedBooths,
   submitBoothContentForReview,
   updateBoothContent,
@@ -101,3 +106,33 @@ export const useSubmitBoothContentForReview = () => {
     },
   })
 }
+
+/** 부스 상품 주문 생성. `/client/participations/{applicationId}` 에서 "주문하고 결제하기" 시 부른다. */
+export const useCreateBoothOrder = () => useMutation({ mutationFn: createBoothOrder })
+
+/**
+ * 주문 상세. 결제 화면(`ClientBoothOrderPage`)이 15초마다 다시 불러 만료·승인 여부를 반영한다.
+ * 주문이 종료 상태(결제 완료·실패·취소·만료)가 되면 더 반영할 변화가 없으니 폴링을 멈춘다.
+ */
+export const useMyBoothOrder = (orderId: number) =>
+  useQuery({
+    queryKey: boothKeys.orderDetail(orderId),
+    queryFn: () => getMyBoothOrder(orderId),
+    refetchInterval: (query) => (query.state.data?.status === 'PENDING_PAYMENT' ? 15_000 : false),
+  })
+
+export const useCancelBoothOrder = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: cancelBoothOrder,
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.orderDetail(order.id) })
+    },
+  })
+}
+
+/** 결제 시작. `BoothCheckout` 이 마운트되자마자 부른다. */
+export const useInitiateBoothPayment = () => useMutation({ mutationFn: initiateBoothPayment })
+
+/** 결제 승인 확정. 토스 결제창에서 돌아온 성공 콜백 페이지가 마운트 시 자동으로 부른다. */
+export const useConfirmBoothPayment = () => useMutation({ mutationFn: confirmBoothPayment })

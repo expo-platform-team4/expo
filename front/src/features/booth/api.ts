@@ -184,3 +184,104 @@ export const getPublishedBoothContent = async (
     throw error
   }
 }
+
+/** `com.expo.booth.entity.BoothOrderStatus`. */
+export type BoothOrderStatus =
+  'PENDING_PAYMENT' | 'PAYMENT_COMPLETED' | 'FAILED' | 'CANCELED' | 'EXPIRED'
+
+/** 부스 상품 주문. `com.expo.booth.dto.BoothOrderResponse` 와 대응한다. */
+export type BoothOrder = {
+  id: number
+  applicationId: number
+  clientUserId: number
+  boothProductId: number
+  orderNumber: string
+  unitPrice: string
+  totalAmount: string
+  status: BoothOrderStatus
+  expiresAt: string
+  paidAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * `POST /api/client/booth-orders` — 부스 상품 주문 생성. 참여 신청서가 초안 상태이고 부스
+ * 상품을 선택해뒀어야 한다. 생성과 동시에 15분간 그 상품을 임시 확보한다.
+ */
+export const createBoothOrder = async (applicationId: number): Promise<BoothOrder> => {
+  const { data } = await api.post<ApiEnvelope<BoothOrder>>('/client/booth-orders', {
+    applicationId,
+  })
+  return data.data
+}
+
+/** `GET /api/client/booth-orders/{orderId}` — 내 부스 상품 주문 상세. */
+export const getMyBoothOrder = async (orderId: number): Promise<BoothOrder> => {
+  const { data } = await api.get<ApiEnvelope<BoothOrder>>(`/client/booth-orders/${orderId}`)
+  return data.data
+}
+
+/** `POST /api/client/booth-orders/{orderId}/cancel` — 결제 전 주문 취소. */
+export const cancelBoothOrder = async (orderId: number): Promise<BoothOrder> => {
+  const { data } = await api.post<ApiEnvelope<BoothOrder>>(`/client/booth-orders/${orderId}/cancel`)
+  return data.data
+}
+
+/** 부스 상품 결제 시작 응답. `com.expo.booth.dto.InitiateBoothPaymentResponse` 와 대응한다. */
+export type BoothPaymentInitiation = {
+  boothPaymentId: number
+  clientKey: string
+  pgOrderId: string
+  orderName: string
+  amount: number
+}
+
+/** `POST /api/client/booth-orders/{orderId}/payments` — 부스 상품 결제 시작(토스). */
+export const initiateBoothPayment = async (orderId: number): Promise<BoothPaymentInitiation> => {
+  const { data } = await api.post<ApiEnvelope<BoothPaymentInitiation>>(
+    `/client/booth-orders/${orderId}/payments`
+  )
+  return data.data
+}
+
+/** `com.expo.booth.entity.BoothPaymentStatus`. */
+export type BoothPaymentStatus = 'READY' | 'IN_PROGRESS' | 'APPROVED' | 'CANCELED' | 'FAILED'
+
+/** 부스 상품 결제 승인 결과. `com.expo.booth.dto.BoothPaymentResponse` 와 대응한다. */
+export type BoothPaymentResult = {
+  id: number
+  boothOrderId: number
+  pgOrderId: string
+  paymentKey: string | null
+  method: string | null
+  status: BoothPaymentStatus
+  requestedAmount: string
+  approvedAmount: string | null
+  approvedAt: string | null
+  lastFailureCode: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type ConfirmBoothPaymentPayload = {
+  paymentKey: string
+  /** 토스 결제창에서 돌아온 `orderId` 쿼리파라미터. `pgOrderId` 형태 그대로 보낸다. */
+  orderId: string
+  amount: number
+}
+
+/**
+ * `POST /api/client/booth-payments/confirm` — 결제 승인 확정. 토스 결제창에서 돌아온 뒤
+ * 이 화면(`BoothPaymentSuccessPage`)이 직접 호출해야 승인이 실제로 끝난다 — 결제창 리다이렉트
+ * 만으로는 승인이 확정되지 않는다.
+ */
+export const confirmBoothPayment = async (
+  payload: ConfirmBoothPaymentPayload
+): Promise<BoothPaymentResult> => {
+  const { data } = await api.post<ApiEnvelope<BoothPaymentResult>>(
+    '/client/booth-payments/confirm',
+    payload
+  )
+  return data.data
+}
