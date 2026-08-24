@@ -85,30 +85,33 @@ const ExpoTicketCard = ({ group }: { group: MemberTicketGroup }) => {
           )}
         </div>
 
+        {/*
+          화살표 버튼은 티켓이 1장이어도 자리(w-6)를 그대로 차지한다 — hasMultiple 일 때만
+          렌더링하면 QR 블록이 카드마다 좌우로 밀려서 1장짜리 카드와 여러 장짜리 카드의
+          정렬이 어긋나 보인다. 항상 같은 폭을 두고 안 쓸 때만 투명 처리한다.
+        */}
         <div className="flex items-center gap-3 self-center">
-          {hasMultiple && (
-            <button
-              type="button"
-              aria-label="이전 티켓"
-              onClick={() => setIndex((activeIndex - 1 + ticketCount) % ticketCount)}
-              className="text-on-surface-variant hover:text-on-surface"
-            >
-              <ChevronLeft aria-hidden />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="이전 티켓"
+            disabled={!hasMultiple}
+            onClick={() => setIndex((activeIndex - 1 + ticketCount) % ticketCount)}
+            className="text-on-surface-variant hover:text-on-surface w-6 shrink-0 disabled:invisible"
+          >
+            <ChevronLeft aria-hidden className="mx-auto" />
+          </button>
 
           <TicketQr ticket={ticket} />
 
-          {hasMultiple && (
-            <button
-              type="button"
-              aria-label="다음 티켓"
-              onClick={() => setIndex((activeIndex + 1) % ticketCount)}
-              className="text-on-surface-variant hover:text-on-surface"
-            >
-              <ChevronRight aria-hidden />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="다음 티켓"
+            disabled={!hasMultiple}
+            onClick={() => setIndex((activeIndex + 1) % ticketCount)}
+            className="text-on-surface-variant hover:text-on-surface w-6 shrink-0 disabled:invisible"
+          >
+            <ChevronRight aria-hidden className="mx-auto" />
+          </button>
         </div>
       </div>
     </Card>

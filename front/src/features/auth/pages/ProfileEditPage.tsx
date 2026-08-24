@@ -6,7 +6,16 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 
-import { Badge, Button, Card, CardTitle, ErrorState, Input, LoadingBlock } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Card,
+  CardTitle,
+  ConfirmDialog,
+  ErrorState,
+  Input,
+  LoadingBlock,
+} from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import { uploadFile } from '../../file/api'
@@ -53,15 +62,6 @@ const ProfileEditPage = () => {
   )
 }
 
-/**
- * 프로필 사진 + 닉네임을 한 카드에 나란히 둔다.
- *
- * 사진은 원 안을 눌러 파일을 고르면 (1) `POST /api/files`(purpose=PROFILE_IMAGE)로 먼저 올리고
- * (2) 받은 fileId를 `PATCH /api/users/me/profile-image`로 내 계정에 연결하는 2단계로 처리한다 —
- * `features/file/api.ts` 의 범용 업로드를 그대로 재사용한다(A-API-017). 닉네임은 평소엔
- * 텍스트로만 보이다가 "수정" 버튼을 눌러야 입력칸 + 중복확인 버튼이 나온다 — 화면에 상시
- * 노출된 입력칸이 없으면 실수로 건드릴 일도 없다.
- */
 const ProfileHeaderCard = ({
   email,
   currentNickname,
@@ -79,10 +79,9 @@ const ProfileHeaderCard = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const changeProfileImageMutation = useChangeProfileImage()
   const removeProfileImageMutation = useRemoveProfileImage()
-  const [imageEditing, setImageEditing] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
 
   // 로컬 미리보기용 objectURL은 쓰고 나면 반드시 지운다 — 안 지우면 메모리에 계속 쌓인다.
@@ -91,19 +90,6 @@ const ProfileHeaderCard = ({
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
-
-  const startImageEditing = () => {
-    setImageError(null)
-    setImageEditing(true)
-  }
-
-  const cancelImageEditing = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setSelectedFile(null)
-    setPreviewUrl(null)
-    setImageError(null)
-    setImageEditing(false)
-  }
 
   const handleFileSelected = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -116,33 +102,12 @@ const ProfileHeaderCard = ({
     setPreviewUrl(URL.createObjectURL(file))
   }
 
-  const saveImage = async () => {
-    if (!selectedFile) return
-    setImageError(null)
-    setIsUploadingImage(true)
-    try {
-      const uploaded = await uploadFile(selectedFile, 'PROFILE_IMAGE')
-      changeProfileImageMutation.mutate(uploaded.fileId, {
-        onSuccess: () => cancelImageEditing(),
-        onError: (error) => setImageError(getErrorMessage(error)),
-      })
-    } catch (error) {
-      setImageError(getErrorMessage(error))
-    } finally {
-      setIsUploadingImage(false)
-    }
-  }
-
   const deleteImage = () => {
     setImageError(null)
     removeProfileImageMutation.mutate(undefined, {
-      onSuccess: () => cancelImageEditing(),
       onError: (error) => setImageError(getErrorMessage(error)),
     })
   }
-
-  const isImageBusy =
-    isUploadingImage || changeProfileImageMutation.isPending || removeProfileImageMutation.isPending
 
   const {
     register,
@@ -159,20 +124,51 @@ const ProfileHeaderCard = ({
     reset({ nickname: currentNickname })
     nicknameAvailability.reset()
     setSuccessMessage(null)
+    setImageError(null)
     setEditing(true)
   }
 
   const cancelEditing = () => {
     reset({ nickname: currentNickname })
     nicknameAvailability.reset()
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    setImageError(null)
     setEditing(false)
   }
 
-  const onSubmit = (values: NicknameChangeFormValues) => {
+  const isBusy =
+    isSaving ||
+    changeProfileImageMutation.isPending ||
+    removeProfileImageMutation.isPending ||
+    changeNicknameMutation.isPending
+
+  const onSubmit = async (values: NicknameChangeFormValues) => {
+    setImageError(null)
+
+    if (selectedFile) {
+      setIsSaving(true)
+      try {
+        const uploaded = await uploadFile(selectedFile, 'PROFILE_IMAGE')
+        await new Promise<void>((resolve, reject) => {
+          changeProfileImageMutation.mutate(uploaded.fileId, {
+            onSuccess: () => resolve(),
+            onError: (error) => reject(error),
+          })
+        })
+      } catch (error) {
+        setIsSaving(false)
+        setImageError(getErrorMessage(error))
+        return
+      }
+      setIsSaving(false)
+    }
+
     changeNicknameMutation.mutate(values.nickname, {
       onSuccess: () => {
-        setSuccessMessage('닉네임이 변경되었습니다.')
-        setEditing(false)
+        setSuccessMessage('프로필이 변경되었습니다.')
+        cancelEditing()
       },
     })
   }
@@ -202,53 +198,29 @@ const ProfileHeaderCard = ({
             )}
           </div>
 
-          {!imageEditing ? (
-            <Button type="button" variant="ghost" size="sm" onClick={startImageEditing}>
-              수정
-            </Button>
-          ) : (
-            <div className="flex flex-col items-center gap-1">
+          {editing && (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                disabled={isImageBusy}
+                disabled={isBusy}
                 onClick={() => fileInputRef.current?.click()}
               >
                 파일 선택
               </Button>
-              <div className="flex gap-1">
+              {profileImageFileId && (
                 <Button
                   type="button"
+                  variant="outline-danger"
                   size="sm"
-                  disabled={!selectedFile || isImageBusy}
-                  loading={isUploadingImage || changeProfileImageMutation.isPending}
-                  onClick={saveImage}
+                  disabled={isBusy}
+                  loading={removeProfileImageMutation.isPending}
+                  onClick={deleteImage}
                 >
-                  저장
+                  삭제
                 </Button>
-                {profileImageFileId && (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    disabled={isImageBusy}
-                    loading={removeProfileImageMutation.isPending}
-                    onClick={deleteImage}
-                  >
-                    삭제
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={isImageBusy}
-                  onClick={cancelImageEditing}
-                >
-                  취소
-                </Button>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -267,7 +239,7 @@ const ProfileHeaderCard = ({
           ) : (
             <form className="mt-2 flex flex-col gap-2" onSubmit={handleSubmit(onSubmit)} noValidate>
               <div className="flex items-start gap-2">
-                <div className="flex-1">
+                <div className="w-40">
                   <Input
                     label="닉네임"
                     error={errors.nickname?.message}
@@ -287,6 +259,7 @@ const ProfileHeaderCard = ({
                   variant="secondary"
                   size="sm"
                   className="mt-6"
+                  disabled={isBusy}
                   loading={nicknameAvailability.checking}
                   onClick={() => nicknameAvailability.check(getValues('nickname'))}
                 >
@@ -299,10 +272,22 @@ const ProfileHeaderCard = ({
                 </p>
               )}
               <div className="flex gap-2">
-                <Button type="submit" size="sm" loading={changeNicknameMutation.isPending}>
+                <Button
+                  type="submit"
+                  variant="outline-primary"
+                  size="sm"
+                  disabled={isBusy}
+                  loading={isSaving || changeNicknameMutation.isPending}
+                >
                   저장
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={cancelEditing}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={cancelEditing}
+                >
                   취소
                 </Button>
               </div>
@@ -364,7 +349,7 @@ const ChangePasswordSection = () => {
           비밀번호 변경
         </Button>
       ) : (
-        <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form className="flex max-w-xs flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
           <Input
             label="현재 비밀번호"
             type="password"
@@ -393,7 +378,12 @@ const ChangePasswordSection = () => {
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" size="sm" loading={changePasswordMutation.isPending}>
+            <Button
+              type="submit"
+              variant="outline-primary"
+              size="sm"
+              loading={changePasswordMutation.isPending}
+            >
               변경하기
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={cancel}>
@@ -414,26 +404,30 @@ const ChangePasswordSection = () => {
 
 /**
  * 회원 탈퇴. "탈퇴하기"를 누르면 비밀번호 입력칸이 펼쳐지고, 거기서 다시 제출하면
- * `window.confirm` 으로 "정말 탈퇴하시겠습니까?" 를 한 번 더 물은 뒤에야 실제로 탈퇴 처리한다.
+ * `ConfirmDialog` 로 "정말 탈퇴하시겠습니까?" 를 한 번 더 물은 뒤에야 실제로 탈퇴 처리한다.
  */
 const WithdrawalSection = () => {
   const router = useRouter()
   const withdrawMutation = useWithdraw()
   const [expanded, setExpanded] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const {
     register,
     handleSubmit,
+    getValues,
     reset,
     formState: { errors },
   } = useForm<WithdrawalFormValues>({ resolver: zodResolver(withdrawalSchema) })
 
-  const onSubmit = (values: WithdrawalFormValues) => {
-    const confirmed = window.confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')
-    if (!confirmed) return
+  const onSubmit = () => {
+    setConfirmOpen(true)
+  }
 
-    withdrawMutation.mutate(values.password, {
+  const confirmWithdraw = () => {
+    withdrawMutation.mutate(getValues('password'), {
       onSuccess: () => router.replace('/login'),
+      onSettled: () => setConfirmOpen(false),
     })
   }
 
@@ -454,7 +448,7 @@ const WithdrawalSection = () => {
       {!expanded ? (
         <Button
           type="button"
-          variant="danger"
+          variant="outline-danger"
           size="sm"
           className="mt-3"
           onClick={() => setExpanded(true)}
@@ -462,7 +456,11 @@ const WithdrawalSection = () => {
           탈퇴하기
         </Button>
       ) : (
-        <form className="mt-3 flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form
+          className="mt-3 flex max-w-xs flex-col gap-3"
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+        >
           <Input
             label="현재 비밀번호"
             type="password"
@@ -475,7 +473,7 @@ const WithdrawalSection = () => {
             <p className="text-label-sm text-error">{getErrorMessage(withdrawMutation.error)}</p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" variant="danger" loading={withdrawMutation.isPending}>
+            <Button type="submit" variant="outline-danger">
               탈퇴하기
             </Button>
             <Button type="button" variant="secondary" onClick={cancel}>
@@ -484,6 +482,17 @@ const WithdrawalSection = () => {
           </div>
         </form>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="정말 탈퇴하시겠습니까?"
+        description="이 작업은 되돌릴 수 없습니다. 예매·발권 기록은 삭제되지 않고 그대로 남습니다."
+        confirmLabel="탈퇴하기"
+        danger
+        loading={withdrawMutation.isPending}
+        onConfirm={confirmWithdraw}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </Card>
   )
 }
