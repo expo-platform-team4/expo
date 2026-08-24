@@ -107,7 +107,7 @@ export type PhoneVerificationRequestResult = {
   message: string
 }
 
-/** `POST /api/auth/phone-verifications`. MVP: 테스트 인증번호 `123456` 고정. */
+/** `POST /api/auth/phone-verifications`. 무작위 6자리를 SMS 로 보낸다 — 응답에는 없다. */
 export const requestPhoneVerification = async (
   phoneNumber: string
 ): Promise<PhoneVerificationRequestResult> => {
