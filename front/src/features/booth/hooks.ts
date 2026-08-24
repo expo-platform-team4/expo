@@ -110,12 +110,15 @@ export const useSubmitBoothContentForReview = () => {
 /** 부스 상품 주문 생성. `/client/participations/{applicationId}` 에서 "주문하고 결제하기" 시 부른다. */
 export const useCreateBoothOrder = () => useMutation({ mutationFn: createBoothOrder })
 
-/** 주문 상세. 결제 화면(`ClientBoothOrderPage`)이 15초마다 다시 불러 만료·승인 여부를 반영한다. */
+/**
+ * 주문 상세. 결제 화면(`ClientBoothOrderPage`)이 15초마다 다시 불러 만료·승인 여부를 반영한다.
+ * 주문이 종료 상태(결제 완료·실패·취소·만료)가 되면 더 반영할 변화가 없으니 폴링을 멈춘다.
+ */
 export const useMyBoothOrder = (orderId: number) =>
   useQuery({
     queryKey: boothKeys.orderDetail(orderId),
     queryFn: () => getMyBoothOrder(orderId),
-    refetchInterval: 15_000,
+    refetchInterval: (query) => (query.state.data?.status === 'PENDING_PAYMENT' ? 15_000 : false),
   })
 
 export const useCancelBoothOrder = () => {
