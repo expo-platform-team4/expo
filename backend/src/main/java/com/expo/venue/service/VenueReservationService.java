@@ -2,8 +2,11 @@ package com.expo.venue.service;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
@@ -15,12 +18,8 @@ import com.expo.venue.entity.VenueReservation;
 import com.expo.venue.entity.VenueReservationActionType;
 import com.expo.venue.entity.VenueReservationHistory;
 import com.expo.venue.entity.VenueReservationStatus;
-import com.expo.venue.entity.VenueZone;
-import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationHistoryRepository;
 import com.expo.venue.repository.VenueReservationRepository;
-import com.expo.venue.repository.VenueZoneRepository;
-import com.expo.venue.repository.VirtualVenueRepository;
 import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -38,9 +37,8 @@ public class VenueReservationService {
     private final VenueReservationHistoryRepository venueReservationHistoryRepository;
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private final RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
-    private final VirtualVenueRepository virtualVenueRepository;
-    private final VenueHallRepository venueHallRepository;
-    private final VenueZoneRepository venueZoneRepository;
+    private final RecruitmentNoticeRepository recruitmentNoticeRepository;
+    private final VenueHierarchyValidator venueHierarchyValidator;
     private final VenueReservationConverter venueReservationConverter;
 
     public VenueReservationService(
@@ -48,17 +46,15 @@ public class VenueReservationService {
             VenueReservationHistoryRepository venueReservationHistoryRepository,
             RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
             RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
-            VirtualVenueRepository virtualVenueRepository,
-            VenueHallRepository venueHallRepository,
-            VenueZoneRepository venueZoneRepository,
+            RecruitmentNoticeRepository recruitmentNoticeRepository,
+            VenueHierarchyValidator venueHierarchyValidator,
             VenueReservationConverter venueReservationConverter) {
         this.venueReservationRepository = venueReservationRepository;
         this.venueReservationHistoryRepository = venueReservationHistoryRepository;
         this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
         this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
-        this.virtualVenueRepository = virtualVenueRepository;
-        this.venueHallRepository = venueHallRepository;
-        this.venueZoneRepository = venueZoneRepository;
+        this.recruitmentNoticeRepository = recruitmentNoticeRepository;
+        this.venueHierarchyValidator = venueHierarchyValidator;
         this.venueReservationConverter = venueReservationConverter;
     }
 
@@ -154,6 +150,10 @@ public class VenueReservationService {
     /**
      * 관리자 직권 장소 예약 해제.
      *
+     * <p>진행 중인(DRAFT·SCHEDULED·OPEN) 모집공고에 이미 연결된 예약은 여기서 직접 해제할 수 없다 - 그 공고가
+     * 여전히 이 장소를 쓰는 걸로 알고 있는 채로 예약만 조용히 풀리면, 공고는 계속 살아있는데 장소는 없는 상태가 된다.
+     * 그 공고를 먼저 취소하면({@code RecruitmentNoticeService.cancel()}) 딸린 예약이 전부 함께 해제된다.
+     *
      * <p>권한이 걸린 변경이라 처리 관리자·사유를 감사 이력({@code venue_reservation_histories})에 남긴다.
      */
     @Transactional
@@ -165,6 +165,18 @@ public class VenueReservationService {
                                 () -> new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND));
         if (reservation.getStatus() != VenueReservationStatus.CONFIRMED) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
+        }
+        if (reservation.getRecruitmentNoticeId() != null) {
+            RecruitmentNoticeStatus noticeStatus =
+                    recruitmentNoticeRepository
+                            .findById(reservation.getRecruitmentNoticeId())
+                            .map(RecruitmentNotice::getStatus)
+                            .orElse(null);
+            if (noticeStatus == RecruitmentNoticeStatus.DRAFT
+                    || noticeStatus == RecruitmentNoticeStatus.SCHEDULED
+                    || noticeStatus == RecruitmentNoticeStatus.OPEN) {
+                throw new BusinessException(ErrorCode.VENUE_RESERVATION_LINKED_TO_ACTIVE_NOTICE);
+            }
         }
         reservation.release();
         venueReservationHistoryRepository.save(
@@ -197,44 +209,11 @@ public class VenueReservationService {
         if (!useEndAt.isAfter(useStartAt)) {
             throw new BusinessException(ErrorCode.VENUE_RESERVATION_PERIOD_INVALID);
         }
-        Long effectiveHallId = validateHierarchy(virtualVenueId, venueHallId, venueZoneId);
+        Long effectiveHallId =
+                venueHierarchyValidator.validate(virtualVenueId, venueHallId, venueZoneId);
         boolean overlapping =
                 venueReservationRepository.existsOverlapping(
                         virtualVenueId, effectiveHallId, venueZoneId, useStartAt, useEndAt);
         return new VenueAvailabilityResponse(!overlapping);
-    }
-
-    /**
-     * 홀·구역이 지정한 장소·홀 소속인지 검증하고, 실제로 사용할 홀 ID를 반환한다.
-     *
-     * <p>구역만 지정하고 홀을 안 넘긴 경우, 구역이 속한 홀을 조회해서 검증 기준이자 반환값으로 삼는다. 저장되는 예약에도 이
-     * 반환값을 써야 한다 — {@code venue_zone_id} 를 지정하면 {@code venue_hall_id} 도 반드시 있어야 한다는 DB 제약을
-     * 만족시키기 위함이다.
-     */
-    private Long validateHierarchy(Long virtualVenueId, Long venueHallId, Long venueZoneId) {
-        if (!virtualVenueRepository.existsById(virtualVenueId)) {
-            throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
-        }
-        Long effectiveHallId = venueHallId;
-        if (venueZoneId != null) {
-            VenueZone zone =
-                    venueZoneRepository
-                            .findById(venueZoneId)
-                            .orElseThrow(
-                                    () -> new BusinessException(ErrorCode.VENUE_ZONE_NOT_FOUND));
-            if (venueHallId != null && !zone.getHallId().equals(venueHallId)) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
-            }
-            effectiveHallId = zone.getHallId();
-        }
-        if (effectiveHallId != null) {
-            if (!venueHallRepository.existsById(effectiveHallId)) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_NOT_FOUND);
-            }
-            if (!venueHallRepository.existsByIdAndVenueId(effectiveHallId, virtualVenueId)) {
-                throw new BusinessException(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
-            }
-        }
-        return effectiveHallId;
     }
 }

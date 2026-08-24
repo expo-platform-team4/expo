@@ -12,8 +12,11 @@ import static org.mockito.Mockito.when;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeRequest;
+import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
 import com.expo.venue.converter.VenueReservationConverter;
@@ -56,6 +59,7 @@ class VenueReservationServiceTest {
     private VenueReservationHistoryRepository venueReservationHistoryRepository;
     private RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
     private RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository;
+    private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private VirtualVenueRepository virtualVenueRepository;
     private VenueHallRepository venueHallRepository;
     private VenueZoneRepository venueZoneRepository;
@@ -67,6 +71,7 @@ class VenueReservationServiceTest {
         venueReservationHistoryRepository = mock(VenueReservationHistoryRepository.class);
         recruitmentNoticeRequestRepository = mock(RecruitmentNoticeRequestRepository.class);
         recruitmentNoticeRequestZoneRepository = mock(RecruitmentNoticeRequestZoneRepository.class);
+        recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         virtualVenueRepository = mock(VirtualVenueRepository.class);
         venueHallRepository = mock(VenueHallRepository.class);
         venueZoneRepository = mock(VenueZoneRepository.class);
@@ -76,9 +81,9 @@ class VenueReservationServiceTest {
                         venueReservationHistoryRepository,
                         recruitmentNoticeRequestRepository,
                         recruitmentNoticeRequestZoneRepository,
-                        virtualVenueRepository,
-                        venueHallRepository,
-                        venueZoneRepository,
+                        recruitmentNoticeRepository,
+                        new VenueHierarchyValidator(
+                                virtualVenueRepository, venueHallRepository, venueZoneRepository),
                         new VenueReservationConverter());
     }
 
@@ -325,6 +330,38 @@ class VenueReservationServiceTest {
                                                 && "정책 위반".equals(history.getReason())
                                                 && ADMIN_ID.equals(
                                                         history.getProcessedByAdminId())));
+    }
+
+    /** 진행 중인(OPEN) 모집공고에 연결된 예약은 공고를 먼저 취소하지 않는 한 직접 해제할 수 없어야 한다. */
+    @Test
+    void releaseRejectsWhenLinkedNoticeIsOpen() throws ReflectiveOperationException {
+        VenueReservation reservation = confirmedReservation();
+        setField(reservation, "recruitmentNoticeId", 500L);
+        RecruitmentNotice openNotice = mock(RecruitmentNotice.class);
+        when(openNotice.getStatus()).thenReturn(RecruitmentNoticeStatus.OPEN);
+        when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
+        when(recruitmentNoticeRepository.findById(500L)).thenReturn(Optional.of(openNotice));
+
+        assertThatThrownBy(() -> service.release(1L, ADMIN_ID, "정책 위반"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_LINKED_TO_ACTIVE_NOTICE);
+        verify(venueReservationHistoryRepository, never()).save(any());
+    }
+
+    /** 이미 마감·취소된 공고에 연결된 예약은 정상적으로 해제할 수 있어야 한다. */
+    @Test
+    void releaseSucceedsWhenLinkedNoticeIsClosed() throws ReflectiveOperationException {
+        VenueReservation reservation = confirmedReservation();
+        setField(reservation, "recruitmentNoticeId", 500L);
+        RecruitmentNotice closedNotice = mock(RecruitmentNotice.class);
+        when(closedNotice.getStatus()).thenReturn(RecruitmentNoticeStatus.CLOSED);
+        when(venueReservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
+        when(recruitmentNoticeRepository.findById(500L)).thenReturn(Optional.of(closedNotice));
+
+        VenueReservationResponse response = service.release(1L, ADMIN_ID, "정책 위반");
+
+        assertThat(response.status()).isEqualTo(VenueReservationStatus.RELEASED);
     }
 
     @Test

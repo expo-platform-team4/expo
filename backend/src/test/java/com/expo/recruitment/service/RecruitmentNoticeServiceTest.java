@@ -340,6 +340,27 @@ class RecruitmentNoticeServiceTest {
         assertThat(response.status()).isEqualTo(RecruitmentNoticeStatus.OPEN);
     }
 
+    /**
+     * 초안으로 대기하는 사이 딸린 장소 예약이 해제됐다면(예: 다른 경로로 취소) 게시를 막아야 한다 - 안 그러면 장소
+     * 없이 신청을 받는 공고가 게시된다.
+     */
+    @Test
+    void publishRejectsWhenLinkedReservationAlreadyReleased() {
+        RecruitmentNotice notice = draftNotice();
+        VenueReservation released = confirmedReservation(REQUEST_ID);
+        released.release();
+        when(recruitmentNoticeRepository.findById(1L)).thenReturn(Optional.of(notice));
+        when(venueReservationRepository.findAllByRecruitmentNoticeId(1L))
+                .thenReturn(List.of(released));
+
+        assertThatThrownBy(() -> service.publish(1L, ADMIN_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
+        assertThat(notice.getStatus()).isEqualTo(RecruitmentNoticeStatus.DRAFT);
+        verify(recruitmentNoticeHistoryRepository, never()).save(any());
+    }
+
     @Test
     void closeRejectsWhenNotOpen() {
         RecruitmentNotice notice = draftNotice();

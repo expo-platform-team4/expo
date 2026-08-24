@@ -164,6 +164,9 @@ public class RecruitmentNoticeService {
      *
      * <p>신청 시작일이 아직 안 됐으면 SCHEDULED 로만 전환되고, 실제로 신청이 열리는 OPEN 전환은 {@link
      * #processSchedule()} 이 시작일 도래를 보고 별도로 처리한다.
+     *
+     * <p>{@code create()} 때 확정돼 있던 장소 예약이 초안으로 대기하는 사이 해제됐을 수 있어, 게시 직전에 다시
+     * 확인한다.
      */
     @Transactional
     public RecruitmentNoticeResponse publish(Long noticeId, Long adminId) {
@@ -171,6 +174,14 @@ public class RecruitmentNoticeService {
         RecruitmentNoticeStatus previousStatus = notice.getStatus();
         if (previousStatus != RecruitmentNoticeStatus.DRAFT) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_PUBLISHABLE);
+        }
+        List<VenueReservation> reservations =
+                venueReservationRepository.findAllByRecruitmentNoticeId(noticeId);
+        boolean anyNotConfirmed =
+                reservations.stream()
+                        .anyMatch(r -> r.getStatus() != VenueReservationStatus.CONFIRMED);
+        if (anyNotConfirmed) {
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_ALREADY_RELEASED);
         }
         notice.publish();
         recruitmentNoticeHistoryRepository.save(
