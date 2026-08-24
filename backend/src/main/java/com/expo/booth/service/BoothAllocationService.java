@@ -18,6 +18,7 @@ import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.repository.ParticipationApplicationRepository;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -172,7 +173,8 @@ public class BoothAllocationService {
                         .findById(previousBoothProductId)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND));
-        if (!previousProduct.getRecruitmentNoticeId().equals(newProduct.getRecruitmentNoticeId())) {
+        if (!Objects.equals(
+                previousProduct.getRecruitmentNoticeId(), newProduct.getRecruitmentNoticeId())) {
             throw new BusinessException(ErrorCode.BOOTH_REASSIGN_NOTICE_MISMATCH);
         }
         allocation.reassign(newBoothProductId);
