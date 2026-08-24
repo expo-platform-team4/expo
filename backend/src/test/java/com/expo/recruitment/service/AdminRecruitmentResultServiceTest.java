@@ -154,8 +154,8 @@ class AdminRecruitmentResultServiceTest {
         BoothAllocation allocation =
                 BoothAllocation.create(APPLICATION_ID, ORDER_ID, BOOTH_PRODUCT_ID, CLIENT_USER_ID);
         withId(allocation, ALLOCATION_ID);
-        when(boothAllocationRepository.findByApplicationId(APPLICATION_ID))
-                .thenReturn(Optional.of(allocation));
+        when(boothAllocationRepository.findAllByApplicationIdIn(List.of(APPLICATION_ID)))
+                .thenReturn(List.of(allocation));
 
         BoothOrder order =
                 BoothOrder.create(
@@ -166,7 +166,8 @@ class AdminRecruitmentResultServiceTest {
                         new BigDecimal("100000"),
                         "idem-1",
                         Instant.now().plus(Duration.ofMinutes(10)));
-        when(boothOrderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        withId(order, ORDER_ID);
+        when(boothOrderRepository.findAllById(List.of(ORDER_ID))).thenReturn(List.of(order));
 
         when(recruitmentResultRepository.saveAndFlush(any()))
                 .thenAnswer(
