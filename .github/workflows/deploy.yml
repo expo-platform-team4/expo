@@ -104,6 +104,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # 서버가 GHCR 에서 이미지를 받으려면 로그인이 필요하다. 패키지가 비공개이기 때문이다
+      # (저장소가 공개여도 처음 푸시된 패키지는 private 으로 만들어진다).
+      packages: read
     steps:
       - name: SSH 준비
         run: |
@@ -126,6 +131,20 @@ jobs:
           cd /home/opc/expo
 
           echo "▶ 배포 태그: ${EXPO_IMAGE_TAG}"
+
+          # GHCR 로그인. 패키지가 비공개라 인증 없이는 pull 이 denied 로 막힌다.
+          #
+          # 서버에 장기 토큰(PAT)을 심지 않는다. 여기 쓰는 GITHUB_TOKEN 은 이 실행 동안만
+          # 유효한 임시 토큰이라, 끝나면 저절로 못 쓰게 된다 — 만료 관리도 폐기도 필요 없다.
+          #
+          # 토큰이 ssh 명령 인자가 아니라 stdin(heredoc)으로 넘어간다는 점이 중요하다.
+          # 인자로 넘기면 서버의 ps 목록에 잠깐이라도 노출된다.
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          # 배포가 어떻게 끝나든 자격증명을 남기지 않는다.
+          # 어차피 곧 만료되는 값이라, 남겨 두면 "로그인돼 있다" 는 착각만 만든다.
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
 
           # .env 는 서버에서 사람이 관리한다. 워크플로가 만들지도 고치지도 않는다.
           # 새 환경변수가 생겼는데 .env 에 없으면 여기서 기동이 실패한다 — 의도된 것이다.
