@@ -66,7 +66,7 @@ public class ParticipationApplicationService {
                         request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
             throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
         }
-        if (request.가selectedBoothProductId() != null
+        if (request.selectedBoothProductId() != null
                 && !boothProductRepository.existsByIdAndRecruitmentNoticeId(
                         request.selectedBoothProductId(), notice.getId())) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
