@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
  *   info     대기·검토중 (secondary 계열, 성공도 실패도 아닌 진행 상태)
  */
 const VARIANT_CLASSES = {
-  success: 'bg-tertiary-container text-on-tertiary-container',
+  success: 'bg-tertiary-fixed/25 text-tertiary',
   neutral: 'bg-surface-container-high text-on-surface-variant',
   error: 'bg-error-container text-on-error-container',
   info: 'bg-secondary-container/20 text-secondary',

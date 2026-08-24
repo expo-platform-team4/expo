@@ -19,6 +19,9 @@ const VARIANT_CLASSES = {
   danger: 'bg-error text-on-error hover:opacity-90',
   // 최소 강조. 텍스트만 있는 링크형 액션
   ghost: 'bg-transparent text-secondary hover:bg-surface-container-low',
+  'outline-primary':
+    'border border-secondary text-secondary hover:bg-secondary-container/20 bg-transparent',
+  'outline-danger': 'border border-error text-error hover:bg-error-container bg-transparent',
 } as const
 
 const SIZE_CLASSES = {

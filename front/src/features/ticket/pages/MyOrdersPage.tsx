@@ -36,6 +36,23 @@ const STATUS_VARIANT: Record<TicketOrderStatus, BadgeVariant> = {
   EXPIRED: 'neutral',
 }
 
+/** 결제 상태(`ticket_payments.status`) 한글 라벨. 명세에 없는 값이 오면 원문을 그대로 보여준다. */
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  READY: '결제 준비중',
+  IN_PROGRESS: '결제 진행중',
+  DONE: '결제 완료',
+  FAILED: '결제 실패',
+  CANCELED: '결제 취소됨',
+}
+
+/** 환불 상태(`ticket_refunds.status`) 한글 라벨. 명세에 없는 값이 오면 원문을 그대로 보여준다. */
+const REFUND_STATUS_LABEL: Record<string, string> = {
+  REQUESTED: '환불 요청됨',
+  PROCESSING: '환불 처리중',
+  COMPLETED: '환불 완료',
+  FAILED: '환불 실패',
+}
+
 /** `/mypage/orders`. A-API-019, A-API-020 — `GET /api/users/me/orders`. */
 const MyOrdersPage = () => {
   const { data, isPending, error, refetch } = useMyOrders()
@@ -100,8 +117,16 @@ const OrderCard = ({ order }: { order: MemberOrder }) => {
 
       {(order.paymentStatus || order.refundStatus || order.refundable) && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {order.paymentStatus && <Badge variant="neutral">결제 {order.paymentStatus}</Badge>}
-          {order.refundStatus && <Badge variant="neutral">환불 {order.refundStatus}</Badge>}
+          {order.paymentStatus && (
+            <Badge variant="neutral">
+              {PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus}
+            </Badge>
+          )}
+          {order.refundStatus && (
+            <Badge variant="neutral">
+              {REFUND_STATUS_LABEL[order.refundStatus] ?? order.refundStatus}
+            </Badge>
+          )}
           {order.refundable && <Badge variant="info">환불 가능</Badge>}
         </div>
       )}
