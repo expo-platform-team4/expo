@@ -1,0 +1,53 @@
+# =========================================================
+# expo 사이트 블록
+#
+# 이 파일은 그대로 쓰이지 않는다. 서버의 /home/opc/handdam/Caddyfile 끝에
+# **덧붙일 내용**이다. 그 인스턴스는 Caddy 를 하나만 띄우고(80·443 을 그것이 쥔다)
+# 사이트 블록으로 도메인을 나눈다.
+#
+# 붙이기 전에
+#   cp /home/opc/handdam/Caddyfile /home/opc/handdam/Caddyfile.bak
+# 붙인 뒤
+#   docker exec handdam-caddy caddy validate --config /etc/caddy/Caddyfile
+#   docker exec handdam-caddy caddy reload   --config /etc/caddy/Caddyfile
+#
+# restart 가 아니라 reload 다. reload 는 무중단이고, restart 는 handdam 도 함께 내린다.
+#
+# 도메인을 환경변수로 받지 않고 그대로 적는다. handdam 블록은 {$SITE_DOMAIN} 을 쓰는데
+# 그 값은 handdam compose 가 넘기는 것이라, 우리 블록이 같은 변수를 쓰면 두 사이트가
+# 같은 도메인을 주장하게 된다.
+# =========================================================
+
+expo.amitawhite.com {
+	# 백엔드로 보내는 경로들. handdam 블록과 같은 이유로 나눈다 —
+	# /api 접두어가 없는데 백엔드가 처리해야 하는 것들이 있다.
+	handle /api/* {
+		reverse_proxy expo-backend:8080
+	}
+
+	# Spring Security 의 OAuth2 로그인 시작·콜백. 프론트로 새면 소셜 로그인이 깨진다.
+	handle /oauth2/* {
+		reverse_proxy expo-backend:8080
+	}
+	handle /login/oauth2/* {
+		reverse_proxy expo-backend:8080
+	}
+
+	# 헬스체크. prod 프로필은 health 만 노출하고 show-details 도 never 라
+	# 밖에 열려 있어도 새는 정보가 없다.
+	handle /actuator/* {
+		reverse_proxy expo-backend:8080
+	}
+
+	# Swagger 는 넣지 않는다. prod 프로필이 springdoc 을 꺼 두었다
+	# (springdoc.swagger-ui.enabled: false). 경로만 열어 두면 404 가 날 뿐이다.
+
+	# 나머지 전부 → 프론트. Next standalone 이 3000 에서 받는다.
+	# handdam 의 프론트는 nginx :80 이지만 우리는 Node 서버라 포트가 다르다.
+	handle {
+		reverse_proxy expo-front:3000
+	}
+
+	encode gzip zstd
+	log
+}

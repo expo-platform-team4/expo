@@ -1,0 +1,21 @@
+# 빌드 컨텍스트에서 뺀다. 안 빼면 Docker 가 이것들을 전부 데몬에 올려
+# 빌드가 느려지고, build/ 안의 옛 산출물이 이미지에 섞일 수 있다.
+
+build/
+bin/
+.gradle/
+out/
+
+# 문서·설정은 이미지에 들어갈 이유가 없다.
+*.md
+HELP.md
+
+# 비밀값. 이미지에 절대 들어가면 안 된다.
+# 런타임에 compose 의 env_file 로 넣는다.
+.env
+.env.*
+!env.sample
+
+.idea/
+*.iml
+.DS_Store

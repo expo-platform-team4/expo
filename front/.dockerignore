@@ -1,0 +1,15 @@
+# node_modules 를 빼는 것이 특히 중요하다. 안 빼면 수만 개 파일이
+# 컨텍스트로 올라가고, 호스트(개발자 맥)에서 만들어진 네이티브 모듈이
+# 컨테이너(리눅스 ARM)에 섞여 들어갈 수 있다.
+node_modules/
+.next/
+out/
+
+*.md
+
+.env
+.env.*
+!env.sample
+
+.idea/
+.DS_Store
