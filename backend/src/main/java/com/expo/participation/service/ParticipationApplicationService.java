@@ -58,12 +58,15 @@ public class ParticipationApplicationService {
         if (notice.getStatus() != RecruitmentNoticeStatus.OPEN) {
             throw new BusinessException(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
         }
+        if (clientUserId.equals(notice.getHostClientId())) {
+            throw new BusinessException(ErrorCode.CANNOT_APPLY_TO_OWN_NOTICE);
+        }
         if (participationApplicationRepository
                 .existsByRecruitmentNoticeIdAndClientUserIdAndStatusIn(
                         request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
             throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
         }
-        if (request.selectedBoothProductId() != null
+        if (request.가selectedBoothProductId() != null
                 && !boothProductRepository.existsByIdAndRecruitmentNoticeId(
                         request.selectedBoothProductId(), notice.getId())) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);

@@ -56,8 +56,12 @@ class ParticipationApplicationServiceTest {
                 NOTICE_ID, "테스트 참가기업", null, null, boothProductId);
     }
 
-    /** 이 브랜치의 엔티티에는 아직 팩토리 메서드가 없어 리플렉션으로 id·status 만 세팅한다. */
+    /** 이 브랜치의 엔티티에는 아직 팩토리 메서드가 없어 리플렉션으로 id·status·hostClientId 만 세팅한다. */
     private RecruitmentNotice noticeWithStatus(RecruitmentNoticeStatus status) {
+        return noticeWithStatus(status, null);
+    }
+
+    private RecruitmentNotice noticeWithStatus(RecruitmentNoticeStatus status, Long hostClientId) {
         try {
             Constructor<RecruitmentNotice> constructor =
                     RecruitmentNotice.class.getDeclaredConstructor();
@@ -69,6 +73,9 @@ class ParticipationApplicationServiceTest {
             Field statusField = RecruitmentNotice.class.getDeclaredField("status");
             statusField.setAccessible(true);
             statusField.set(notice, status);
+            Field hostClientIdField = RecruitmentNotice.class.getDeclaredField("hostClientId");
+            hostClientIdField.setAccessible(true);
+            hostClientIdField.set(notice, hostClientId);
             return notice;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
@@ -95,6 +102,20 @@ class ParticipationApplicationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.RECRUITMENT_NOTICE_NOT_OPEN);
+    }
+
+    @Test
+    void createRejectsWhenApplyingToOwnNotice() {
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(
+                        Optional.of(
+                                noticeWithStatus(RecruitmentNoticeStatus.OPEN, CLIENT_USER_ID)));
+
+        assertThatThrownBy(() -> service.create(CLIENT_USER_ID, requestWithBoothProduct(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.CANNOT_APPLY_TO_OWN_NOTICE);
+        verify(participationApplicationRepository, never()).saveAndFlush(any());
     }
 
     @Test
