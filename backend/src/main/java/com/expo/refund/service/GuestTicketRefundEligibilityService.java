@@ -29,7 +29,15 @@ public class GuestTicketRefundEligibilityService {
     private final ExpoRepository expoRepository;
     private final IssuedTicketRepository issuedTicketRepository;
 
-    @Transactional(readOnly = true)
+    /**
+     * {@code readOnly}를 쓰지 않는다 — {@link TicketOrderAccessVerifier#verifyGuestOrderAccess}
+     * 가 내부적으로 {@code guest_order_infos} 를 잠그고 실패 횟수를 기록/초기화하는 쓰기를
+     * 포함한다(비관적 락 {@code SELECT ... FOR UPDATE} 는 읽기 전용 트랜잭션에서 실행할 수
+     * 없다 — PostgreSQL 이 "cannot execute SELECT FOR NO KEY UPDATE in a read-only
+     * transaction" 으로 거부한다). 조회 자체가 인증 시도 기록이라는 설계상 이 메서드는
+     * 원천적으로 읽기 전용일 수 없다.
+     */
+    @Transactional
     public TicketRefundEligibilityResponse check(GuestTicketRefundEligibilityRequest request) {
         GuestTicketOrderSearchSnapshot snapshot =
                 ticketOrderAccessVerifier.verifyGuestOrderAccess(
