@@ -52,31 +52,25 @@ export type GuestOrderFormValues = z.infer<typeof guestOrderSchema>
 
 /**
  * 티켓 상품 생성 폼. 백엔드 `TicketProductCreateRequest` 의 검증 규칙과 짝이다.
- * 일시는 `<input type="datetime-local">` 값을 그대로 받고, 제출 직전에 ISO 문자열로 바꾼다
- * (`AdminRecruitmentNoticeFormPage` 와 같은 패턴). 시작<종료 체크는 백엔드도 하지만
- * `INVALID_SALES_PERIOD` 왕복 없이 바로 알려주는 게 나아서 프론트에도 둔다.
+ *
+ * 판매 기간은 이 폼에서 따로 받지 않는다 — 박람회 개최 신청 때 정한 판매 기간
+ * (`expos.sales_start_at`·`sales_end_at`)을 그대로 쓴다. 상품마다 다른 판매 기간을
+ * 허용하지 않기로 한 결정이라, 화면에서도 입력창을 아예 없앴다.
  */
-export const createTicketProductSchema = z
-  .object({
-    name: z.string().min(1, '상품명은 필수입니다.').max(150, '상품명은 150자 이하여야 합니다.'),
-    description: z.string().optional(),
-    price: z.number({ error: '가격은 숫자여야 합니다.' }).min(0, '가격은 0 이상이어야 합니다.'),
-    salesStartAt: z.string().min(1, '판매 시작 일시는 필수입니다.'),
-    salesEndAt: z.string().min(1, '판매 종료 일시는 필수입니다.'),
-    totalQuantity: z
-      .number({ error: '총 수량은 숫자여야 합니다.' })
-      .int()
-      .min(0, '총 수량은 0 이상이어야 합니다.'),
-    maxQuantityPerOrder: z
-      .number({ error: '1회 최대 구매 수량은 숫자여야 합니다.' })
-      .int()
-      .min(1, '1회 최대 구매 수량은 1 이상이어야 합니다.')
-      .max(4, '1회 최대 구매 수량은 4 이하여야 합니다.'),
-  })
-  .refine((values) => new Date(values.salesStartAt) < new Date(values.salesEndAt), {
-    message: '판매 시작 일시는 종료 일시보다 빨라야 합니다.',
-    path: ['salesEndAt'],
-  })
+export const createTicketProductSchema = z.object({
+  name: z.string().min(1, '상품명은 필수입니다.').max(150, '상품명은 150자 이하여야 합니다.'),
+  description: z.string().optional(),
+  price: z.number({ error: '가격은 숫자여야 합니다.' }).min(0, '가격은 0 이상이어야 합니다.'),
+  totalQuantity: z
+    .number({ error: '총 수량은 숫자여야 합니다.' })
+    .int()
+    .min(0, '총 수량은 0 이상이어야 합니다.'),
+  maxQuantityPerOrder: z
+    .number({ error: '1회 최대 구매 수량은 숫자여야 합니다.' })
+    .int()
+    .min(1, '1회 최대 구매 수량은 1 이상이어야 합니다.')
+    .max(4, '1회 최대 구매 수량은 4 이하여야 합니다.'),
+})
 export type CreateTicketProductFormValues = z.infer<typeof createTicketProductSchema>
 
 /** `GuestTicketSearchRequest`. */
