@@ -144,6 +144,15 @@ const ClientExpoListPage = () => {
                     <Button
                       size="sm"
                       variant="secondary"
+                      onClick={() =>
+                        router.push(`/client/expos/${expo.expoId}/participating-companies`)
+                      }
+                    >
+                      참여기업목록
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => router.push(`/expos/${expo.expoId}`)}
                     >
                       공개 화면 보기

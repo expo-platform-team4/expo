@@ -19,6 +19,9 @@ public interface ParticipationApplicationRepository
 
     List<ParticipationApplication> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
 
+    List<ParticipationApplication> findAllByRecruitmentNoticeIdIn(
+            Collection<Long> recruitmentNoticeIds);
+
     List<ParticipationApplication> findAllByRecruitmentNoticeIdAndStatus(
             Long recruitmentNoticeId, ParticipationApplicationStatus status);
 

@@ -13,6 +13,9 @@ public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNo
 
     boolean existsByRequestId(Long requestId);
 
+    /** 박람회 하나에 딸린 모집공고 목록. 참여기업 조회처럼 expo 기준으로 거슬러 올라갈 때 쓴다. */
+    List<RecruitmentNotice> findAllByExpoId(Long expoId);
+
     List<RecruitmentNotice> findAllByStatus(RecruitmentNoticeStatus status);
 
     Optional<RecruitmentNotice> findByIdAndStatus(Long id, RecruitmentNoticeStatus status);
