@@ -13,8 +13,6 @@ import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /** 주최 클라이언트의 모집공고 생성 요청과 장소 중복 운영 결정. */
 @Getter
@@ -64,9 +62,8 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     @Column(name = "target_company_count")
     private Integer targetCompanyCount;
 
-    /** 희망 부스 구성 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "requested_booth_config", columnDefinition = "jsonb")
+    /** 희망 부스 구성 메모. 자유 텍스트다(JSON이 아니다) - 관리자·주최자가 참고용으로 적는다. */
+    @Column(name = "requested_booth_config", columnDefinition = "TEXT")
     private String requestedBoothConfig;
 
     @Enumerated(EnumType.STRING)

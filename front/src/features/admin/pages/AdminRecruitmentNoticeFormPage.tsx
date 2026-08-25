@@ -143,7 +143,7 @@ const AdminRecruitmentNoticeFormPage = () => {
           />
           <Textarea
             label="제출 자료 요구사항"
-            hint="JSON 문자열 형식(선택 항목)입니다."
+            hint="선택 항목입니다. 신청 기업에게 그대로 노출됩니다."
             error={errors.submissionRequirements?.message}
             {...register('submissionRequirements')}
           />

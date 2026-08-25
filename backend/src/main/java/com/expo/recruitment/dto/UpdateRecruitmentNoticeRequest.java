@@ -15,7 +15,7 @@ public record UpdateRecruitmentNoticeRequest(
                 String title,
         @Schema(description = "공고 내용") @NotBlank(message = "내용은 필수입니다.") String content,
         @Schema(description = "참가 자격 요건") String eligibility,
-        @Schema(description = "제출 자료 요구사항(JSON 문자열)") String submissionRequirements,
+        @Schema(description = "제출 자료 요구사항(자유 텍스트, 신청 기업에게 노출됨)") String submissionRequirements,
         @Schema(description = "신청 시작 일시") @NotNull(message = "신청 시작 일시는 필수입니다.")
                 Instant applicationStartAt,
         @Schema(description = "신청 종료 일시") @NotNull(message = "신청 종료 일시는 필수입니다.")

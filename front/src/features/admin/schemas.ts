@@ -53,30 +53,6 @@ export const createVenueReservationSchema = z.object({
 export type CreateVenueReservationFormValues = z.infer<typeof createVenueReservationSchema>
 
 /**
- * 백엔드 jsonb 컬럼(`submission_requirements`·`requested_booth_config`)에 그대로 들어간다.
- * 값이 있는데 JSON으로 못 읽으면 DB insert가 거부되고, 그 예외를 `AuthExceptionHandler`가
- * (범위 지정 없는 `@RestControllerAdvice`라 도메인 무관하게) 가로채 "입력값이 올바르지
- * 않습니다."라는 엉뚱한 메시지로 응답한다 — 폼에서 미리 막아 그 혼란스러운 에러를 아예
- * 안 보이게 한다.
- */
-const optionalJsonString = (label: string) =>
-  z
-    .string()
-    .optional()
-    .refine(
-      (value) => {
-        if (!value) return true
-        try {
-          JSON.parse(value)
-          return true
-        } catch {
-          return false
-        }
-      },
-      { message: `${label}은(는) 올바른 JSON 형식이어야 합니다.` }
-    )
-
-/**
  * 기업 모집 공고 초안 생성 폼. 백엔드 `CreateRecruitmentNoticeRequest`(admin dto) 와 대응한다.
  * 일시는 `<input type="datetime-local">` 값을 그대로 받고, 제출 직전에 ISO 문자열로 바꾼다.
  */
@@ -85,7 +61,7 @@ export const createAdminNoticeSchema = z.object({
   title: z.string().min(1, '제목은 필수입니다.').max(255, '제목은 255자 이하여야 합니다.'),
   content: z.string().min(1, '내용은 필수입니다.'),
   eligibility: z.string().optional(),
-  submissionRequirements: optionalJsonString('제출 자료 요구사항'),
+  submissionRequirements: z.string().optional(),
   applicationStartAt: z.string().min(1, '신청 시작 일시는 필수입니다.'),
   applicationEndAt: z.string().min(1, '신청 종료 일시는 필수입니다.'),
 })
@@ -112,7 +88,7 @@ export const createAdminNoticeRequestSchema = z
       .min(1, '목표 참가 기업 수는 필수입니다.')
       .regex(/^\d+$/, '숫자만 입력해 주세요.')
       .refine((value) => Number(value) >= 1, '목표 참가 기업 수는 1 이상이어야 합니다.'),
-    requestedBoothConfig: optionalJsonString('희망 부스 구성'),
+    requestedBoothConfig: z.string().optional(),
   })
   // 신청 마감이 행사 시작보다 늦으면 행사가 시작한 뒤에야 모집을 마감하는 꼴이 된다 — 백엔드
   // `APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD` 검증과 같은 규칙이다.
