@@ -17,7 +17,11 @@ import {
 import { formatDateTime } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
 
-import { useAdminBoothAllocations, useCancelBoothAllocation, useReassignBoothAllocation } from '../hooks'
+import {
+  useAdminBoothAllocations,
+  useCancelBoothAllocation,
+  useReassignBoothAllocation,
+} from '../hooks'
 import type { AdminBoothAllocation, BoothAllocationStatus } from '../api'
 
 const STATUS_LABEL: Record<BoothAllocationStatus, string> = {
@@ -85,9 +89,7 @@ const AllocationRow = ({ allocation }: { allocation: AdminBoothAllocation }) => 
             {allocation.boothProductId} · 배정 {formatDateTime(allocation.allocatedAt)}
           </p>
         </div>
-        <Badge variant={STATUS_VARIANT[allocation.status]}>
-          {STATUS_LABEL[allocation.status]}
-        </Badge>
+        <Badge variant={STATUS_VARIANT[allocation.status]}>{STATUS_LABEL[allocation.status]}</Badge>
       </div>
 
       {allocation.status !== 'ASSIGNED' && allocation.cancelReason && (
@@ -141,7 +143,11 @@ const AllocationRow = ({ allocation }: { allocation: AdminBoothAllocation }) => 
             value={targetBoothProductId}
             onChange={(e) => setTargetBoothProductId(e.target.value)}
           />
-          <Textarea label="재배정 사유" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea
+            label="재배정 사유"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
           <div className="flex gap-2">
             <Button
               type="button"

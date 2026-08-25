@@ -155,7 +155,12 @@ const ContentRow = ({ content }: { content: AdminBoothContent }) => {
               운영 확인
             </Button>
           )}
-          <Button type="button" size="sm" loading={approveMutation.isPending} onClick={handleApprove}>
+          <Button
+            type="button"
+            size="sm"
+            loading={approveMutation.isPending}
+            onClick={handleApprove}
+          >
             승인(공개)
           </Button>
           <Button
