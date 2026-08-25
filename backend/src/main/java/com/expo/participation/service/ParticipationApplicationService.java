@@ -85,9 +85,6 @@ public class ParticipationApplicationService {
                         request.recruitmentNoticeId(), clientUserId, ACTIVE_STATUSES)) {
             throw new BusinessException(ErrorCode.DUPLICATE_PARTICIPATION_APPLICATION);
         }
-        if (request.selectedBoothProductId() == null) {
-            throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_SELECTED);
-        }
         if (!boothProductRepository.existsByIdAndRecruitmentNoticeId(
                 request.selectedBoothProductId(), notice.getId())) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);
@@ -152,9 +149,6 @@ public class ParticipationApplicationService {
     public ParticipationApplicationResponse update(
             Long applicationId, Long clientUserId, UpdateParticipationApplicationRequest request) {
         ParticipationApplication application = getOwnedDraft(applicationId, clientUserId);
-        if (request.selectedBoothProductId() == null) {
-            throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_SELECTED);
-        }
         if (!boothProductRepository.existsByIdAndRecruitmentNoticeId(
                 request.selectedBoothProductId(), application.getRecruitmentNoticeId())) {
             throw new BusinessException(ErrorCode.BOOTH_PRODUCT_NOT_FOUND);

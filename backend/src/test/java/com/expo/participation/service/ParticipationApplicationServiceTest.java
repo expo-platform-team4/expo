@@ -172,17 +172,6 @@ class ParticipationApplicationServiceTest {
     }
 
     @Test
-    void createRejectsWithoutBoothProduct() {
-        when(recruitmentNoticeRepository.findById(NOTICE_ID))
-                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
-
-        assertThatThrownBy(() -> service.create(CLIENT_USER_ID, requestWithBoothProduct(null)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.BOOTH_PRODUCT_NOT_SELECTED);
-    }
-
-    @Test
     void getMineRejectsWhenNotFoundOrNotOwned() {
         when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
                 .thenReturn(Optional.empty());
