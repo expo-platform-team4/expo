@@ -8,15 +8,24 @@ import { formatDateTime } from '@/lib/date'
 import { useMyRecruitmentNoticeRequests } from '../hooks'
 import { NOTICE_REQUEST_STATUS, VENUE_CONFLICT_STATUS, VENUE_DECISION } from '../statusLabels'
 
-/** `/client/recruitment-notice-requests`. Function.md 3절 — "내 요청 목록·상세". CLIENT 전용. */
+/**
+ * `/client/recruitment-notice-requests`. Function.md 3절 — "내 요청 목록·상세". CLIENT 전용.
+ *
+ * 사이드바 라벨은 "모집공고 요청 현황"이다 — CLIENT는 요청을 작성/편집하지 않고 조회만 하므로
+ * "관리"라는 표현은 실제 권한과 맞지 않는다.
+ *
+ * 요청 작성은 관리자가 승인된 박람회를 골라 대신 한다(`/admin/recruitment-notice-requests/new`)
+ * — 그래서 이 화면엔 작성 버튼이 없다. CLIENT는 관리자가 자기 박람회 앞으로 작성해 준 요청을
+ * 조회만 한다.
+ */
 const ClientRecruitmentNoticeRequestListPage = () => {
   const { data: requests, isPending, isError, error, refetch } = useMyRecruitmentNoticeRequests()
 
   return (
     <div>
       <PageHeader
-        title="모집공고 요청 관리"
-        description="내가 작성한 모집공고 생성 요청 목록입니다. 신규 요청은 관리자가 승인한 박람회를 기준으로 작성합니다."
+        title="모집공고 요청 현황"
+        description="관리자가 내 박람회 앞으로 작성한 모집공고 생성 요청 목록입니다."
       />
 
       {isPending ? (
@@ -25,8 +34,8 @@ const ClientRecruitmentNoticeRequestListPage = () => {
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : requests.length === 0 ? (
         <EmptyState
-          title="작성한 요청이 없습니다"
-          description="모집공고 생성 요청은 관리자가 승인한 박람회를 기준으로 작성합니다."
+          title="접수된 요청이 없습니다"
+          description="관리자가 박람회 승인 후 모집공고 생성 요청을 작성하면 여기에 표시됩니다."
         />
       ) : (
         <ul className="flex flex-col gap-3">
@@ -45,6 +54,9 @@ const ClientRecruitmentNoticeRequestListPage = () => {
                       </Badge>
                       <Badge variant={VENUE_DECISION[request.venueDecision].variant}>
                         {VENUE_DECISION[request.venueDecision].label}
+                      </Badge>
+                      <Badge variant={request.noticeCreated ? 'success' : 'neutral'}>
+                        {request.noticeCreated ? '공고 작성됨' : '공고 미작성'}
                       </Badge>
                     </div>
                   </div>

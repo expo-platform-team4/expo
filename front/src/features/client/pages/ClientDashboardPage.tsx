@@ -2,10 +2,23 @@
 
 import Link from 'next/link'
 
-import { Card, CardTitle, EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/ui'
+import {
+  Badge,
+  Card,
+  CardTitle,
+  EmptyState,
+  ErrorState,
+  LoadingBlock,
+  PageHeader,
+} from '@/components/ui'
+import { NOTICE_STATUS } from '@/features/recruitment/statusLabels'
 import { formatDate } from '@/lib/date'
 
-import { EXPO_EVENT_STATUS_LABEL, EXPO_REVIEW_STATUS_LABEL } from '../api'
+import {
+  EXPO_EVENT_STATUS_LABEL,
+  EXPO_REVIEW_STATUS_LABEL,
+  type ClientDashboardRecruitment,
+} from '../api'
 import {
   useClientMyConfirmedBooths,
   useClientMyExpos,
@@ -125,7 +138,58 @@ const ClientDashboardPage = () => {
           </Card>
         )}
       </div>
+
+      <div className="mt-6">
+        <CardTitle className="mb-3">내 모집공고</CardTitle>
+        {recruitments.length === 0 ? (
+          <EmptyState
+            title="작성된 모집공고가 없습니다"
+            description="박람회가 승인되면 관리자가 모집공고 생성 요청을 검토해 공고를 작성합니다."
+          />
+        ) : (
+          <Card className="divide-outline-variant divide-y p-0">
+            {recruitments.map((notice) => (
+              <RecruitmentNoticeRow key={notice.recruitmentNoticeId} notice={notice} />
+            ))}
+          </Card>
+        )}
+      </div>
     </div>
+  )
+}
+
+const RecruitmentNoticeRow = ({ notice }: { notice: ClientDashboardRecruitment }) => {
+  const status = NOTICE_STATUS[notice.status as keyof typeof NOTICE_STATUS] as
+    (typeof NOTICE_STATUS)[keyof typeof NOTICE_STATUS] | undefined
+  const content = (
+    <div className="flex items-center justify-between gap-4 px-6 py-4">
+      <div>
+        <div className="flex items-center gap-2">
+          <p className="text-title-md text-on-surface font-medium">{notice.title}</p>
+          <Badge variant={status?.variant ?? 'neutral'}>{status?.label ?? notice.status}</Badge>
+        </div>
+        <p className="text-body-sm text-on-surface-variant mt-1">
+          신청 기간 {formatDate(notice.applicationStartAt)} ~ {formatDate(notice.applicationEndAt)}
+        </p>
+      </div>
+      <div className="text-body-sm text-on-surface-variant shrink-0 text-right">
+        <p>신청 {notice.submittedApplicationCount}건</p>
+        <p>확정 {notice.confirmedAllocationCount}건</p>
+      </div>
+    </div>
+  )
+
+  if (notice.status !== 'OPEN') {
+    return <div className="text-inherit">{content}</div>
+  }
+
+  return (
+    <Link
+      href={`/recruitment-notices/${notice.recruitmentNoticeId}`}
+      className="hover:bg-surface-container-low block transition-colors"
+    >
+      {content}
+    </Link>
   )
 }
 
