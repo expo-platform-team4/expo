@@ -16,6 +16,8 @@ export const adminKeys = {
 
   notices: () => [...adminKeys.all, 'notices'] as const,
 
+  venueReservations: () => [...adminKeys.all, 'venue-reservations'] as const,
+
   settlements: (params?: Record<string, unknown>) =>
     [...adminKeys.all, 'settlements', params ?? {}] as const,
 

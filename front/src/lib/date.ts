@@ -23,3 +23,18 @@ export const formatDate = (isoInstant: string): string =>
     month: 'numeric',
     day: 'numeric',
   })
+
+/**
+ * UTC ISO 문자열을 `<input type="datetime-local">` 에 그대로 넣을 수 있는 `YYYY-MM-DDTHH:mm`
+ * 형태(브라우저 로컬 타임존 기준)로 바꾼다.
+ *
+ * `isoInstant.slice(0, 16)` 로 UTC 문자열을 그냥 잘라 넣으면 안 된다 — datetime-local 값은
+ * 타임존 표기가 없는 대신 브라우저가 "로컬 타임존 기준"으로 해석하므로, UTC 자정을 그대로
+ * 넣으면 KST(UTC+9) 환경에서 실제 시각보다 9시간 이르게 보이고, 그대로 제출하면 서버에는
+ * 9시간 어긋난 시각이 저장된다.
+ */
+export const toDatetimeLocalValue = (isoInstant: string): string => {
+  const date = new Date(isoInstant)
+  const localMs = date.getTime() - date.getTimezoneOffset() * 60_000
+  return new Date(localMs).toISOString().slice(0, 16)
+}
