@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form'
 
 import { Badge, Button, Card, CardTitle, Input } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
-import { homeRouteFor } from '@/lib/auth'
+import { resolvePostLoginRoute } from '@/lib/auth'
 
 import { useLogin } from '../hooks'
 import { loginSchema, type LoginFormValues } from '../schemas'
@@ -16,7 +16,9 @@ import { loginSchema, type LoginFormValues } from '../schemas'
 /**
  * `/login`. Function.md 2절 — "이메일·비밀번호. 성공 시 토큰 저장 후 역할별 홈으로 이동".
  * `redirect` 쿼리(예: `/login?redirect=/mypage/orders`)가 있으면 그리로, 없으면
- * `homeRouteFor(role)` 로 보낸다. `RequireAuth` 가 만드는 redirect 쿼리를 그대로 받는다.
+ * `resolvePostLoginRoute(role, redirect)` 로 보낸다. `RequireAuth` 가 만드는 redirect 쿼리를
+ * 받되, **그 경로가 로그인한 역할의 구역일 때만** 따른다 — 관리자가 클라이언트 화면으로
+ * 들어가 버리던 문제 때문이다. 자세한 이유는 `lib/auth.ts` 주석에 있다.
  */
 const LoginPage = () => {
   const router = useRouter()
@@ -36,7 +38,7 @@ const LoginPage = () => {
     setFormError(null)
     loginMutation.mutate(values, {
       onSuccess: (result) => {
-        router.replace(redirectTo || homeRouteFor(result.role))
+        router.replace(resolvePostLoginRoute(result.role, redirectTo))
       },
       onError: (error) => setFormError(getErrorMessage(error)),
     })
