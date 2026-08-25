@@ -22,7 +22,6 @@ import {
   useAdminVenueZones,
   useAdminVirtualVenues,
 } from '@/features/venue/hooks'
-import { formatCurrency } from '@/lib/currency'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import {
@@ -176,7 +175,6 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
 type ProductRowState = {
   included: boolean
   supplyPrice: string
-  vatAmount: string
 }
 
 /** "A-01" → "A". 하이픈이 없으면 부스 번호 전체를 그룹으로 본다. */
@@ -184,7 +182,6 @@ const boothGroupPrefix = (boothNumber: string) => boothNumber.split('-')[0] || b
 
 type GroupPriceState = {
   supplyPrice: string
-  vatAmount: string
 }
 
 /**
@@ -238,7 +235,7 @@ const BulkCreateBoothProductsSection = ({
   const registrableBooths = booths.filter((booth) => !registeredBoothIds.has(booth.id))
 
   const stateFor = (boothId: number): ProductRowState =>
-    rowState[boothId] ?? { included: true, supplyPrice: '', vatAmount: '0' }
+    rowState[boothId] ?? { included: true, supplyPrice: '' }
 
   const updateRow = (boothId: number, patch: Partial<ProductRowState>) => {
     setRowState((prev) => ({ ...prev, [boothId]: { ...stateFor(boothId), ...patch } }))
@@ -254,20 +251,19 @@ const BulkCreateBoothProductsSection = ({
   )
   const groupKeys = Object.keys(groups).sort()
 
-  const groupPriceFor = (key: string): GroupPriceState =>
-    groupPrices[key] ?? { supplyPrice: '', vatAmount: '0' }
+  const groupPriceFor = (key: string): GroupPriceState => groupPrices[key] ?? { supplyPrice: '' }
 
   const updateGroupPrice = (key: string, patch: Partial<GroupPriceState>) => {
     setGroupPrices((prev) => ({ ...prev, [key]: { ...groupPriceFor(key), ...patch } }))
   }
 
   const applyGroupPrice = (key: string) => {
-    const { supplyPrice, vatAmount } = groupPriceFor(key)
+    const { supplyPrice } = groupPriceFor(key)
     if (!supplyPrice) return
     setRowState((prev) => {
       const next = { ...prev }
       for (const booth of groups[key]) {
-        next[booth.id] = { included: true, supplyPrice, vatAmount: vatAmount || '0' }
+        next[booth.id] = { included: true, supplyPrice }
       }
       return next
     })
@@ -288,7 +284,7 @@ const BulkCreateBoothProductsSection = ({
       recruitmentNoticeId: noticeId,
       boothId: booth.id,
       supplyPrice: Number(stateFor(booth.id).supplyPrice),
-      vatAmount: Number(stateFor(booth.id).vatAmount || '0'),
+      vatAmount: 0,
       vatIncluded: true,
       paymentEnabled: true,
     }))
@@ -321,7 +317,7 @@ const BulkCreateBoothProductsSection = ({
             return (
               <div
                 key={key}
-                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_1fr_auto]"
+                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_auto]"
               >
                 <p className="text-label-md font-medium">
                   {key}그룹 ({groups[key].length}개)
@@ -331,12 +327,6 @@ const BulkCreateBoothProductsSection = ({
                   type="number"
                   value={price.supplyPrice}
                   onChange={(e) => updateGroupPrice(key, { supplyPrice: e.target.value })}
-                />
-                <Input
-                  label="부가세(원)"
-                  type="number"
-                  value={price.vatAmount}
-                  onChange={(e) => updateGroupPrice(key, { vatAmount: e.target.value })}
                 />
                 <Button
                   type="button"
@@ -373,8 +363,6 @@ const BulkCreateBoothProductsSection = ({
                   <tr className="text-label-sm text-on-surface-variant">
                     <th className="px-3 py-2 font-medium">부스</th>
                     <th className="px-3 py-2 font-medium">공급가(원)</th>
-                    <th className="px-3 py-2 font-medium">부가세(원)</th>
-                    <th className="px-3 py-2 font-medium">총액</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -397,20 +385,6 @@ const BulkCreateBoothProductsSection = ({
                             disabled={!state.included}
                             className="w-28"
                           />
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <Input
-                            type="number"
-                            value={state.vatAmount}
-                            onChange={(e) => updateRow(booth.id, { vatAmount: e.target.value })}
-                            disabled={!state.included}
-                            className="w-24"
-                          />
-                        </td>
-                        <td className="text-label-sm text-on-surface-variant px-3 py-1.5">
-                          {formatCurrency(
-                            Number(state.supplyPrice || 0) + Number(state.vatAmount || 0)
-                          )}
                         </td>
                       </tr>
                     )
