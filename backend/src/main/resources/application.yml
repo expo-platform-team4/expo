@@ -57,6 +57,12 @@ app:
   # 프론트로 리다이렉트할 때 사용. Next.js dev 서버 기준.
   front-base-url: ${FRONT_BASE_URL:http://localhost:3000}
 
+  scheduling:
+    # 주기 작업 전체 스위치. 끄면 스케줄러 빈이 아예 만들어지지 않는다.
+    # 각 작업은 PostgreSQL 어드바이저리 락으로 인스턴스 하나에서만 돈다
+    # (ScheduledJobRunner). 내부 API 는 그대로 남아 있어 급할 때 손으로 부를 수 있다.
+    enabled: ${SCHEDULING_ENABLED:true}
+
   jwt:
     # HS256 기준 최소 32바이트. 운영 값은 절대 커밋하지 않는다.
     secret: ${JWT_SECRET}

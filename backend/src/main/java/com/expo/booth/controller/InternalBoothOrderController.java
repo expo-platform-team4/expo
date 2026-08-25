@@ -18,10 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code SecurityConfig} 의 마지막 규칙이 {@code anyRequest().permitAll()} 이다. {@code
  * /api/internal/**} 에 {@code hasRole("ADMIN")} 을 명시해 두었다.
  *
- * <h2>스케줄러는 아직 없다</h2>
+ * <h2>스케줄러가 이것을 부른다</h2>
  *
- * {@code InternalSettlementController} 와 같은 이유로 {@code @Scheduled} 를 붙이지 않았다 — 인스턴스가
- * 여럿일 때 중복 실행을 막는 장치가 함께 필요해서 미뤘다. 여러 번 불러도 안전하도록 만들어 두었으므로 나중에 붙이기만 하면 된다.
+ * {@code BoothOrderExpirationScheduler} 가 주기적으로 같은 작업을 실행한다. {@code ScheduledJobRunner} 가
+ * PostgreSQL 어드바이저리 락으로 <b>인스턴스 하나에서만</b> 돌게 막는다.
+ *
+ * <p>그래도 이 API 는 남겨 둔다. 다음 주기를 기다리지 않고 <b>지금 당장 반영해야 할 때</b>와,
+ * 스케줄러가 도는지 의심스러울 때 손으로 확인할 수단이 필요하다.
  */
 @Tag(name = "Internal Booth Order", description = "부스 주문 만료 정리 (내부 호출)")
 @RestController

@@ -38,7 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <h2>여러 번 불러도 안전하다</h2>
  *
  * 조회 조건이 곧 "아직 처리되지 않은 것" 이다. 두 번째 호출은 대상이 0건이라 아무 일도 하지 않는다.
- * 스케줄러 없이 사람이 눌러도, 나중에 배치가 붙어도 같은 성질이 유지된다.
+ * {@code BannerDisplayStatusScheduler} 가 5분마다 부르고, 급할 때 사람이 내부 API 로 불러도 된다 —
+ * 둘이 겹쳐도 같은 성질이 유지된다.
  */
 @Slf4j
 @Service

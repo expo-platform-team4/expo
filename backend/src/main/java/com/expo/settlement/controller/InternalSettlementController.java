@@ -19,11 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
  * <b>누구나 부를 수 있는 경로가 된다.</b> 정산 대상을 만드는 API 라 {@code /api/internal/**} 에
  * {@code hasRole("ADMIN")} 을 명시해 두었다.
  *
- * <h2>스케줄러는 아직 없다</h2>
+ * <h2>스케줄러가 이것을 부른다</h2>
  *
- * 명세는 "행사 종료 후 7~14일 이내 대상 생성" 이지만, 지금은 <b>사람이 부르는 API</b> 만 있다.
- * {@code @Scheduled} 를 붙이려면 인스턴스가 여럿일 때 중복 실행을 막는 장치가 함께 필요해서 미뤘다.
- * 여러 번 불러도 안전하도록 만들어 두었으므로 나중에 붙이기만 하면 된다.
+ * 명세는 "행사 종료 후 7~14일 이내 대상 생성" 이다. {@code SettlementGenerationScheduler} 가
+ * 매일 새벽에 실행한다 — 대상 조건이 "행사 종료 후 7일" 이라 분 단위로 볼 이유가 없는 유일한
+ * 작업이다. {@code ScheduledJobRunner} 가 인스턴스 하나에서만 돌게 막는다.
+ *
+ * <p>그래도 이 API 는 남겨 둔다. 다음 주기를 기다리지 않고 <b>지금 당장 반영해야 할 때</b>와,
+ * 스케줄러가 도는지 의심스러울 때 손으로 확인할 수단이 필요하다.
  */
 @Tag(name = "Internal Settlement", description = "정산 대상 생성 (내부 호출)")
 @RestController

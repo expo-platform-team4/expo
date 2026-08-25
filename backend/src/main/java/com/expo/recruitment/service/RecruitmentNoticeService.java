@@ -242,8 +242,8 @@ public class RecruitmentNoticeService {
      * processed_by_admin_id} NOT NULL)은 공고를 만든 관리자 ID로 남긴다.
      *
      * <p>여러 번 호출해도 안전하다 - 이미 전환된 공고는 대상 조회 조건(SCHEDULED/OPEN)에서 다시 걸리지 않는다.
-     * 다중 인스턴스에서의 중복 실행 방지 장치가 없어 아직 스케줄러는 붙이지 않았다({@code
-     * InternalSettlementController} 와 동일한 판단).
+     * {@code RecruitmentNoticeScheduleScheduler} 가 주기적으로 부른다. 다중 인스턴스에서의 중복
+     * 실행은 {@code ScheduledJobRunner} 의 어드바이저리 락이 막는다.
      */
     @Transactional
     public RecruitmentNoticeScheduleSweepResult processSchedule() {
