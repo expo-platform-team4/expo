@@ -16,6 +16,8 @@ import com.expo.banner.repository.BannerApplicationRepository;
 import com.expo.banner.repository.BannerRepository;
 import com.expo.banner.repository.BannerReviewHistoryRepository;
 import com.expo.banner.repository.BannerSlotRepository;
+import com.expo.common.exception.BusinessException;
+import com.expo.common.exception.ErrorCode;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -29,10 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
  * 광고 배너 도메인 서비스.
  *
  * <p>관리자 메서드의 adminId 는 처리자 기록용이다(권한 자체는 SecurityConfig 필터가 검증,
- * ExpoService 와 동일한 컨벤션). 배너 신청은 clientUserId 로 직접 필터링해 조회하므로
- * (B-API-020) 별도의 소유권 재검증(validateOwner)은 필요하지 않다 — 클라이언트용 단건 조회/취소
- * 엔드포인트가 명세에 없기 때문이다. 그런 엔드포인트가 추가되면 ExpoService.validateOwner 처럼
- * BannerApplication.isOwnedBy() 를 재검증하는 헬퍼를 추가해야 한다.
+ * ExpoService 와 동일한 컨벤션). 목록 조회(B-API-020)는 clientUserId 로 <b>필터링해서</b> 읽으므로
+ * 남의 것이 섞일 수 없다.
+ *
+ * <p>반면 <b>ID 로 특정 건을 지목하는 요청은 소유권을 따로 확인해야 한다.</b> 취소가 그것이다 —
+ * 경로에 남의 신청 ID 를 넣으면 그대로 처리되기 때문이다. {@link #cancelApplication} 이
+ * {@code isOwnedBy} 로 막는다.
  *
  * <p>메인 배너 슬롯은 현재 단일 슬롯(MAIN_TOP, seed: V202608201545)만 존재하므로 승인·활성 조회 시
  * 이 슬롯을 기본으로 사용한다. 슬롯이 여러 개로 늘어나면 신청 시점에 slotCode 를 선택받도록 확장한다.
@@ -90,7 +94,7 @@ public class BannerApplicationService {
     public Page<BannerApplicationResponse> getMyApplications(
             Long clientUserId, int page, int size) {
         return applicationRepository
-                .findByClientUserId(clientUserId, pageOf(page, size))
+                .findByClientUserIdOrderByIdDesc(clientUserId, pageOf(page, size))
                 .map(BannerApplicationResponse::from);
     }
 
@@ -179,6 +183,34 @@ public class BannerApplicationService {
                 ReviewStatus.REJECTED);
     }
 
+    /**
+     * 주최사가 자기 신청을 취소한다.
+     *
+     * <h2>남의 신청을 취소할 수 없다</h2>
+     *
+     * 목록 조회와 달리 <b>경로에 ID 를 직접 받는다.</b> 로그인만 되어 있으면 남의 신청 번호를 넣어
+     * 부를 수 있으므로 소유권을 확인한다. 목록이 clientUserId 로 걸러 읽는 것과는 다른 문제다.
+     *
+     * <h2>승인된 뒤에는 못 한다</h2>
+     *
+     * 승인은 이미 노출 배너를 만들어 슬롯 자리를 차지한 상태다. 신청서만 취소하면 <b>배너는 그대로
+     * 노출되면서 신청서는 취소됨</b> 인 어긋난 상태가 된다. 엔티티가 이것을 막는다
+     * ({@code BannerApplication#cancel}). 승인 후 내리는 것은 별도 기능이라 여기서 다루지 않는다.
+     */
+    @Transactional
+    public void cancelApplication(Long clientUserId, Long requestId) {
+        BannerApplication application = getApplication(requestId);
+        if (!application.isOwnedBy(clientUserId)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+
+        ReviewStatus fromStatus = application.getReviewStatus();
+        application.cancel();
+
+        recordHistory(
+                application, BannerReviewDecision.CANCEL, null, fromStatus, ReviewStatus.CANCELED);
+    }
+
     /* ==================== 공개 조회 ==================== */
 
     /**
@@ -213,10 +245,13 @@ public class BannerApplicationService {
             String reason,
             ReviewStatus fromStatus,
             ReviewStatus toStatus) {
+        // 컬럼 이름은 reviewer_admin_id 지만 담기는 것은 "누가 했나" 다. 관리자가 아닌 주최사가
+        // 움직이는 결정(제출·취소)에서는 주최사 ID 가 들어간다. NOT NULL 이라 비워 둘 수 없고,
+        // 취소 시점의 reviewedByAdminId 는 아직 null 이다.
+        boolean byClient =
+                decision == BannerReviewDecision.SUBMIT || decision == BannerReviewDecision.CANCEL;
         Long reviewerId =
-                decision == BannerReviewDecision.SUBMIT
-                        ? application.getClientUserId()
-                        : application.getReviewedByAdminId();
+                byClient ? application.getClientUserId() : application.getReviewedByAdminId();
         reviewHistoryRepository.save(
                 BannerReviewHistory.record(
                         application.getId(),
@@ -243,6 +278,13 @@ public class BannerApplicationService {
                                         "배너 슬롯을 찾을 수 없습니다. slotCode=" + MAIN_SLOT_CODE));
     }
 
+    /**
+     * 목록 API 의 {@code page} 는 <b>1부터 센다.</b>
+     *
+     * <p>저장소 안에서도 통일되어 있지 않다 — 알림 이력 API 는 0부터 센다. 부르는 쪽이 규칙을
+     * 반대로 알면 <b>조용히 틀린다:</b> 0을 보내면 {@code Math.max} 가 0으로 눌러 1페이지와 같은
+     * 결과를 주고, 에러도 경고도 없다. 프론트는 {@code features/banner/api.ts} 에서 1부터 센다.
+     */
     private Pageable pageOf(int page, int size) {
         return PageRequest.of(Math.max(page - 1, 0), size);
     }

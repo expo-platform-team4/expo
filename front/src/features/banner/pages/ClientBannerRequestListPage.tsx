@@ -2,20 +2,25 @@
 
 import Link from 'next/link'
 
+import { useState } from 'react'
+
 import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   LoadingBlock,
   PageHeader,
+  Pagination,
 } from '@/components/ui'
 import { useClientMyExpos } from '@/features/client/hooks'
 import { formatDateTime } from '@/lib/date'
+import { getErrorMessage } from '@/lib/errorMessage'
 
 import { bannerImageUrl, type BannerApplication } from '../api'
-import { useMyBannerRequests } from '../hooks'
+import { useCancelBannerRequest, useMyBannerRequests } from '../hooks'
 import { BANNER_REVIEW_STATUS } from '../statusLabels'
 
 const RequestCard = ({
@@ -26,6 +31,11 @@ const RequestCard = ({
   expoTitle: string | undefined
 }) => {
   const status = BANNER_REVIEW_STATUS[request.reviewStatus]
+  const [confirming, setConfirming] = useState(false)
+  const cancelMutation = useCancelBannerRequest()
+  // 승인되면 이미 노출 배너가 만들어져 슬롯 자리를 차지한다. 신청서만 취소하면 배너는 계속
+  // 노출되는데 신청서는 취소됨인 어긋난 상태가 되므로, 심사 대기일 때만 내준다.
+  const cancelable = request.reviewStatus === 'UNDER_REVIEW'
 
   return (
     <Card>
@@ -66,13 +76,41 @@ const RequestCard = ({
           반려 사유 — {request.rejectionReason}
         </p>
       )}
+
+      {cancelable && (
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+            신청 취소
+          </Button>
+        </div>
+      )}
+
+      {cancelMutation.isError && (
+        <p className="text-label-sm text-error mt-2">{getErrorMessage(cancelMutation.error)}</p>
+      )}
+
+      {/* 되돌릴 수 없으므로 한 번 묻는다. 다시 신청하려면 이미지부터 새로 올려야 한다. */}
+      <ConfirmDialog
+        open={confirming}
+        danger
+        title="배너 신청을 취소할까요?"
+        description="취소하면 되돌릴 수 없습니다. 다시 노출하려면 새로 신청해야 합니다."
+        confirmLabel="신청 취소"
+        cancelLabel="닫기"
+        loading={cancelMutation.isPending}
+        onConfirm={() =>
+          cancelMutation.mutate(request.id, { onSuccess: () => setConfirming(false) })
+        }
+        onCancel={() => setConfirming(false)}
+      />
     </Card>
   )
 }
 
 /** `/client/banner-requests` — 내가 낸 배너 신청과 심사 결과. CLIENT 전용. */
 const ClientBannerRequestListPage = () => {
-  const { data, isPending, isError, error, refetch } = useMyBannerRequests()
+  const [page, setPage] = useState(1)
+  const { data, isPending, isError, error, refetch } = useMyBannerRequests(page)
   // 신청 응답에는 `expoId` 만 있다. 제목은 이미 불러 둔 내 박람회 목록에서 맞춘다 —
   // 행마다 박람회 상세를 부르면 목록 하나에 요청이 열 번 나간다.
   const { data: expos } = useClientMyExpos()
@@ -100,13 +138,21 @@ const ClientBannerRequestListPage = () => {
           description="메인 홈 상단에 박람회를 광고하려면 새 신청을 눌러 주세요."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {data.content.map((request) => (
-            <li key={request.id}>
-              <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-3">
+            {data.content.map((request) => (
+              <li key={request.id}>
+                <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
+              </li>
+            ))}
+          </ul>
+          <Pagination
+            page={page}
+            totalPages={data.totalPages}
+            totalElements={data.totalElements}
+            onChange={setPage}
+          />
+        </>
       )}
     </div>
   )
