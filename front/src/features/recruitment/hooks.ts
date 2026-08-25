@@ -1,9 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { useAuthStore } from '@/lib/auth'
 
 import {
-  createRecruitmentNoticeRequest,
   getMyRecruitmentNoticeRequest,
   getPublicRecruitmentNotice,
   listAdminRecruitmentNotices,
@@ -54,17 +53,6 @@ export const useMyRecruitmentNoticeRequest = (requestId: number | null) => {
     queryKey: recruitmentKeys.requestDetail(requestId ?? 0),
     queryFn: () => getMyRecruitmentNoticeRequest(requestId as number),
     enabled: Boolean(accessToken) && requestId !== null && Number.isFinite(requestId),
-  })
-}
-
-/** 모집공고 생성 요청 작성. 성공하면 목록 캐시를 무효화한다(Spec.md 6절). */
-export const useCreateRecruitmentNoticeRequest = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: createRecruitmentNoticeRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recruitmentKeys.requests() })
-    },
   })
 }
 
