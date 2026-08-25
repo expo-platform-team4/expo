@@ -51,10 +51,14 @@ const AdminRecruitmentNoticeFormPage = () => {
     if (!selectedRequestId) return
     const request = approvedRequests.find((r) => String(r.id) === selectedRequestId)
     if (!request) return
-    setValue('title', request.title)
-    setValue('content', request.description)
-    setValue('applicationStartAt', toDatetimeLocalValue(request.applicationStartAt))
-    setValue('applicationEndAt', toDatetimeLocalValue(request.applicationEndAt))
+    setValue('title', request.title, { shouldValidate: true })
+    setValue('content', request.description, { shouldValidate: true })
+    setValue('applicationStartAt', toDatetimeLocalValue(request.applicationStartAt), {
+      shouldValidate: true,
+    })
+    setValue('applicationEndAt', toDatetimeLocalValue(request.applicationEndAt), {
+      shouldValidate: true,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRequestId])
 
