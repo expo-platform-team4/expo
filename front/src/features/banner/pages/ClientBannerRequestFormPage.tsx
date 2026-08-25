@@ -61,6 +61,15 @@ const ClientBannerRequestFormPage = () => {
     if (!file) {
       return
     }
+    // 새 파일을 고른 순간 이전 값을 버린다. 남겨 두면 업로드가 실패했을 때 앞서 올린 fileId 가
+    // 그대로 남아, 사용자는 새 이미지를 골랐다고 믿는 채로 **옛 이미지가 딸린 신청**을 제출하게
+    // 된다. 오류 메시지는 뜨지만 폼은 유효한 값을 들고 있어 제출이 막히지 않는다.
+    //
+    // 여기서는 검증을 돌리지 않는다(`shouldValidate` 없음). 업로드 중에 "이미지를 올려 주세요"
+    // 가 먼저 떠 버린다.
+    setValue('imageFileId', '')
+    setPreview(null)
+
     setUploading(true)
     try {
       const uploaded = await uploadFile(file, 'BANNER_IMAGE')
@@ -69,7 +78,6 @@ const ClientBannerRequestFormPage = () => {
     } catch (error) {
       // 업로드 실패를 폼 오류로 되돌린다. 그냥 두면 파일을 골랐는데 아무 일도 안 일어난 것처럼 보인다.
       setError('imageFileId', { message: getErrorMessage(error) })
-      setPreview(null)
     } finally {
       setUploading(false)
     }

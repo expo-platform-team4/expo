@@ -91,7 +91,16 @@ const MainBannerCarousel = () => {
     return null
   }
 
-  const current = banners[Math.min(index, banners.length - 1)]
+  /**
+   * 실제로 그릴 위치. `index` 를 그대로 쓰지 않는다.
+   *
+   * <p>배너 목록은 다시 불러올 때 <b>줄어들 수 있다</b>(기간이 끝났거나 관리자가 내렸거나).
+   * 그러면 `index` 가 마지막 배너를 넘어선다. 그림은 여기서 잘라 내 마지막 배너를 보여주는데
+   * <b>점은 `index` 로 판단하면</b> 어느 점도 현재로 표시되지 않는다 — 보이는 배너와 표시된
+   * 점이 어긋난다. 그리는 값 하나로 통일한다.
+   */
+  const currentIndex = Math.min(index, banners.length - 1)
+  const current = banners[currentIndex]
 
   return (
     <section
@@ -132,7 +141,7 @@ const MainBannerCarousel = () => {
               type="button"
               onClick={() => pick(position)}
               aria-label={`${position + 1}번째 배너 보기`}
-              aria-current={position === index}
+              aria-current={position === currentIndex}
               // 점은 8px 로 보이지만 누르는 자리는 패딩까지 포함해 24px 이다. 점 크기 그대로
               // 두면 빗나간 손가락이 아래 링크를 눌러 박람회 상세로 넘어가 버린다 - 실제로
               // 브라우저에서 그렇게 됐다.
@@ -140,7 +149,7 @@ const MainBannerCarousel = () => {
             >
               <span
                 className={`block size-2 rounded-full transition-opacity ${
-                  position === index ? 'bg-on-surface' : 'bg-on-surface/40'
+                  position === currentIndex ? 'bg-on-surface' : 'bg-on-surface/40'
                 }`}
               />
             </button>
