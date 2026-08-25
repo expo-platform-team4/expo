@@ -22,7 +22,7 @@ const CLIENT_MENU_ITEMS: SidebarMenuItem[] = [
   { label: '대시보드', href: '/client/dashboard', icon: LayoutDashboard },
   { label: '내 박람회', href: '/client/expos', icon: Building2 },
   { label: '부스 관리', href: '/client/booths', icon: Store },
-  { label: '모집공고 요청 관리', href: '/client/recruitment-notice-requests', icon: Megaphone },
+  { label: '모집공고 요청 현황', href: '/client/recruitment-notice-requests', icon: Megaphone },
   { label: '배너 노출 신청', href: '/client/banner-requests', icon: ImageIcon },
   { label: '참여 신청 내역', href: '/client/participations', icon: Users },
   { label: '정산 리포트', href: '/client/settlements', icon: Receipt },

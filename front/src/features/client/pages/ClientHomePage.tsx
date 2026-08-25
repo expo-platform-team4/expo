@@ -23,7 +23,7 @@ const QUICK_LINKS = [
   {
     href: '/client/recruitment-notice-requests',
     icon: Megaphone,
-    title: '모집공고 요청 관리',
+    title: '모집공고 요청 현황',
     description: '내 요청 목록과 진행 상태를 확인합니다',
   },
   {

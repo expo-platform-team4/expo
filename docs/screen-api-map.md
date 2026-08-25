@@ -62,8 +62,8 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 | 박람회 이미지·자료 관리 | 대응 없음 | `/client/expos/[expoId]/content` | `client` | `POST /api/files` + `/api/client/expos/{id}/images` · `/files` | ✅ |
 | 박람회 개최 신청 | `13484d75` | `/client/expos/new` | `client` | `POST/GET/PATCH /api/client/expo-opening-requests` · `/submit` · `/cancel` (이슈 #116, PR #117) | ✅ |
 | 부스 관리 | 대응 없음 | `/client/booths` | `booth` | `GET /api/client/me/booths` · `/booth-allocations/{id}` · `/booth-contents/**` | ✅ |
-| 모집공고 요청 관리 | `fe000d47` | `/client/recruitment-notice-requests`<br>`/[requestId]` | `recruitment` | `GET /api/client/recruitment-notice-requests` · `/{id}` | ✅ |
-| 공고 생성 요청 | `533717af` | `/client/recruitment-notice-requests/new` | `recruitment` | `POST /api/client/recruitment-notice-requests`<br>+ `GET /api/virtual-venues` · `/{id}/halls` · `/api/venue-halls/{id}/zones` | ✅ |
+| 모집공고 요청 현황 | `fe000d47` | `/client/recruitment-notice-requests`<br>`/[requestId]` | `recruitment` | `GET /api/client/recruitment-notice-requests` · `/{id}` | ✅ |
+| ~~공고 생성 요청~~ | `533717af` | (삭제됨, 관리자 몫으로 이동) | `recruitment` | 요청 작성 주체가 CLIENT→ADMIN 으로 바뀌면서 `/client/recruitment-notice-requests/new` 삭제. 87행 "공고 신청 관리" 참고 | ✅ |
 | 참여 신청 내역 | `79d848ba` | `/client/participations` | `participation` | `GET /api/client/me/participations` | ✅ (주 참고) |
 | 정산 리포트 | `3ad4a13d` | `/client/settlements`<br>`/[id]` | `settlement` | `GET /api/client/settlements` · `/{settlementId}` | ✅ |
 | 체크인 현황 | 대응 없음 | `/client/check-in` | `checkin` | `GET /api/client/expos/{expoId}/check-in` | ✅ |
@@ -84,7 +84,7 @@ Stitch 디자인의 화면과 프론트 라우트, `features` 모듈, 백엔드 
 |-|-|-|-|-|-|
 | 관리자 대시보드 | `ecafe136` | `/admin` | `admin` | `GET /api/admin/dashboard/summary` · `/pending-tasks` | ✅ |
 | 박람회 개최 승인 관리 | `262c25c5` | `/admin/expos` | `admin` | `GET /api/admin/expo-opening-requests` · `/{id}` · `/approve` · `/reject` (이슈 #116, PR #117) | ✅ |
-| 공고 신청 관리 | `0f675bf6` | `/admin/recruitment-notice-requests` | `admin` | `GET /api/admin/recruitment-notice-requests` · `PATCH .../venue-decision` | ✅ |
+| 공고 신청 관리 | `0f675bf6` | `/admin/recruitment-notice-requests`<br>`/new` | `admin` | `GET/POST /api/admin/recruitment-notice-requests` · `PATCH .../venue-decision` | ✅ |
 | 공고 모집 관리 | `a3059378` | `/admin/recruitment-notices`<br>`/new` | `admin` | `GET/POST /api/admin/recruitment-notices` · `publish` · `close` · `cancel` | ✅ |
 | 카테고리 관리 | `b1690b49` | `/admin/categories` | `admin` | `GET/POST/PATCH/DELETE /api/admin/categories` | ✅ |
 | 정산 관리 | `fa7c036f` | `/admin/settlements` | `admin` | `GET /api/admin/settlements` · `calculate` · `confirm` · `transfers` | ✅ |
