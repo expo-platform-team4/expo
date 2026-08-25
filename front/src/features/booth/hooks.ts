@@ -230,7 +230,7 @@ export const useInitiateBoothPayment = () => useMutation({ mutationFn: initiateB
 /** 결제 승인 확정. 토스 결제창에서 돌아온 성공 콜백 페이지가 마운트 시 자동으로 부른다. */
 export const useConfirmBoothPayment = () => useMutation({ mutationFn: confirmBoothPayment })
 
-/** 구역 내 부스 공간 목록. 관리자 부스 등록 화면에서 이미 등록된 부스를 보여줄 때 쓴다. */
+/** 홀 내 부스 공간 목록. 관리자 부스 등록 화면에서 이미 등록된 부스를 보여줄 때 쓴다. */
 export const useAdminBooths = (zoneId: number | null) =>
   useQuery({
     queryKey: boothKeys.adminBooths(zoneId ?? 0),
@@ -238,7 +238,7 @@ export const useAdminBooths = (zoneId: number | null) =>
     enabled: zoneId !== null,
   })
 
-/** 부스 공간 일괄 등록. 성공하면 그 구역의 부스 목록 캐시를 무효화한다. */
+/** 부스 공간 일괄 등록. 성공하면 그 홀의 부스 목록 캐시를 무효화한다. */
 export const useCreateBoothsBulk = (zoneId: number) => {
   const queryClient = useQueryClient()
   return useMutation({

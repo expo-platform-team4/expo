@@ -5,10 +5,10 @@ import { useVenueZones } from '@/features/recruitment/hooks'
 import type { BoothProduct } from '../api'
 
 /**
- * 선택한 부스 상품이 속한 구역의 배치도 미리보기. 참여 신청·수정 폼이 공용으로 쓴다.
+ * 선택한 부스 상품이 속한 홀의 배치도 미리보기. 참여 신청·수정 폼이 공용으로 쓴다.
  *
  * 부스 상품(`BoothProductResponse`)에는 배치도 파일 ID가 없다 — `venueHallId`/`venueZoneId`
- * 만 있다. 그 구역의 배치도는 공개 홀/구역 조회(`GET /api/venue-halls/{hallId}/zones`,
+ * 만 있다. 그 홀의 배치도는 공개 전시장/홀 조회(`GET /api/venue-halls/{hallId}/zones`,
  * `features/recruitment/api.ts`)로 따로 가져와야 한다.
  */
 export const BoothProductLayoutPreview = ({ product }: { product: BoothProduct | undefined }) => {

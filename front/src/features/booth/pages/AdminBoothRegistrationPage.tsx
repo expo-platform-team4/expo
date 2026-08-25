@@ -64,7 +64,7 @@ const indexForBoothNumber = (boothNumber: string): number | null => {
   return (match[1].charCodeAt(0) - 65) * AUTO_PREFIX_GROUP_SIZE + (seq - 1)
 }
 
-/** 구역 안에 부스 공간을 여러 개 한 번에 등록하는 반복 행 폼. */
+/** 홀 안에 부스 공간을 여러 개 한 번에 등록하는 반복 행 폼. */
 const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const [rows, setRows] = useState<BoothRow[]>([])
   const [bulkCount, setBulkCount] = useState('10')
@@ -118,8 +118,8 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   if (!zoneId) {
     return (
       <EmptyState
-        title="구역을 먼저 선택하세요"
-        description="위에서 홀·구역을 골라야 부스를 등록할 수 있습니다."
+        title="공고를 먼저 선택하세요"
+        description="위에서 공고를 선택해 전시장·홀을 정해야 부스를 등록할 수 있습니다."
       />
     )
   }
@@ -218,7 +218,7 @@ type GroupPriceState = {
 }
 
 /**
- * 선택한 공고에, 선택한 구역의 부스들을 판매 상품으로 일괄 등록하는 섹션.
+ * 선택한 공고에, 그 공고의 홀에 속한 부스들을 판매 상품으로 일괄 등록하는 섹션.
  * 이미 그 공고에 상품으로 등록된 부스는 목록에서 아예 뺀다 — 중복 등록을 시도할 일이 없다.
  */
 const BulkCreateBoothProductsSection = ({
@@ -249,8 +249,8 @@ const BulkCreateBoothProductsSection = ({
   if (!noticeId || !zoneId) {
     return (
       <EmptyState
-        title="공고와 구역을 먼저 선택하세요"
-        description="위에서 공고·홀·구역을 골라야 부스 상품을 등록할 수 있습니다."
+        title="공고를 먼저 선택하세요"
+        description="위에서 공고를 선택해야 부스 상품을 등록할 수 있습니다."
       />
     )
   }
@@ -337,7 +337,7 @@ const BulkCreateBoothProductsSection = ({
       {registrableBooths.length === 0 ? (
         <EmptyState
           title="등록할 부스가 없습니다"
-          description="이 구역의 부스가 이미 전부 이 공고의 판매 상품으로 등록돼 있거나, 구역에 등록된 부스가 없습니다."
+          description="이 홀의 부스가 이미 전부 이 공고의 판매 상품으로 등록돼 있거나, 홀에 등록된 부스가 없습니다."
         />
       ) : (
         <div className="flex flex-col gap-2">
@@ -447,14 +447,23 @@ const BulkCreateBoothProductsSection = ({
  * 라는 한 번의 스냅샷이다. 그래서 한 행에 섞지 않고 별도 섹션 두 개로 나눴다.
  */
 const AdminBoothRegistrationPage = () => {
-  const { data: venues, isPending: venuesPending } = useAdminVirtualVenues()
-  const venueId = venues?.[0]?.id
-  const { data: halls, isPending: hallsPending } = useAdminVenueHalls(venueId)
-  const [hallId, setHallId] = useState<number | null>(null)
-  const { data: zones, isPending: zonesPending } = useAdminVenueZones(hallId ?? undefined)
-  const [zoneId, setZoneId] = useState<number | null>(null)
   const { data: notices, isPending: noticesPending } = useAdminRecruitmentNotices()
   const [noticeId, setNoticeId] = useState<number | null>(null)
+  const notice = notices?.find((item) => item.id === noticeId)
+
+  const { data: venues } = useAdminVirtualVenues()
+  const venueId = venues?.[0]?.id
+  const { data: halls, isPending: hallsPending } = useAdminVenueHalls(venueId)
+  const { data: zones, isPending: zonesPending } = useAdminVenueZones(
+    notice?.venueHallId ?? undefined
+  )
+
+  // 홀·전시장은 이제 별도로 고르지 않는다 — 선택한 공고에 이미 정해져 있어(공고를 만들 때
+  // 박람회 신청의 희망 장소를 그대로 잠가서 씀), 여기서는 그 값을 그대로 읽어 보여주기만 한다.
+  const hallId = notice?.venueHallId ?? null
+  const zoneId = notice?.venueZoneIds[0] ?? null
+  const hallName = halls?.find((hall) => hall.id === hallId)?.name
+  const zoneName = zones?.find((zone) => zone.id === zoneId)?.name
 
   return (
     <div>
@@ -465,62 +474,35 @@ const AdminBoothRegistrationPage = () => {
 
       <div className="flex flex-col gap-6">
         <Card className="flex flex-col gap-4">
-          <CardTitle>홀·구역 선택</CardTitle>
-          {venuesPending || hallsPending ? (
-            <LoadingBlock label="홀 목록을 불러오는 중입니다" />
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Select
-                label="홀"
-                value={hallId ?? ''}
-                onChange={(e) => {
-                  setHallId(e.target.value ? Number(e.target.value) : null)
-                  setZoneId(null)
-                }}
-              >
-                <option value="">홀을 선택하세요</option>
-                {halls?.map((hall) => (
-                  <option key={hall.id} value={hall.id}>
-                    {hall.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="구역"
-                value={zoneId ?? ''}
-                onChange={(e) => setZoneId(e.target.value ? Number(e.target.value) : null)}
-                disabled={!hallId || zonesPending}
-              >
-                <option value="">구역을 선택하세요</option>
-                {zones?.map((zone) => (
-                  <option key={zone.id} value={zone.id}>
-                    {zone.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="공고 (부스 상품 등록용)"
-                value={noticeId ?? ''}
-                onChange={(e) => {
-                  const id = e.target.value ? Number(e.target.value) : null
-                  setNoticeId(id)
-                  const notice = notices?.find((item) => item.id === id)
-                  if (notice?.venueHallId) {
-                    // 제어형 select 라 zoneId 옵션이 아직 없어도(구역 목록이 늦게 로드돼도)
-                    // 값은 그대로 유지되고, 옵션이 뜨는 순간 화면에 알아서 반영된다.
-                    setHallId(notice.venueHallId)
-                    setZoneId(notice.venueZoneIds[0] ?? null)
-                  }
-                }}
-                disabled={noticesPending}
-              >
-                <option value="">공고를 선택하세요</option>
-                {notices?.map((notice) => (
-                  <option key={notice.id} value={notice.id}>
-                    #{notice.id} {notice.title}
-                  </option>
-                ))}
-              </Select>
+          <CardTitle>공고 선택</CardTitle>
+          <Select
+            label="공고 (부스 상품 등록용)"
+            value={noticeId ?? ''}
+            onChange={(e) => setNoticeId(e.target.value ? Number(e.target.value) : null)}
+            disabled={noticesPending}
+          >
+            <option value="">공고를 선택하세요</option>
+            {notices?.map((item) => (
+              <option key={item.id} value={item.id}>
+                #{item.id} {item.title}
+              </option>
+            ))}
+          </Select>
+
+          {noticeId && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-label-md text-on-surface-variant font-medium">전시장</label>
+                <div className="border-outline-variant bg-surface-container-low text-body-md flex h-11 items-center rounded border px-3">
+                  {hallsPending ? '불러오는 중…' : (hallName ?? '-')}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-label-md text-on-surface-variant font-medium">홀</label>
+                <div className="border-outline-variant bg-surface-container-low text-body-md flex h-11 items-center rounded border px-3">
+                  {zonesPending ? '불러오는 중…' : (zoneName ?? '-')}
+                </div>
+              </div>
             </div>
           )}
         </Card>

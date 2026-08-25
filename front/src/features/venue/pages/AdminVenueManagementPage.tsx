@@ -26,10 +26,10 @@ import {
 } from '../hooks'
 
 /**
- * 배치도 썸네일 + 업로드/교체 버튼. 홀·구역 카드에서 공용으로 쓴다 — `onUpload` 만 갈아 끼운다.
+ * 배치도 썸네일 + 업로드/교체 버튼. 전시장·홀 카드에서 공용으로 쓴다 — `onUpload` 만 갈아 끼운다.
  *
  * 파일을 고르면 (1) `POST /api/files`(purpose=VENUE_LAYOUT)로 먼저 올리고 (2) 받은 fileId 를
- * `onUpload` 로 넘겨 홀/구역에 붙이는 2단계 — `ProfileEditPage` 의 프로필 이미지 교체와 같은 패턴이다.
+ * `onUpload` 로 넘겨 전시장/홀에 붙이는 2단계 — `ProfileEditPage` 의 프로필 이미지 교체와 같은 패턴이다.
  */
 const LayoutUploader = ({
   layoutFileId,
@@ -102,7 +102,7 @@ const LayoutUploader = ({
   )
 }
 
-/** 구역 한 칸. 홀 카드 안 그리드에 놓인다. */
+/** 홀 한 칸. 전시장 카드 안 그리드에 놓인다. */
 const ZoneCard = ({ hallId, zone }: { hallId: number; zone: VenueZone }) => {
   const updateLayoutMutation = useUpdateVenueZoneLayout(hallId)
 
@@ -121,7 +121,7 @@ const ZoneCard = ({ hallId, zone }: { hallId: number; zone: VenueZone }) => {
   )
 }
 
-/** 홀 한 건 — 배치도 + 그 아래 구역 그리드. */
+/** 전시장 한 건 — 배치도 + 그 아래 홀 그리드. */
 const HallSection = ({ venueId, hall }: { venueId: number; hall: VenueHall }) => {
   const updateLayoutMutation = useUpdateVenueHallLayout(venueId)
   const { data: zones, isPending, isError, error, refetch } = useAdminVenueZones(hall.id)
@@ -145,13 +145,13 @@ const HallSection = ({ venueId, hall }: { venueId: number; hall: VenueHall }) =>
       </div>
 
       <div className="border-outline-variant mt-4 border-t pt-4">
-        <p className="text-label-sm text-on-surface-variant mb-2">구역 {zones?.length ?? '—'}개</p>
+        <p className="text-label-sm text-on-surface-variant mb-2">홀 {zones?.length ?? '—'}개</p>
         {isPending ? (
-          <LoadingBlock label="구역을 불러오는 중입니다" />
+          <LoadingBlock label="홀을 불러오는 중입니다" />
         ) : isError ? (
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : zones.length === 0 ? (
-          <p className="text-label-sm text-on-surface-variant">등록된 구역이 없습니다.</p>
+          <p className="text-label-sm text-on-surface-variant">등록된 홀이 없습니다.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
             {zones.map((zone) => (
@@ -164,16 +164,16 @@ const HallSection = ({ venueId, hall }: { venueId: number; hall: VenueHall }) =>
   )
 }
 
-/** 장소 하나 — 그 안의 홀 목록. */
+/** 장소 하나 — 그 안의 전시장 목록. */
 const VenueHalls = ({ venue }: { venue: VirtualVenue }) => {
   const { data: halls, isPending, isError, error, refetch } = useAdminVenueHalls(venue.id)
 
-  if (isPending) return <LoadingBlock label="홀 목록을 불러오는 중입니다" />
+  if (isPending) return <LoadingBlock label="전시장 목록을 불러오는 중입니다" />
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />
   if (halls.length === 0) {
     return (
       <EmptyState
-        title="등록된 홀이 없습니다"
+        title="등록된 전시장이 없습니다"
         description="시드 데이터가 아직 안 들어간 환경일 수 있습니다."
       />
     )
@@ -191,9 +191,9 @@ const VenueHalls = ({ venue }: { venue: VirtualVenue }) => {
 /**
  * `/admin/venues`. ADMIN 전용.
  *
- * 장소·홀·구역은 킨텍스 시드 마이그레이션으로 이미 트리거 한도(장소 1개·홀 2개·구역 홀당 5개)
- * 까지 차 있어 등록 폼을 두지 않는다 — 새로 만들어도 서버가 거절한다. 이 화면이 실제로 하는
- * 일은 이미 있는 홀·구역에 배치도 이미지를 붙이거나 교체하는 것뿐이다.
+ * 장소·전시장·홀은 킨텍스 시드 마이그레이션으로 이미 트리거 한도(장소 1개·전시장 2개·홀
+ * 전시장당 5개)까지 차 있어 등록 폼을 두지 않는다 — 새로 만들어도 서버가 거절한다. 이 화면이
+ * 실제로 하는 일은 이미 있는 전시장·홀에 배치도 이미지를 붙이거나 교체하는 것뿐이다.
  */
 const AdminVenueManagementPage = () => {
   const { data: venues, isPending, isError, error, refetch } = useAdminVirtualVenues()
@@ -202,7 +202,7 @@ const AdminVenueManagementPage = () => {
     <div>
       <PageHeader
         title="가상 장소 관리"
-        description="홀·구역별 배치도를 등록·교체합니다. 장소·홀·구역 자체는 시드 데이터로 고정되어 있습니다."
+        description="전시장·홀별 배치도를 등록·교체합니다. 장소·전시장·홀 자체는 시드 데이터로 고정되어 있습니다."
       />
 
       {isPending ? (

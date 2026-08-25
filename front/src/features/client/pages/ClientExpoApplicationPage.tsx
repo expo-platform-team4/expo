@@ -254,7 +254,7 @@ const ClientExpoApplicationPage = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
-              label="희망 전시관 (선택)"
+              label="희망 전시장 (선택)"
               disabled={!selectedVenueId}
               hint={!selectedVenueId ? '먼저 장소를 선택해 주세요.' : undefined}
               {...register('desiredVenueHallId', {
@@ -269,9 +269,9 @@ const ClientExpoApplicationPage = () => {
               ))}
             </Select>
             <Select
-              label="희망 구역 (선택)"
+              label="희망 홀 (선택)"
               disabled={!selectedHallId}
-              hint={!selectedHallId ? '먼저 전시관을 선택해 주세요.' : undefined}
+              hint={!selectedHallId ? '먼저 전시장을 선택해 주세요.' : undefined}
               {...register('desiredVenueZoneId')}
             >
               <option value="">{zonesPending && selectedHallId ? '불러오는 중…' : '미정'}</option>

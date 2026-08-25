@@ -81,8 +81,8 @@ export const createAdminNoticeRequestSchema = z
     eventStartAt: z.string().min(1, '행사 시작 일시는 필수입니다.'),
     eventEndAt: z.string().min(1, '행사 종료 일시는 필수입니다.'),
     virtualVenueId: z.string().min(1, '가상 장소는 필수입니다.'),
-    venueHallId: z.string().min(1, '희망 전시관은 필수입니다.'),
-    venueZoneIds: z.array(z.string()).min(1, '희망 구역을 하나 이상 선택해 주세요.'),
+    venueHallId: z.string().min(1, '희망 전시장은 필수입니다.'),
+    venueZoneIds: z.array(z.string()).min(1, '희망 홀을 하나 이상 선택해 주세요.'),
     targetCompanyCount: z
       .string()
       .min(1, '목표 참가 기업 수는 필수입니다.')

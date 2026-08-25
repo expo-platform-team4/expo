@@ -32,7 +32,7 @@ const subtractDays = (isoInstant: string, days: number): string => {
  * 결정된 서비스 흐름(클라이언트는 박람회 개최 신청만, 나머지는 관리자 담당)에 맞춰 옮겨왔다.
  *
  * `hostClientId`는 폼에서 안 받는다 — 서버가 `expoId`로 조회한 박람회 소유주를 그대로 쓴다.
- * 가상 장소 → 전시관(홀) → 구역 연쇄 선택은 기존 클라이언트 폼과 같은 패턴이다.
+ * 가상 장소 → 전시장 → 홀 연쇄 선택은 기존 클라이언트 폼과 같은 패턴이다.
  */
 const AdminRecruitmentNoticeRequestFormPage = () => {
   const router = useRouter()
@@ -80,7 +80,7 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
     (request) => request.createdExpoId === Number(selectedExpoId)
   )
   const eventScheduleLocked = Boolean(openingRequest)
-  // 홀·구역은 박람회 신청 때 안 정했을 수 있다(선택 항목) — 그때는 잠그지 않고 admin이
+  // 전시장·홀은 박람회 신청 때 안 정했을 수 있다(선택 항목) — 그때는 잠그지 않고 admin이
   // 직접 고르게 둔다. 값이 있을 때만 잠근다.
   const hallLocked = Boolean(openingRequest?.desiredVenueHallId)
   const zoneLocked = Boolean(openingRequest?.desiredVenueZoneId)
@@ -104,8 +104,8 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openingRequest?.id])
 
-  // 홀 선택지는 virtualVenueId 를 고른 뒤 별도 쿼리로 늦게 들어온다 — <option> 이 실제로
-  // DOM 에 있어야 select 값이 반영되므로, 목록이 뜨고 나서(그리고 실제로 그 홀이 있을 때만)
+  // 전시장 선택지는 virtualVenueId 를 고른 뒤 별도 쿼리로 늦게 들어온다 — <option> 이 실제로
+  // DOM 에 있어야 select 값이 반영되므로, 목록이 뜨고 나서(그리고 실제로 그 전시장이 있을 때만)
   // 채운다. 로딩 중에 바로 setValue 하면 <option value="2"> 가 아직 없어 조용히 무시된다.
   useEffect(() => {
     if (!openingRequest?.desiredVenueHallId || hallsPending) return
@@ -114,7 +114,7 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openingRequest?.id, hallsPending, venueHalls])
 
-  // 구역도 같은 이유로 홀 선택 후 목록이 뜬 다음에 채운다.
+  // 홀도 같은 이유로 전시장 선택 후 목록이 뜬 다음에 채운다.
   useEffect(() => {
     if (!openingRequest?.desiredVenueZoneId || zonesPending) return
     if (!venueZones?.some((zone) => zone.id === openingRequest.desiredVenueZoneId)) return
@@ -231,11 +231,11 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
           )}
 
           <Select
-            label="희망 전시관(홀)"
+            label="희망 전시장"
             disabled={hallLocked || !selectedVirtualVenueId}
             hint={
               hallLocked
-                ? '박람회 신청 때 정한 전시관입니다.'
+                ? '박람회 신청 때 정한 전시장입니다.'
                 : !selectedVirtualVenueId
                   ? '먼저 가상 장소를 선택해 주세요.'
                   : undefined
@@ -257,26 +257,24 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
 
           {zoneLocked ? (
             <div className="flex flex-col gap-1.5">
-              <label className="text-label-md text-on-surface-variant font-medium">희망 구역</label>
+              <label className="text-label-md text-on-surface-variant font-medium">희망 홀</label>
               <div className="border-outline-variant bg-surface-container-low text-body-md flex h-11 items-center rounded border px-3">
                 {lockedZone
                   ? `${lockedZone.name} · 최대 ${lockedZone.maxBoothCount}부스`
                   : '불러오는 중…'}
               </div>
-              <p className="text-label-sm text-on-surface-variant">
-                박람회 신청 때 정한 구역입니다.
-              </p>
+              <p className="text-label-sm text-on-surface-variant">박람회 신청 때 정한 홀입니다.</p>
             </div>
           ) : (
             <Select
-              label="희망 구역 (여러 개 선택 가능)"
+              label="희망 홀 (여러 개 선택 가능)"
               multiple
               size={4}
               disabled={!selectedHallId}
               hint={
                 !selectedHallId
-                  ? '먼저 전시관(홀)을 선택해 주세요.'
-                  : 'Ctrl(⌘) 클릭으로 여러 구역을 고를 수 있습니다.'
+                  ? '먼저 전시장을 선택해 주세요.'
+                  : 'Ctrl(⌘) 클릭으로 여러 홀을 고를 수 있습니다.'
               }
               error={errors.venueZoneIds?.message}
               {...register('venueZoneIds')}

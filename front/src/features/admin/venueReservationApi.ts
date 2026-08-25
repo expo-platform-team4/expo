@@ -26,9 +26,9 @@ export type AdminVenueReservation = {
 }
 
 /**
- * `POST /api/admin/venue-reservations` — 확정 장소 예약 생성. 장소·홀·구역은 이미 승인
+ * `POST /api/admin/venue-reservations` — 확정 장소 예약 생성. 장소·전시장·홀은 이미 승인
  * (`venueDecision=ALLOWED`)된 모집공고 생성 요청에 실려있어, 여기서는 사용 기간만 받는다.
- * 그 요청이 고른 구역 개수만큼 한 번에 확정되고, 하나라도 실패하면 전체가 롤백된다.
+ * 그 요청이 고른 홀 개수만큼 한 번에 확정되고, 하나라도 실패하면 전체가 롤백된다.
  */
 export const createVenueReservations = async (payload: {
   noticeRequestId: number
