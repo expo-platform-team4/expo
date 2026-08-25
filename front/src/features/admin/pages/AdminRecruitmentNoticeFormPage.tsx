@@ -2,10 +2,11 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button, Card, CardTitle, Input, LoadingBlock, Select, Textarea } from '@/components/ui'
+import { toDatetimeLocalValue } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import { useAdminNoticeRequests, useCreateAdminNotice } from '../recruitmentHooks'
@@ -26,6 +27,8 @@ const AdminRecruitmentNoticeFormPage = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateAdminNoticeFormValues>({
     resolver: zodResolver(createAdminNoticeSchema),
@@ -39,6 +42,25 @@ const AdminRecruitmentNoticeFormPage = () => {
       applicationEndAt: '',
     },
   })
+
+  const selectedRequestId = watch('requestId')
+
+  // 요청을 고르면 이미 그 요청에 있는 제목·내용·신청 기간을 그대로 가져와 채운다 — 관리자가
+  // 방금 승인한 내용을 다시 타이핑할 필요가 없다.
+  useEffect(() => {
+    if (!selectedRequestId) return
+    const request = approvedRequests.find((r) => String(r.id) === selectedRequestId)
+    if (!request) return
+    setValue('title', request.title, { shouldValidate: true })
+    setValue('content', request.description, { shouldValidate: true })
+    setValue('applicationStartAt', toDatetimeLocalValue(request.applicationStartAt), {
+      shouldValidate: true,
+    })
+    setValue('applicationEndAt', toDatetimeLocalValue(request.applicationEndAt), {
+      shouldValidate: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRequestId])
 
   const onSubmit = (values: CreateAdminNoticeFormValues) => {
     setFormError(null)
