@@ -2,15 +2,7 @@
 
 import Link from 'next/link'
 
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  LoadingBlock,
-  PageHeader,
-} from '@/components/ui'
+import { Badge, Card, EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/ui'
 import { formatDateTime } from '@/lib/date'
 
 import { useMyRecruitmentNoticeRequests } from '../hooks'
@@ -24,12 +16,7 @@ const ClientRecruitmentNoticeRequestListPage = () => {
     <div>
       <PageHeader
         title="모집공고 요청 관리"
-        description="내가 작성한 모집공고 생성 요청 목록입니다."
-        action={
-          <Link href="/client/recruitment-notice-requests/new">
-            <Button>새 요청 작성</Button>
-          </Link>
-        }
+        description="내가 작성한 모집공고 생성 요청 목록입니다. 신규 요청은 관리자가 승인된 박람회를 기준으로 작성합니다."
       />
 
       {isPending ? (
@@ -39,12 +26,7 @@ const ClientRecruitmentNoticeRequestListPage = () => {
       ) : requests.length === 0 ? (
         <EmptyState
           title="작성한 요청이 없습니다"
-          description="새 요청 작성 버튼으로 모집공고 생성을 요청해 보세요."
-          action={
-            <Link href="/client/recruitment-notice-requests/new">
-              <Button>새 요청 작성</Button>
-            </Link>
-          }
+          description="모집공고 생성 요청은 관리자가 승인된 박람회를 기준으로 작성합니다."
         />
       ) : (
         <ul className="flex flex-col gap-3">

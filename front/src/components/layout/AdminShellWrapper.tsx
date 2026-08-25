@@ -29,8 +29,12 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
     items: [
       { label: '대시보드', href: '/admin', icon: LayoutDashboard },
       { label: '박람회 개최 승인 관리', href: '/admin/expos', icon: Building2 },
-      { label: '공고 신청 관리', href: '/admin/recruitment-notice-requests', icon: ListChecks },
-      { label: '공고 모집 관리', href: '/admin/recruitment-notices', icon: Megaphone },
+      {
+        label: '모집공고 요청 관리',
+        href: '/admin/recruitment-notice-requests',
+        icon: ListChecks,
+      },
+      { label: '모집공고 관리', href: '/admin/recruitment-notices', icon: Megaphone },
       {
         label: '참여 신청서 관리',
         href: '/admin/participation-applications',

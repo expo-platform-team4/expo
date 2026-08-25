@@ -121,7 +121,7 @@ const AdminRecruitmentNoticeListPage = () => {
   return (
     <div>
       <PageHeader
-        title="공고 모집 관리"
+        title="모집공고 관리"
         description="기업 모집 공고를 게시·마감·취소합니다."
         action={
           <Link href="/admin/recruitment-notices/new">

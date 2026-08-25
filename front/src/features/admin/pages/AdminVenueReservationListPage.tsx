@@ -126,7 +126,7 @@ const ReservationRow = ({ reservation }: { reservation: AdminVenueReservation })
 /**
  * `/admin/venue-reservations`. ADMIN 전용.
  *
- * 확정 장소 예약 자체는 "공고 신청 관리" 화면에서 승인된(ALLOWED) 요청 카드의 "장소 예약
+ * 확정 장소 예약 자체는 "모집공고 요청 관리" 화면에서 승인된(ALLOWED) 요청 카드의 "장소 예약
  * 확정" 버튼으로 만든다 — 여기는 만들어진 예약을 전체 조회하고, 이중 예약 등 운영상 정정이
  * 필요할 때 직권 해제하는 화면이다.
  */
@@ -147,7 +147,7 @@ const AdminVenueReservationListPage = () => {
       ) : reservations.length === 0 ? (
         <EmptyState
           title="확정된 장소 예약이 없습니다"
-          description="공고 신청 관리 화면에서 승인된 요청에 예약을 확정하면 여기 표시됩니다."
+          description="모집공고 요청 관리 화면에서 승인된 요청에 예약을 확정하면 여기 표시됩니다."
         />
       ) : (
         <div className="flex flex-col gap-3">
