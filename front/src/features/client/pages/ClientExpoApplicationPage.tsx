@@ -30,6 +30,10 @@ import {
 } from '../hooks'
 import { expoOpeningRequestSchema, type ExpoOpeningRequestFormValues } from '../schemas'
 
+/** 행사 시작·종료 시각을 고정한다 — 날짜만 고르고 시간은 매번 묻지 않는다. */
+const EVENT_START_TIME = '09:00:00'
+const EVENT_END_TIME = '21:00:00'
+
 const STATUS_VARIANT: Record<ExpoOpeningRequestStatus, 'success' | 'neutral' | 'error' | 'info'> = {
   DRAFT: 'neutral',
   SUBMITTED: 'info',
@@ -85,6 +89,7 @@ const ClientExpoApplicationPage = () => {
     },
   })
 
+  const eventStartAt = useWatch({ control, name: 'eventStartAt' })
   const selectedVenueId = useWatch({ control, name: 'desiredVenueId' })
   const selectedHallId = useWatch({ control, name: 'desiredVenueHallId' })
   const { data: halls, isPending: hallsPending } = useVenueHalls(
@@ -102,8 +107,8 @@ const ClientExpoApplicationPage = () => {
         content: {
           title: values.title,
           description: values.description,
-          eventStartAt: new Date(values.eventStartAt).toISOString(),
-          eventEndAt: new Date(values.eventEndAt).toISOString(),
+          eventStartAt: new Date(`${values.eventStartAt}T${EVENT_START_TIME}`).toISOString(),
+          eventEndAt: new Date(`${values.eventEndAt}T${EVENT_END_TIME}`).toISOString(),
           salesStartAt: new Date(values.salesStartAt).toISOString(),
           salesEndAt: new Date(values.salesEndAt).toISOString(),
           desiredVenueId: Number(values.desiredVenueId),
@@ -153,13 +158,16 @@ const ClientExpoApplicationPage = () => {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="행사 시작일"
-              type="datetime-local"
+              type="date"
+              hint="오전 9시 시작으로 고정됩니다."
               error={errors.eventStartAt?.message}
               {...register('eventStartAt')}
             />
             <Input
               label="행사 종료일"
-              type="datetime-local"
+              type="date"
+              hint="오후 9시 종료로 고정됩니다."
+              min={eventStartAt || undefined}
               error={errors.eventEndAt?.message}
               {...register('eventEndAt')}
             />

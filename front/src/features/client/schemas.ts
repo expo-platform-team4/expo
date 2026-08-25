@@ -3,8 +3,13 @@ import { z } from 'zod'
 /**
  * 박람회 개최 신청 폼. 백엔드 `ExpoOpeningRequestPayload` 와 대응한다(Spec.md 7절).
  *
- * 일시는 `<input type="datetime-local">` 값(로컬 시각 문자열)로 받고 제출 직전에
+ * 판매 일시는 `<input type="datetime-local">` 값(로컬 시각 문자열)로 받고 제출 직전에
  * `toISOString()` 으로 UTC 로 바꾼다 — `recruitment/schemas.ts` 와 같은 방식이다.
+ *
+ * 행사 시작·종료일은 `<input type="date">`(날짜만)로 받는다 — 시간은 관례상 오전 9시
+ * 시작·오후 9시 종료로 고정해서 매번 시간까지 고르게 하지 않는다(제출 직전에 시간을 붙인다).
+ * 그래서 이 스키마에서는 날짜만 비교한다 — 같은 날짜(당일 행사)도 유효하므로 종료일이
+ * 시작일보다 이르지만 않으면(`>=`) 통과시킨다.
  *
  * 기간 앞뒤 관계는 DB CHECK(`ck_expo_opening_requests_event`·`_sales`)가 최종적으로 막지만,
  * 서버까지 갔다 오기 전에 걸러 주는 편이 낫다.
@@ -25,8 +30,8 @@ export const expoOpeningRequestSchema = z
     desiredVenueZoneId: z.string().optional(),
     categoryId: z.string().optional(),
   })
-  .refine((data) => new Date(data.eventEndAt) > new Date(data.eventStartAt), {
-    message: '행사 종료일은 시작일보다 늦어야 합니다.',
+  .refine((data) => new Date(data.eventEndAt) >= new Date(data.eventStartAt), {
+    message: '행사 종료일은 시작일보다 빠를 수 없습니다.',
     path: ['eventEndAt'],
   })
   .refine((data) => new Date(data.salesEndAt) > new Date(data.salesStartAt), {
