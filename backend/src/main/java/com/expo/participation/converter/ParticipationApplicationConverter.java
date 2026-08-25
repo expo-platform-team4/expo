@@ -1,6 +1,7 @@
 package com.expo.participation.converter;
 
 import com.expo.participation.dto.AdminParticipationApplicationResponse;
+import com.expo.participation.dto.ClientParticipatingCompanyResponse;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.entity.ParticipationApplication;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,7 @@ public class ParticipationApplicationConverter {
                 application.getSelectedBoothProductId(),
                 application.getBoothOrderId(),
                 application.getStatus(),
+                application.getAdminCheckedAt(),
                 application.getCreatedAt(),
                 application.getUpdatedAt());
     }
@@ -40,5 +42,18 @@ public class ParticipationApplicationConverter {
                 application.getAdminMemo(),
                 application.getCreatedAt(),
                 application.getUpdatedAt());
+    }
+
+    public ClientParticipatingCompanyResponse toClientResponse(
+            ParticipationApplication application) {
+        return new ClientParticipatingCompanyResponse(
+                application.getId(),
+                application.getCompanyNameSnapshot(),
+                application.getParticipationPurpose(),
+                application.getExhibitDescription(),
+                application.getSelectedBoothProductId(),
+                application.getStatus(),
+                application.getSubmittedAt(),
+                application.getCreatedAt());
     }
 }

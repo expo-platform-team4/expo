@@ -41,14 +41,13 @@ const CreateCategoryForm = () => {
     formState: { errors },
   } = useForm<CreateCategoryFormValues>({
     resolver: zodResolver(createCategorySchema),
-    defaultValues: { name: '', parentId: '', sortOrder: '' },
+    defaultValues: { name: '', sortOrder: '' },
   })
 
   const onSubmit = (values: CreateCategoryFormValues) => {
     createMutation.mutate(
       {
         name: values.name,
-        parentId: values.parentId ? Number(values.parentId) : undefined,
         sortOrder: values.sortOrder ? Number(values.sortOrder) : undefined,
       },
       { onSuccess: () => reset() }
@@ -65,15 +64,6 @@ const CreateCategoryForm = () => {
       >
         <div className="min-w-[200px] flex-1">
           <Input label="카테고리명" error={errors.name?.message} {...register('name')} />
-        </div>
-        <div className="w-32">
-          <Input
-            label="상위 카테고리 ID"
-            inputMode="numeric"
-            hint="없으면 비워 둡니다."
-            error={errors.parentId?.message}
-            {...register('parentId')}
-          />
         </div>
         <div className="w-28">
           <Input

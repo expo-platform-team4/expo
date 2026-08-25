@@ -6,7 +6,7 @@ import { Badge, Button, ErrorState, Spinner } from '@/components/ui'
 import { getErrorMessage } from '@/lib/errorMessage'
 import { formatDateTime } from '@/lib/date'
 
-import type { BoothContentStatus } from '../api'
+import type { BoothContent, BoothContentStatus } from '../api'
 import {
   useCreateBoothContent,
   useMyBoothContent,
@@ -14,7 +14,8 @@ import {
   useUpdateBoothContent,
 } from '../hooks'
 import type { BoothContentFormValues } from '../schemas'
-import { BoothContentForm } from './BoothContentForm'
+import { BoothContentFileManager, BoothContentLinkManager } from './BoothContentAttachments'
+import { BoothContentForm, type BoothContentSubmitValues } from './BoothContentForm'
 
 const STATUS_LABEL: Record<BoothContentStatus, string> = {
   DRAFT: '초안',
@@ -90,10 +91,16 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
     return <ErrorState error={error} onRetry={() => refetch()} />
   }
 
-  const handleCreate = (values: BoothContentFormValues) => {
+  const toPayload = ({ logoFileId, mainImageFileId, ...rest }: BoothContentSubmitValues) => ({
+    ...rest,
+    logoFileId: logoFileId ?? undefined,
+    mainImageFileId: mainImageFileId ?? undefined,
+  })
+
+  const handleCreate = (values: BoothContentSubmitValues) => {
     setActionError(null)
     createMutation.mutate(
-      { boothAllocationId: allocationId, payload: values },
+      { boothAllocationId: allocationId, payload: toPayload(values) },
       {
         onSuccess: () => setShowCreateForm(false),
         onError: (err) => setActionError(getErrorMessage(err)),
@@ -101,11 +108,11 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
     )
   }
 
-  const handleUpdate = (values: BoothContentFormValues) => {
+  const handleUpdate = (values: BoothContentSubmitValues) => {
     if (!content) return
     setActionError(null)
     updateMutation.mutate(
-      { contentId: content.id, allocationId, payload: values },
+      { contentId: content.id, allocationId, payload: toPayload(values) },
       { onError: (err) => setActionError(getErrorMessage(err)) }
     )
   }
@@ -139,11 +146,25 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
           <>
             <BoothContentForm
               defaultValues={toFormValues(content)}
+              defaultLogoFileId={content.logoFileId}
+              defaultMainImageFileId={content.mainImageFileId}
               onSubmit={handleUpdate}
               submitting={updateMutation.isPending}
               submitLabel="저장"
               formError={actionError}
             />
+            <div className="border-outline-variant mt-4 flex flex-col gap-4 border-t pt-4">
+              <BoothContentFileManager
+                contentId={content.id}
+                allocationId={allocationId}
+                files={content.files}
+              />
+              <BoothContentLinkManager
+                contentId={content.id}
+                allocationId={allocationId}
+                links={content.links}
+              />
+            </div>
             <p className="text-label-sm text-on-surface-variant mt-3">
               수정한 내용을 저장한 뒤 검수를 요청하세요. 검수 요청 후에는 관리자가 승인하거나 보완을
               요청할 때까지 수정할 수 없습니다.
@@ -161,11 +182,7 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
           </>
         ) : (
           <ReadOnlyContentPreview
-            title={content.title}
-            companyDisplayName={content.companyDisplayName}
-            companyDescription={content.companyDescription}
-            boothDescription={content.boothDescription}
-            productDescription={content.productDescription}
+            content={content}
             footnote={
               content.status === 'UNDER_REVIEW'
                 ? '관리자 승인을 기다리고 있습니다.'
@@ -191,6 +208,8 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
       {showCreateForm ? (
         <BoothContentForm
           defaultValues={EMPTY_FORM_VALUES}
+          defaultLogoFileId={null}
+          defaultMainImageFileId={null}
           onSubmit={handleCreate}
           submitting={createMutation.isPending}
           submitLabel="작성하기"
@@ -211,26 +230,47 @@ export const BoothContentSection = ({ allocationId }: { allocationId: number }) 
 }
 
 const ReadOnlyContentPreview = ({
-  title,
-  companyDisplayName,
-  companyDescription,
-  boothDescription,
-  productDescription,
+  content,
   footnote,
 }: {
-  title: string
-  companyDisplayName: string
-  companyDescription: string | null
-  boothDescription: string | null
-  productDescription: string | null
+  content: BoothContent
   footnote?: string
 }) => (
   <div className="flex flex-col gap-2">
-    <p className="text-title-lg text-on-surface font-semibold">{title}</p>
-    <p className="text-label-md text-on-surface-variant">{companyDisplayName}</p>
-    {companyDescription && <p className="text-body-md text-on-surface">{companyDescription}</p>}
-    {boothDescription && <p className="text-body-md text-on-surface">{boothDescription}</p>}
-    {productDescription && <p className="text-body-md text-on-surface">{productDescription}</p>}
+    {content.mainImageFileId && (
+      // eslint-disable-next-line @next/next/no-img-element -- 경로가 /api/files/{id}/content 라 Next 이미지 최적화 대상이 아니다.
+      <img
+        src={`/api/files/${content.mainImageFileId}/content`}
+        alt="대표 이미지"
+        className="border-outline-variant h-40 w-full rounded border object-cover"
+      />
+    )}
+    <div className="flex items-center gap-2">
+      {content.logoFileId && (
+        // eslint-disable-next-line @next/next/no-img-element -- 경로가 /api/files/{id}/content 라 Next 이미지 최적화 대상이 아니다.
+        <img
+          src={`/api/files/${content.logoFileId}/content`}
+          alt="로고"
+          className="border-outline-variant h-10 w-10 rounded border object-cover"
+        />
+      )}
+      <p className="text-title-lg text-on-surface font-semibold">{content.title}</p>
+    </div>
+    <p className="text-label-md text-on-surface-variant">{content.companyDisplayName}</p>
+    {content.companyDescription && (
+      <p className="text-body-md text-on-surface">{content.companyDescription}</p>
+    )}
+    {content.boothDescription && (
+      <p className="text-body-md text-on-surface">{content.boothDescription}</p>
+    )}
+    {content.productDescription && (
+      <p className="text-body-md text-on-surface">{content.productDescription}</p>
+    )}
+    {(content.files.length > 0 || content.links.length > 0) && (
+      <p className="text-label-sm text-on-surface-variant">
+        첨부 파일 {content.files.length}개 · 외부 링크 {content.links.length}개
+      </p>
+    )}
     {footnote && <p className="text-label-sm text-on-surface-variant mt-1">{footnote}</p>}
   </div>
 )

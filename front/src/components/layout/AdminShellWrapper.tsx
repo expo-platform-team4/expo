@@ -3,7 +3,9 @@
 import {
   Bell,
   Building2,
+  CalendarCheck,
   ClipboardCheck,
+  ClipboardList,
   ImageIcon,
   LayoutDashboard,
   LayoutGrid,
@@ -29,6 +31,11 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
       { label: '박람회 개최 승인 관리', href: '/admin/expos', icon: Building2 },
       { label: '공고 신청 관리', href: '/admin/recruitment-notice-requests', icon: ListChecks },
       { label: '공고 모집 관리', href: '/admin/recruitment-notices', icon: Megaphone },
+      {
+        label: '참여 신청서 관리',
+        href: '/admin/participation-applications',
+        icon: ClipboardList,
+      },
       { label: '배너 신청 심사', href: '/admin/banner-requests', icon: ImageIcon },
       { label: '부스 콘텐츠 관리', href: '/admin/booth-contents', icon: ClipboardCheck },
       { label: '부스 배정 관리', href: '/admin/booth-allocations', icon: Shuffle },
@@ -40,6 +47,7 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
     items: [
       { label: '카테고리 관리', href: '/admin/categories', icon: Tag },
       { label: '가상 장소 관리', href: '/admin/venues', icon: MapPin },
+      { label: '장소 예약 관리', href: '/admin/venue-reservations', icon: CalendarCheck },
       { label: '부스 등록', href: '/admin/booths', icon: LayoutGrid },
       { label: '알림 이력·재발송', href: '/admin/notifications', icon: Bell },
     ],

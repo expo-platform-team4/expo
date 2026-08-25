@@ -12,12 +12,14 @@ import static org.mockito.Mockito.when;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.converter.ApplicationOperationHistoryConverter;
 import com.expo.participation.converter.ParticipationApplicationConverter;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.dto.UpdateParticipationApplicationRequest;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ApplicationOperationHistoryRepository;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
@@ -50,7 +52,9 @@ class ParticipationApplicationServiceTest {
                         participationApplicationRepository,
                         recruitmentNoticeRepository,
                         boothProductRepository,
-                        new ParticipationApplicationConverter());
+                        mock(ApplicationOperationHistoryRepository.class),
+                        new ParticipationApplicationConverter(),
+                        new ApplicationOperationHistoryConverter());
     }
 
     private CreateParticipationApplicationRequest requestWithBoothProduct(Long boothProductId) {

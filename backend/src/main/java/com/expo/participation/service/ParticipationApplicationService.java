@@ -3,17 +3,22 @@ package com.expo.participation.service;
 import com.expo.booth.repository.BoothProductRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.participation.converter.ApplicationOperationHistoryConverter;
 import com.expo.participation.converter.ParticipationApplicationConverter;
+import com.expo.participation.dto.ApplicationOperationHistoryResponse;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.dto.UpdateParticipationApplicationRequest;
+import com.expo.participation.entity.ApplicationOperationActionType;
 import com.expo.participation.entity.ParticipationApplication;
 import com.expo.participation.entity.ParticipationApplicationStatus;
+import com.expo.participation.repository.ApplicationOperationHistoryRepository;
 import com.expo.participation.repository.ParticipationApplicationRepository;
 import com.expo.recruitment.entity.RecruitmentNotice;
 import com.expo.recruitment.entity.RecruitmentNoticeStatus;
 import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import java.util.EnumSet;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -29,20 +34,33 @@ public class ParticipationApplicationService {
                     ParticipationApplicationStatus.PAYMENT_PENDING,
                     ParticipationApplicationStatus.SUBMITTED);
 
+    /** 신청 기업에게 공개할 운영 이력 유형. 관리자 메모(MEMO_UPDATED)는 내부용이라 뺀다. */
+    private static final EnumSet<ApplicationOperationActionType> CLIENT_VISIBLE_ACTION_TYPES =
+            EnumSet.of(
+                    ApplicationOperationActionType.CHECKED,
+                    ApplicationOperationActionType.CORRECTION_REQUESTED,
+                    ApplicationOperationActionType.CORRECTION_COMPLETED);
+
     private final ParticipationApplicationRepository participationApplicationRepository;
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final BoothProductRepository boothProductRepository;
+    private final ApplicationOperationHistoryRepository applicationOperationHistoryRepository;
     private final ParticipationApplicationConverter participationApplicationConverter;
+    private final ApplicationOperationHistoryConverter applicationOperationHistoryConverter;
 
     public ParticipationApplicationService(
             ParticipationApplicationRepository participationApplicationRepository,
             RecruitmentNoticeRepository recruitmentNoticeRepository,
             BoothProductRepository boothProductRepository,
-            ParticipationApplicationConverter participationApplicationConverter) {
+            ApplicationOperationHistoryRepository applicationOperationHistoryRepository,
+            ParticipationApplicationConverter participationApplicationConverter,
+            ApplicationOperationHistoryConverter applicationOperationHistoryConverter) {
         this.participationApplicationRepository = participationApplicationRepository;
         this.recruitmentNoticeRepository = recruitmentNoticeRepository;
         this.boothProductRepository = boothProductRepository;
+        this.applicationOperationHistoryRepository = applicationOperationHistoryRepository;
         this.participationApplicationConverter = participationApplicationConverter;
+        this.applicationOperationHistoryConverter = applicationOperationHistoryConverter;
     }
 
     /** 참여 신청서 작성. 모집공고가 게시 중인지, 선택한 부스 상품이 실제로 존재하는지 검증한다. */
@@ -109,6 +127,22 @@ public class ParticipationApplicationService {
                                         new BusinessException(
                                                 ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
         return participationApplicationConverter.toResponse(application);
+    }
+
+    /** 본인이 작성한 참여 신청서의 운영 이력 조회. 관리자 메모는 내부용이라 빼고 보여준다. */
+    @Transactional(readOnly = true)
+    public List<ApplicationOperationHistoryResponse> listMyHistory(
+            Long applicationId, Long clientUserId) {
+        participationApplicationRepository
+                .findByIdAndClientUserId(applicationId, clientUserId)
+                .orElseThrow(
+                        () -> new BusinessException(ErrorCode.PARTICIPATION_APPLICATION_NOT_FOUND));
+        return applicationOperationHistoryRepository
+                .findAllByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                        applicationId, CLIENT_VISIBLE_ACTION_TYPES)
+                .stream()
+                .map(applicationOperationHistoryConverter::toResponse)
+                .toList();
     }
 
     /** 참여 신청서 초안 수정. 초안 상태에서만 가능하다 - 결제가 시작된 뒤에는 주문을 먼저 취소해야 한다. */

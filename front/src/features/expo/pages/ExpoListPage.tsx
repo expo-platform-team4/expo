@@ -14,7 +14,7 @@ import {
 
 import type { ExpoCardQuery } from '../api'
 import { ExpoCardItem } from '../components/ExpoCardItem'
-import { useExpoCards } from '../hooks'
+import { useExpoCards, useExpoCategories } from '../hooks'
 
 /**
  * 지역 필터 선택지. `expos.region_code` 에 들어가는 값이고 별도 코드 테이블이 없어서
@@ -54,6 +54,7 @@ const ExpoListPage = () => {
   const [draftKeyword, setDraftKeyword] = useState('')
   const [query, setQuery] = useState<ExpoCardQuery>({})
   const { data, isPending, isError, error, refetch } = useExpoCards(query)
+  const { data: categories } = useExpoCategories()
 
   const apply = (patch: Partial<ExpoCardQuery>) =>
     setQuery((previous) => ({ ...previous, ...patch }))
@@ -87,6 +88,22 @@ const ExpoListPage = () => {
             {REGIONS.map((region) => (
               <option key={region} value={region}>
                 {region}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="w-40">
+          <Select
+            label="카테고리"
+            value={query.categoryId ? String(query.categoryId) : ''}
+            onChange={(event) =>
+              apply({ categoryId: event.target.value ? Number(event.target.value) : undefined })
+            }
+          >
+            <option value="">전체</option>
+            {categories?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
               </option>
             ))}
           </Select>

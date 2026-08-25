@@ -10,6 +10,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  Input,
   LoadingBlock,
   PageHeader,
   Select,
@@ -21,11 +22,89 @@ import {
   VENUE_CONFLICT_STATUS,
   VENUE_DECISION,
 } from '@/features/recruitment/statusLabels'
-import { formatDateTime } from '@/lib/date'
+import { formatDateTime, toDatetimeLocalValue } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import { useAdminNoticeRequests, useDecideVenue } from '../recruitmentHooks'
-import { decideVenueSchema, type DecideVenueFormValues } from '../schemas'
+import {
+  createVenueReservationSchema,
+  decideVenueSchema,
+  type CreateVenueReservationFormValues,
+  type DecideVenueFormValues,
+} from '../schemas'
+import { useCreateVenueReservations } from '../venueReservationHooks'
+
+/**
+ * 요청 한 건의 확정 장소 예약 생성 폼. `venueDecision` 이 `ALLOWED` 일 때만 펼쳐 보인다.
+ *
+ * 장소·홀·구역은 이미 요청에 실려있어(희망 장소) 다시 고르지 않는다 — 사용 기간만 받는다.
+ * 이미 예약이 확정된 요청에 또 만들면 백엔드가 기간 겹침으로 거절한다(하나만 확정될 수 있는
+ * 건 아니고, 같은 구역·기간 조합만 막힌다 — 여기서 중복 여부를 미리 알 방법이 없어 에러
+ * 메시지로 알린다).
+ */
+const VenueReservationForm = ({
+  request,
+  onDone,
+}: {
+  request: RecruitmentNoticeRequest
+  onDone: () => void
+}) => {
+  const createMutation = useCreateVenueReservations()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateVenueReservationFormValues>({
+    resolver: zodResolver(createVenueReservationSchema),
+    defaultValues: {
+      useStartAt: toDatetimeLocalValue(request.eventStartAt),
+      useEndAt: toDatetimeLocalValue(request.eventEndAt),
+    },
+  })
+
+  const onSubmit = (values: CreateVenueReservationFormValues) => {
+    createMutation.mutate(
+      {
+        noticeRequestId: request.id,
+        useStartAt: new Date(values.useStartAt).toISOString(),
+        useEndAt: new Date(values.useEndAt).toISOString(),
+      },
+      { onSuccess: onDone }
+    )
+  }
+
+  return (
+    <form
+      className="bg-surface-container-low mt-3 flex flex-col gap-3 rounded-md p-4"
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+    >
+      <Input
+        label="사용 시작 일시"
+        type="datetime-local"
+        error={errors.useStartAt?.message}
+        {...register('useStartAt')}
+      />
+      <Input
+        label="사용 종료 일시"
+        type="datetime-local"
+        error={errors.useEndAt?.message}
+        {...register('useEndAt')}
+      />
+      {createMutation.isError && (
+        <p className="text-label-sm text-error">{getErrorMessage(createMutation.error)}</p>
+      )}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" loading={createMutation.isPending}>
+          예약 확정
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={onDone}>
+          취소
+        </Button>
+      </div>
+    </form>
+  )
+}
 
 /** 요청 한 건의 장소 충돌 판정 폼. `venueDecision` 이 `PENDING` 일 때만 펼쳐 보인다. */
 const VenueDecisionForm = ({ requestId, onDone }: { requestId: number; onDone: () => void }) => {
@@ -77,6 +156,7 @@ const VenueDecisionForm = ({ requestId, onDone }: { requestId: number; onDone: (
 
 const RequestCard = ({ request }: { request: RecruitmentNoticeRequest }) => {
   const [deciding, setDeciding] = useState(false)
+  const [reserving, setReserving] = useState(false)
 
   return (
     <Card>
@@ -113,6 +193,17 @@ const RequestCard = ({ request }: { request: RecruitmentNoticeRequest }) => {
           <div className="mt-3">
             <Button size="sm" onClick={() => setDeciding(true)}>
               장소 충돌 판정하기
+            </Button>
+          </div>
+        ))}
+
+      {request.venueDecision === 'ALLOWED' &&
+        (reserving ? (
+          <VenueReservationForm request={request} onDone={() => setReserving(false)} />
+        ) : (
+          <div className="mt-3">
+            <Button size="sm" variant="secondary" onClick={() => setReserving(true)}>
+              장소 예약 확정
             </Button>
           </div>
         ))}

@@ -169,6 +169,8 @@ public enum ErrorCode {
     APPLICATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "신청 종료 일시는 시작 일시보다 늦어야 합니다."),
     APPLICATION_PERIOD_EXCEEDS_VENUE_PERIOD(
             HttpStatus.BAD_REQUEST, "신청 종료 일시는 장소 사용 시작 일시보다 늦을 수 없습니다."),
+    APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD(
+            HttpStatus.BAD_REQUEST, "신청 종료 일시는 행사 시작 일시보다 늦을 수 없습니다."),
     EVENT_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "행사 종료 일시는 시작 일시보다 늦어야 합니다."),
     RECRUITMENT_NOTICE_CREATION_NOT_ALLOWED(
             HttpStatus.CONFLICT, "장소 충돌 판정에서 승인(ALLOWED)된 요청만 공고를 생성할 수 있습니다."),

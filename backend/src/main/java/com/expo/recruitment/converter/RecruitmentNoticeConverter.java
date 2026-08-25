@@ -18,6 +18,7 @@ public class RecruitmentNoticeConverter {
                 notice.getId(),
                 notice.getRequestId(),
                 notice.getHostClientId(),
+                notice.getExpoId(),
                 venueHallId,
                 venueHallLayoutFileId,
                 venueZoneIds,

@@ -131,6 +131,11 @@ public class SecurityConfig {
                                 "/api/recruitment-notices",
                                 "/api/recruitment-notices/*")
                         .permitAll()
+                        // 카테고리 공개 조회 — 박람회 개최 신청 폼의 카테고리 선택, 검색 화면의
+                        // 카테고리 필터가 비로그인에서도 목록을 봐야 한다. 등록·수정·삭제는
+                        // /api/admin/categories 로 여전히 어드민 전용이다.
+                        .requestMatchers(HttpMethod.GET, "/api/categories")
+                        .permitAll()
                         // 메인 상단 광고 배너(B-API-024). 로그인 화면에도 뜰 수 있어야 하므로
                         // 비로그인에 열어야 한다 — BannerPublicController 는 처음부터 공개용으로
                         // 만들어졌는데 이 규칙만 빠져 있었다.

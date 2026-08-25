@@ -16,8 +16,22 @@ export type ParticipationApplication = {
   selectedBoothProductId: number | null
   boothOrderId: number | null
   status: ParticipationApplicationStatus
+  adminCheckedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** `com.expo.participation.entity.ApplicationOperationActionType`. `MEMO_UPDATED`는 관리자 내부용이라 여기 없다. */
+export type ParticipationApplicationHistoryActionType =
+  'CHECKED' | 'CORRECTION_REQUESTED' | 'CORRECTION_COMPLETED'
+
+/** 참여 신청 운영 이력. `ApplicationOperationHistoryResponse` 와 대응한다. */
+export type ParticipationApplicationHistory = {
+  id: number
+  applicationId: number
+  actionType: ParticipationApplicationHistoryActionType
+  message: string | null
+  createdAt: string
 }
 
 /** `POST /api/client/participation-applications` 요청 바디. `CreateParticipationApplicationRequest` 와 대응한다. */
@@ -46,6 +60,19 @@ export const getMyParticipationApplication = async (
 ): Promise<ParticipationApplication> => {
   const { data } = await api.get<ApiEnvelope<ParticipationApplication>>(
     `/client/participation-applications/${applicationId}`
+  )
+  return data.data
+}
+
+/**
+ * `GET /api/client/participation-applications/{applicationId}/history` — 내 참여 신청서의
+ * 운영 확인·보완요청 이력. 관리자 메모(`MEMO_UPDATED`)는 응답에서 빠진다.
+ */
+export const listMyParticipationApplicationHistory = async (
+  applicationId: number
+): Promise<ParticipationApplicationHistory[]> => {
+  const { data } = await api.get<ApiEnvelope<ParticipationApplicationHistory[]>>(
+    `/client/participation-applications/${applicationId}/history`
   )
   return data.data
 }

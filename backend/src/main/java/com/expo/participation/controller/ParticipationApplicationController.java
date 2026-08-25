@@ -2,6 +2,7 @@ package com.expo.participation.controller;
 
 import com.expo.common.response.ApiResponse;
 import com.expo.jwt.AuthPrincipal;
+import com.expo.participation.dto.ApplicationOperationHistoryResponse;
 import com.expo.participation.dto.CreateParticipationApplicationRequest;
 import com.expo.participation.dto.ParticipationApplicationResponse;
 import com.expo.participation.dto.UpdateParticipationApplicationRequest;
@@ -9,6 +10,7 @@ import com.expo.participation.service.ParticipationApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,6 +54,16 @@ public class ParticipationApplicationController {
         return ResponseEntity.ok(
                 ApiResponse.ok(
                         participationApplicationService.getMine(
+                                applicationId, principal.getMemberId())));
+    }
+
+    @Operation(summary = "내 참여 신청서 운영 이력 조회", description = "관리자 메모는 내부용이라 빠진다.")
+    @GetMapping("/{applicationId}/history")
+    public ResponseEntity<ApiResponse<List<ApplicationOperationHistoryResponse>>> getMyHistory(
+            @AuthenticationPrincipal AuthPrincipal principal, @PathVariable Long applicationId) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        participationApplicationService.listMyHistory(
                                 applicationId, principal.getMemberId())));
     }
 

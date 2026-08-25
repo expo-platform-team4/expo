@@ -16,6 +16,13 @@ export const adminKeys = {
 
   notices: () => [...adminKeys.all, 'notices'] as const,
 
+  venueReservations: () => [...adminKeys.all, 'venue-reservations'] as const,
+
+  participationApplications: (recruitmentNoticeId?: number) =>
+    [...adminKeys.all, 'participation-applications', recruitmentNoticeId ?? null] as const,
+  participationApplicationHistory: (applicationId: number) =>
+    [...adminKeys.all, 'participation-application-history', applicationId] as const,
+
   settlements: (params?: Record<string, unknown>) =>
     [...adminKeys.all, 'settlements', params ?? {}] as const,
 

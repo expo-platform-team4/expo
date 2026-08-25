@@ -9,7 +9,6 @@ export const createCategorySchema = z.object({
     .string()
     .min(1, '카테고리명은 필수입니다.')
     .max(100, '카테고리명은 100자 이하여야 합니다.'),
-  parentId: z.string().optional(),
   sortOrder: z.string().optional(),
 })
 
@@ -41,6 +40,17 @@ export const decideVenueSchema = z.object({
 })
 
 export type DecideVenueFormValues = z.infer<typeof decideVenueSchema>
+
+/**
+ * 확정 장소 예약 생성 폼. 백엔드 `CreateVenueReservationRequest` 와 대응한다. 일시는
+ * `<input type="datetime-local">` 값을 그대로 받고, 제출 직전에 ISO 문자열로 바꾼다.
+ */
+export const createVenueReservationSchema = z.object({
+  useStartAt: z.string().min(1, '사용 시작 일시는 필수입니다.'),
+  useEndAt: z.string().min(1, '사용 종료 일시는 필수입니다.'),
+})
+
+export type CreateVenueReservationFormValues = z.infer<typeof createVenueReservationSchema>
 
 /**
  * 기업 모집 공고 초안 생성 폼. 백엔드 `CreateRecruitmentNoticeRequest`(admin dto) 와 대응한다.

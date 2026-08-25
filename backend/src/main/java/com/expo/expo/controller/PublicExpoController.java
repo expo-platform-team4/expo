@@ -30,16 +30,17 @@ public class PublicExpoController {
 
     private final PublicExpoService publicExpoService;
 
-    @Operation(summary = "박람회 목록", description = "공개된 박람회만 나온다. 지역·검색어로 거르고 행사일순·인기순으로 정렬한다.")
+    @Operation(summary = "박람회 목록", description = "공개된 박람회만 나온다. 지역·카테고리·검색어로 거르고 행사일순·인기순으로 정렬한다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<PublicExpoCardResponse>>> list(
             @RequestParam(required = false) String regionCode,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String sort) {
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) Long categoryId) {
         return ResponseEntity.ok(
                 ApiResponse.ok(
                         publicExpoService.listCards(
-                                new PublicExpoQuery(regionCode, keyword, sort))));
+                                new PublicExpoQuery(regionCode, keyword, sort, categoryId))));
     }
 
     @Operation(summary = "박람회 상세", description = "소개글과 이미지·자료 목록을 함께 준다.")

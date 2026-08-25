@@ -3,6 +3,7 @@ package com.expo.expo.dto;
 import com.expo.expo.entity.ExpoOpeningRequestStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 박람회 개최 신청 응답.
@@ -27,6 +28,7 @@ public record ExpoOpeningRequestResponse(
         @Schema(description = "희망 가상 장소명") String desiredVenueName,
         @Schema(description = "희망 전시관 ID") Long desiredVenueHallId,
         @Schema(description = "희망 구역 ID") Long desiredVenueZoneId,
+        @Schema(description = "카테고리 ID 목록") List<Long> categoryIds,
         @Schema(description = "처리 상태") ExpoOpeningRequestStatus status,
         @Schema(description = "심사 요청 시각") Instant submittedAt,
         @Schema(description = "심사한 관리자 ID") Long reviewedByAdminId,

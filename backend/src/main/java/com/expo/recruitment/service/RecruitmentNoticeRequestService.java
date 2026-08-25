@@ -62,6 +62,10 @@ public class RecruitmentNoticeRequestService {
      * 모집공고 생성 요청 작성 및 제출. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가
      * 올바른지 검증한다. 별도의 초안 수정 단계가 없어 작성과 동시에 제출된다.
      *
+     * <p>신청 기간과 행사 기간은 쌍끼리(시작&lt;종료)만이 아니라 서로도 맞물려야 한다 - 신청 마감이 행사 시작보다
+     * 늦으면 행사가 시작한 뒤에야 모집을 마감하는 꼴이 된다. 신청 시작이 행사 시작보다 늦는 경우는 이 검증과 신청
+     * 시작&lt;신청 마감 검증을 합치면 자동으로 걸러진다.
+     *
      * <p>고른 구역이 전시관 소속인지는 서비스에서도 먼저 확인하지만, DB의 복합 FK({@code
      * fk_notice_request_zones_zone_in_hall})가 최종 방어선이다.
      *
@@ -77,6 +81,9 @@ public class RecruitmentNoticeRequestService {
         }
         if (!request.eventEndAt().isAfter(request.eventStartAt())) {
             throw new BusinessException(ErrorCode.EVENT_PERIOD_INVALID);
+        }
+        if (request.applicationEndAt().isAfter(request.eventStartAt())) {
+            throw new BusinessException(ErrorCode.APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD);
         }
         if (!virtualVenueRepository.existsById(request.virtualVenueId())) {
             throw new BusinessException(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);

@@ -62,10 +62,32 @@ export const getMyBoothAllocation = async (allocationId: number): Promise<BoothA
   return data.data
 }
 
-/**
- * 부스 콘텐츠(기업·부스 소개). `com.expo.booth.dto.BoothContentResponse` 와 대응한다.
- * 첨부 파일·외부 링크(`files`/`links`)는 이 화면 범위 밖이라 뺐다.
- */
+/** `com.expo.booth.entity.BoothContentFileType`. `PROMO_VIDEO`·`OTHER` 는 업로드 가능한 형식이 없어 폼에서 뺐다. */
+export type BoothContentFileType = 'GALLERY_IMAGE' | 'PROMO_VIDEO' | 'CATALOG' | 'LEAFLET' | 'OTHER'
+
+/** `com.expo.booth.entity.ExternalLinkType`. */
+export type ExternalLinkType = 'HOMEPAGE' | 'SOCIAL' | 'RESERVATION' | 'PRODUCT' | 'OTHER'
+
+/** 부스 콘텐츠 첨부 파일. `com.expo.booth.dto.BoothContentFileResponse` 와 대응한다. */
+export type BoothContentFile = {
+  id: number
+  fileId: number
+  fileType: BoothContentFileType
+  title: string | null
+  sortOrder: number
+  createdAt: string
+}
+
+/** 부스 콘텐츠 외부 링크. `com.expo.booth.dto.ExternalLinkResponse` 와 대응한다. */
+export type BoothContentLink = {
+  id: number
+  linkType: ExternalLinkType
+  label: string | null
+  url: string
+  sortOrder: number
+}
+
+/** 부스 콘텐츠(기업·부스 소개). `com.expo.booth.dto.BoothContentResponse` 와 대응한다. */
 export type BoothContent = {
   id: number
   boothAllocationId: number
@@ -75,10 +97,14 @@ export type BoothContent = {
   companyDescription: string | null
   boothDescription: string | null
   productDescription: string | null
+  logoFileId: number | null
+  mainImageFileId: number | null
   status: BoothContentStatus
   publishedAt: string | null
   correctionRequestedAt: string | null
   correctionMessage: string | null
+  files: BoothContentFile[]
+  links: BoothContentLink[]
   createdAt: string
   updatedAt: string
 }
@@ -89,6 +115,8 @@ export type BoothContentFormPayload = {
   companyDescription?: string
   boothDescription?: string
   productDescription?: string
+  logoFileId?: number
+  mainImageFileId?: number
 }
 
 /** `POST /api/client/booth-contents` — 부스 콘텐츠 작성. 확정 배정(ASSIGNED) 1건당 하나만 가질 수 있다. */
@@ -113,6 +141,43 @@ export const updateBoothContent = async (
     payload
   )
   return data.data
+}
+
+/** `POST /api/client/booth-contents/{contentId}/files` — 첨부 파일 등록. 초안·보완 요청 상태에서만 가능하다. */
+export const addBoothContentFile = async (
+  contentId: number,
+  payload: { fileId: number; fileType: BoothContentFileType; title?: string }
+): Promise<BoothContentFile> => {
+  const { data } = await api.post<ApiEnvelope<BoothContentFile>>(
+    `/client/booth-contents/${contentId}/files`,
+    payload
+  )
+  return data.data
+}
+
+/** `DELETE /api/client/booth-contents/{contentId}/files/{fileEntryId}` — 첨부 파일 삭제. */
+export const removeBoothContentFile = async (
+  contentId: number,
+  fileEntryId: number
+): Promise<void> => {
+  await api.delete(`/client/booth-contents/${contentId}/files/${fileEntryId}`)
+}
+
+/** `POST /api/client/booth-contents/{contentId}/links` — 외부 링크 등록. */
+export const addBoothContentLink = async (
+  contentId: number,
+  payload: { linkType: ExternalLinkType; label?: string; url: string }
+): Promise<BoothContentLink> => {
+  const { data } = await api.post<ApiEnvelope<BoothContentLink>>(
+    `/client/booth-contents/${contentId}/links`,
+    payload
+  )
+  return data.data
+}
+
+/** `DELETE /api/client/booth-contents/{contentId}/links/{linkId}` — 외부 링크 삭제. */
+export const removeBoothContentLink = async (contentId: number, linkId: number): Promise<void> => {
+  await api.delete(`/client/booth-contents/${contentId}/links/${linkId}`)
 }
 
 /** `POST /api/client/booth-contents/{contentId}/submit-for-review` — 검수 요청. 관리자 승인 후 공개된다. */
@@ -158,7 +223,11 @@ export type PublishedBoothContent = {
   companyDescription: string | null
   boothDescription: string | null
   productDescription: string | null
+  logoFileId: number | null
+  mainImageFileId: number | null
   publishedAt: string
+  files: BoothContentFile[]
+  links: BoothContentLink[]
 }
 
 /**
