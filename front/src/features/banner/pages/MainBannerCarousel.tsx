@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -27,7 +28,16 @@ const ROTATE_INTERVAL_MS = 5000
  *   <li>OS 에서 "동작 줄이기" 를 켜 두었으면 — 애초에 돌리지 않는다
  * </ul>
  *
- * <p>배너가 하나뿐이면 전환할 것이 없으므로 타이머도 점도 만들지 않는다.
+ * <p>배너가 하나뿐이면 전환할 것이 없으므로 타이머도 점도 화살표도 만들지 않는다.
+ *
+ * <h2>화살표는 올렸을 때만 보인다</h2>
+ *
+ * 배너는 그림이 주인공이라 조작 버튼이 항상 떠 있으면 그림을 가린다. 그래서 마우스를 올렸을 때만
+ * 드러낸다. 다만 <b>손가락으로 쓰는 기기에는 hover 가 없다</b> — 그런 기기에서는 처음부터 보인다.
+ * 기본값을 "보임" 으로 두고 {@code hover:hover} 인 기기에서만 숨기는 이유가 그것이다. 반대로
+ * 짜면(기본 숨김 + hover 시 표시) 터치 기기에서 <b>영영 안 보이는 버튼</b>이 된다.
+ *
+ * <p>키보드 포커스가 들어와도 보인다. 안 그러면 탭으로 옮겨 갔는데 어디에 있는지 알 수 없다.
  */
 const MainBannerCarousel = () => {
   const { data: banners } = useActiveBanners()
@@ -63,6 +73,19 @@ const MainBannerCarousel = () => {
     setIndex(next)
   }, [])
 
+  /**
+   * 앞뒤로 한 칸 옮긴다. 끝에서는 반대쪽 끝으로 돌아간다.
+   *
+   * <p>화살표도 "사용자가 직접 골랐다" 로 친다. 점을 누른 것과 다를 이유가 없다 — 내가 방금 옮긴
+   * 배너를 5초 뒤 타이머가 밀어내면 조작이 무시당한 것으로 보인다.
+   */
+  const step = useCallback(
+    (delta: number) => {
+      pick((index + delta + count) % count)
+    },
+    [pick, index, count]
+  )
+
   // 배너가 없으면 자리도 만들지 않는다. 위 주석 참고.
   if (!banners || banners.length === 0) {
     return null
@@ -74,7 +97,7 @@ const MainBannerCarousel = () => {
     <section
       aria-label="추천 박람회 광고"
       aria-roledescription="carousel"
-      className="relative overflow-hidden rounded-lg"
+      className="group relative overflow-hidden rounded-lg"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -93,6 +116,13 @@ const MainBannerCarousel = () => {
           </p>
         )}
       </Link>
+
+      {banners.length > 1 && (
+        <>
+          <ArrowButton direction="prev" onClick={() => step(-1)} />
+          <ArrowButton direction="next" onClick={() => step(1)} />
+        </>
+      )}
 
       {banners.length > 1 && (
         <div className="absolute bottom-14 left-1/2 flex -translate-x-1/2 sm:bottom-18">
@@ -118,6 +148,41 @@ const MainBannerCarousel = () => {
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * 좌우 전환 화살표. 이미지 높이의 한가운데에 놓는다.
+ *
+ * <p>세로 기준을 <b>section 전체가 아니라 이미지</b>로 잡았다. 아래 문구 막대까지 포함해 가운데를
+ * 잡으면 화살표가 그림과 문구 경계에 걸친다. 그림 위에 얹히는 조작이므로 그림을 기준으로 삼는다.
+ * 이미지 높이가 {@code h-48 sm:h-64} 라 절반인 {@code top-24 sm:top-32} 에 놓고 자기 높이의
+ * 절반만큼 끌어올린다.
+ *
+ * <p>배경을 반투명 검정으로 깐다. 배너 이미지가 어떤 색일지 알 수 없어 아이콘만 얹으면 밝은
+ * 그림에서 흰 화살표가 사라진다.
+ */
+const ArrowButton = ({
+  direction,
+  onClick,
+}: {
+  direction: 'prev' | 'next'
+  onClick: () => void
+}) => {
+  const isPrev = direction === 'prev'
+  const Icon = isPrev ? ChevronLeft : ChevronRight
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={isPrev ? '이전 배너 보기' : '다음 배너 보기'}
+      className={`absolute top-24 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white transition-opacity hover:bg-black/60 focus-visible:opacity-100 sm:top-32 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 ${
+        isPrev ? 'left-2 sm:left-4' : 'right-2 sm:right-4'
+      }`}
+    >
+      <Icon className="size-6" aria-hidden />
+    </button>
   )
 }
 
