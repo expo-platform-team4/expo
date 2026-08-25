@@ -12,6 +12,7 @@ import java.util.List;
 public record RecruitmentNoticeRequestResponse(
         @Schema(description = "요청 ID") Long id,
         @Schema(description = "주최 클라이언트 ID") Long hostClientId,
+        @Schema(description = "이 요청이 어느 박람회를 위한 것인지. 아직 연결 안 됐으면 null") Long expoId,
         @Schema(description = "제목") String title,
         @Schema(description = "설명") String description,
         @Schema(description = "신청 시작 일시") Instant applicationStartAt,

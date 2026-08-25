@@ -13,6 +13,7 @@ public class RecruitmentNoticeRequestConverter {
         return new RecruitmentNoticeRequestResponse(
                 request.getId(),
                 request.getHostClientId(),
+                request.getExpoId(),
                 request.getTitle(),
                 request.getDescription(),
                 request.getApplicationStartAt(),

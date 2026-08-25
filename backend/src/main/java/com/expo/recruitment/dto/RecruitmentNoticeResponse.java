@@ -11,6 +11,7 @@ public record RecruitmentNoticeResponse(
         @Schema(description = "공고 ID") Long id,
         @Schema(description = "근거 모집공고 생성 요청 ID") Long requestId,
         @Schema(description = "주최 클라이언트 ID") Long hostClientId,
+        @Schema(description = "이 공고가 어느 박람회를 위한 것인지. 아직 연결 안 됐으면 null") Long expoId,
         @Schema(description = "확정된 전시관(홀) ID") Long venueHallId,
         @Schema(description = "홀 배치도 파일 ID") Long venueHallLayoutFileId,
         @Schema(description = "확정된 구역(홀) ID 목록") List<Long> venueZoneIds,
