@@ -411,7 +411,7 @@ export const createBoothProductsBulk = async (
 }
 
 /** Spring `Page<T>` 응답. 페이지네이션 컨트롤은 아직 두지 않고, 한 번에 넉넉히 불러와 목록만 보여준다. */
-type PageResponse<T> = {
+export type PageResponse<T> = {
   content: T[]
   totalElements: number
 }
@@ -431,13 +431,18 @@ export type AdminBoothAllocation = {
   updatedAt: string
 }
 
-/** `GET /api/admin/booth-allocations` — 부스 확정 배정 목록(전체 상태). ADMIN 전용. */
-export const listAdminBoothAllocations = async (): Promise<AdminBoothAllocation[]> => {
+/**
+ * `GET /api/admin/booth-allocations` — 부스 확정 배정 목록(전체 상태). ADMIN 전용.
+ *
+ * `totalElements` 도 함께 돌려준다 — 한 번에 최대 200건만 가져오므로, 실제 건수가 그보다
+ * 많으면 화면이 "일부만 보임"을 알 수 있어야 한다(조용히 잘려나가면 안 된다).
+ */
+export const listAdminBoothAllocations = async (): Promise<PageResponse<AdminBoothAllocation>> => {
   const { data } = await api.get<ApiEnvelope<PageResponse<AdminBoothAllocation>>>(
     '/admin/booth-allocations',
     { params: { size: 200 } }
   )
-  return data.data.content
+  return data.data
 }
 
 /**
@@ -511,13 +516,18 @@ export type AdminBoothContent = {
   updatedAt: string
 }
 
-/** `GET /api/admin/booth-contents` — 부스 콘텐츠 목록(전체 상태). ADMIN 전용. */
-export const listAdminBoothContents = async (): Promise<AdminBoothContent[]> => {
+/**
+ * `GET /api/admin/booth-contents` — 부스 콘텐츠 목록(전체 상태). ADMIN 전용.
+ *
+ * `totalElements` 도 함께 돌려준다 — 한 번에 최대 200건만 가져오므로, 실제 건수가 그보다
+ * 많으면 화면이 "일부만 보임"을 알 수 있어야 한다(조용히 잘려나가면 안 된다).
+ */
+export const listAdminBoothContents = async (): Promise<PageResponse<AdminBoothContent>> => {
   const { data } = await api.get<ApiEnvelope<PageResponse<AdminBoothContent>>>(
     '/admin/booth-contents',
     { params: { size: 200 } }
   )
-  return data.data.content
+  return data.data
 }
 
 /** `POST /api/admin/booth-contents/{contentId}/check` — 운영 확인(검수 시작). */

@@ -176,7 +176,9 @@ const AllocationRow = ({ allocation }: { allocation: AdminBoothAllocation }) => 
  * 참여 신청 철회)과는 다르다. 그래서 사유를 필수로 받고, ASSIGNED 상태에서만 액션을 보여준다.
  */
 const AdminBoothAllocationsPage = () => {
-  const { data: allocations, isPending, isError, error, refetch } = useAdminBoothAllocations()
+  const { data: page, isPending, isError, error, refetch } = useAdminBoothAllocations()
+  const allocations = page?.content ?? []
+  const isTruncated = page != null && page.totalElements > allocations.length
 
   return (
     <div>
@@ -193,6 +195,11 @@ const AdminBoothAllocationsPage = () => {
         <EmptyState title="확정 배정된 부스가 없습니다" />
       ) : (
         <div className="flex flex-col gap-3">
+          {isTruncated && (
+            <p className="text-label-sm text-error">
+              전체 {page.totalElements}건 중 {allocations.length}건만 표시됩니다.
+            </p>
+          )}
           {allocations.map((allocation) => (
             <AllocationRow key={allocation.id} allocation={allocation} />
           ))}

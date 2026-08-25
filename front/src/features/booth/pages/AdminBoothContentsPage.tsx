@@ -46,6 +46,10 @@ const STATUS_VARIANT: Record<BoothContentStatus, 'success' | 'neutral' | 'error'
 const ContentRow = ({ content }: { content: AdminBoothContent }) => {
   const [correctionOpen, setCorrectionOpen] = useState(false)
   const [correctionMessage, setCorrectionMessage] = useState('')
+  const [hideOpen, setHideOpen] = useState(false)
+  const [hideReason, setHideReason] = useState('')
+  const [restoreOpen, setRestoreOpen] = useState(false)
+  const [restoreReason, setRestoreReason] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
 
   const checkMutation = useCheckBoothContent()
@@ -82,15 +86,27 @@ const ContentRow = ({ content }: { content: AdminBoothContent }) => {
   const handleHide = () => {
     setActionError(null)
     hideMutation.mutate(
-      { contentId: content.id },
-      { onError: (err) => setActionError(getErrorMessage(err)) }
+      { contentId: content.id, reason: hideReason.trim() || undefined },
+      {
+        onSuccess: () => {
+          setHideOpen(false)
+          setHideReason('')
+        },
+        onError: (err) => setActionError(getErrorMessage(err)),
+      }
     )
   }
   const handleRestore = () => {
     setActionError(null)
     restoreMutation.mutate(
-      { contentId: content.id },
-      { onError: (err) => setActionError(getErrorMessage(err)) }
+      { contentId: content.id, reason: restoreReason.trim() || undefined },
+      {
+        onSuccess: () => {
+          setRestoreOpen(false)
+          setRestoreReason('')
+        },
+        onError: (err) => setActionError(getErrorMessage(err)),
+      }
     )
   }
 
@@ -201,22 +217,73 @@ const ContentRow = ({ content }: { content: AdminBoothContent }) => {
         </div>
       )}
 
-      {content.status === 'PUBLISHED' && (
-        <Button
-          type="button"
-          size="sm"
-          variant="danger"
-          loading={hideMutation.isPending}
-          onClick={handleHide}
-        >
-          숨김
-        </Button>
-      )}
-      {content.status === 'HIDDEN' && (
-        <Button type="button" size="sm" loading={restoreMutation.isPending} onClick={handleRestore}>
-          숨김 해제
-        </Button>
-      )}
+      {content.status === 'PUBLISHED' &&
+        (hideOpen ? (
+          <div className="flex flex-col gap-2">
+            <Textarea
+              label="숨김 사유"
+              hint="선택 항목입니다. 남기면 운영 이력에 기록됩니다."
+              value={hideReason}
+              onChange={(e) => setHideReason(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="danger"
+                loading={hideMutation.isPending}
+                onClick={handleHide}
+              >
+                숨김 확정
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setHideOpen(false)}
+              >
+                취소
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" size="sm" variant="danger" onClick={() => setHideOpen(true)}>
+            숨김
+          </Button>
+        ))}
+      {content.status === 'HIDDEN' &&
+        (restoreOpen ? (
+          <div className="flex flex-col gap-2">
+            <Textarea
+              label="숨김 해제 사유"
+              hint="선택 항목입니다. 남기면 운영 이력에 기록됩니다."
+              value={restoreReason}
+              onChange={(e) => setRestoreReason(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                loading={restoreMutation.isPending}
+                onClick={handleRestore}
+              >
+                숨김 해제 확정
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setRestoreOpen(false)}
+              >
+                취소
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" size="sm" onClick={() => setRestoreOpen(true)}>
+            숨김 해제
+          </Button>
+        ))}
 
       {actionError && <p className="text-label-sm text-error">{actionError}</p>}
     </Card>
@@ -231,7 +298,9 @@ const ContentRow = ({ content }: { content: AdminBoothContent }) => {
  * 뚫는다 — 운영 확인·승인·보완 요청·숨김·숨김 해제까지 상태별로 할 수 있는 액션만 보여준다.
  */
 const AdminBoothContentsPage = () => {
-  const { data: contents, isPending, isError, error, refetch } = useAdminBoothContents()
+  const { data: page, isPending, isError, error, refetch } = useAdminBoothContents()
+  const contents = page?.content ?? []
+  const isTruncated = page != null && page.totalElements > contents.length
 
   return (
     <div>
@@ -248,6 +317,11 @@ const AdminBoothContentsPage = () => {
         <EmptyState title="등록된 부스 콘텐츠가 없습니다" />
       ) : (
         <div className="flex flex-col gap-3">
+          {isTruncated && (
+            <p className="text-label-sm text-error">
+              전체 {page.totalElements}건 중 {contents.length}건만 표시됩니다.
+            </p>
+          )}
           {contents.map((content) => (
             <ContentRow key={content.id} content={content} />
           ))}
