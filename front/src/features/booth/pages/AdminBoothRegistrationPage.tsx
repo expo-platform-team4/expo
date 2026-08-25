@@ -22,7 +22,6 @@ import {
   useAdminVenueZones,
   useAdminVirtualVenues,
 } from '@/features/venue/hooks'
-import { formatCurrency } from '@/lib/currency'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import {
@@ -34,23 +33,41 @@ import {
 
 type BoothRow = {
   boothNumber: string
-  shapeCode: string
-  width: string
-  depth: string
-  sortOrder: string
 }
 
-const emptyBoothRow = (): BoothRow => ({
-  boothNumber: '',
-  shapeCode: 'STANDARD-3X3',
-  width: '3',
-  depth: '3',
-  sortOrder: '',
-})
+/** 기본 부스 규격 — 화면에서는 입력받지 않고 그대로 등록에 실어 보낸다. */
+const DEFAULT_SHAPE_CODE = 'STANDARD-3X3'
+const DEFAULT_WIDTH = '3'
+const DEFAULT_DEPTH = '3'
+
+/** 자동 채번 시 몇 개마다 접두어(A, B, C…)를 바꿀지. */
+const AUTO_PREFIX_GROUP_SIZE = 100
+
+/** 0부터 시작하는 전체 순번을 "A-01" 형태의 부스 번호로 바꾼다 — 100개마다 접두어가 넘어간다. */
+const boothNumberForIndex = (index: number) => {
+  const prefix = String.fromCharCode(65 + Math.floor(index / AUTO_PREFIX_GROUP_SIZE))
+  const seq = (index % AUTO_PREFIX_GROUP_SIZE) + 1
+  return `${prefix}-${String(seq).padStart(2, '0')}`
+}
+
+const AUTO_BOOTH_NUMBER_PATTERN = /^([A-Z])-(\d+)$/
+
+/**
+ * "A-01" 형태의 자동 채번 부스 번호를 0부터 시작하는 전체 순번으로 되돌린다. 이 형태가
+ * 아닌(수동으로 붙인) 부스 번호는 채번 기준에서 무시하도록 null 을 돌려준다.
+ */
+const indexForBoothNumber = (boothNumber: string): number | null => {
+  const match = AUTO_BOOTH_NUMBER_PATTERN.exec(boothNumber.trim().toUpperCase())
+  if (!match) return null
+  const seq = Number(match[2])
+  if (!Number.isInteger(seq) || seq < 1) return null
+  return (match[1].charCodeAt(0) - 65) * AUTO_PREFIX_GROUP_SIZE + (seq - 1)
+}
 
 /** 구역 안에 부스 공간을 여러 개 한 번에 등록하는 반복 행 폼. */
 const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
-  const [rows, setRows] = useState<BoothRow[]>([emptyBoothRow()])
+  const [rows, setRows] = useState<BoothRow[]>([])
+  const [bulkCount, setBulkCount] = useState('10')
   const [formError, setFormError] = useState<string | null>(null)
   const { data: existingBooths } = useAdminBooths(zoneId)
   const createMutation = useCreateBoothsBulk(zoneId ?? 0)
@@ -58,29 +75,41 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const updateRow = (index: number, patch: Partial<BoothRow>) => {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
-  const addRow = () => setRows((prev) => [...prev, emptyBoothRow()])
   const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index))
+
+  const addAutoNumberedRows = () => {
+    const count = Number(bulkCount)
+    if (!count || count < 1) return
+    const knownIndices = [
+      ...(existingBooths ?? []).map((booth) => indexForBoothNumber(booth.boothNumber)),
+      ...rows.map((row) => indexForBoothNumber(row.boothNumber)),
+    ]
+    const maxIndex = knownIndices.reduce<number>(
+      (max, index) => (index !== null && index > max ? index : max),
+      -1
+    )
+    const base = maxIndex + 1
+    const newRows = Array.from({ length: count }, (_, i) => ({
+      boothNumber: boothNumberForIndex(base + i),
+    }))
+    setRows((prev) => [...prev, ...newRows])
+  }
 
   const handleSubmit = () => {
     if (!zoneId) return
     setFormError(null)
-    if (
-      rows.some(
-        (row) => !row.boothNumber.trim() || !row.shapeCode.trim() || !row.width || !row.depth
-      )
-    ) {
-      setFormError('부스 번호·형태 코드·가로·세로는 모든 행에서 채워야 합니다.')
+    if (rows.some((row) => !row.boothNumber.trim())) {
+      setFormError('부스 번호는 모든 행에서 채워야 합니다.')
       return
     }
     const payload = rows.map((row) => ({
       boothNumber: row.boothNumber.trim(),
-      shapeCode: row.shapeCode.trim(),
-      width: Number(row.width),
-      depth: Number(row.depth),
-      sortOrder: row.sortOrder ? Number(row.sortOrder) : undefined,
+      shapeCode: DEFAULT_SHAPE_CODE,
+      width: Number(DEFAULT_WIDTH),
+      depth: Number(DEFAULT_DEPTH),
     }))
     createMutation.mutate(payload, {
-      onSuccess: () => setRows([emptyBoothRow()]),
+      onSuccess: () => setRows([]),
       onError: (err) => setFormError(getErrorMessage(err)),
     })
   }
@@ -108,67 +137,58 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {rows.map((row, index) => (
-          <div
-            key={index}
-            className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[1.2fr_1.2fr_0.8fr_0.8fr_0.8fr_auto]"
-          >
-            <Input
-              label={index === 0 ? '부스 번호' : undefined}
-              placeholder="A-01"
-              value={row.boothNumber}
-              onChange={(e) => updateRow(index, { boothNumber: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '형태 코드' : undefined}
-              placeholder="STANDARD-3X3"
-              value={row.shapeCode}
-              onChange={(e) => updateRow(index, { shapeCode: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '가로(m)' : undefined}
-              type="number"
-              step="0.01"
-              value={row.width}
-              onChange={(e) => updateRow(index, { width: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '세로(m)' : undefined}
-              type="number"
-              step="0.01"
-              value={row.depth}
-              onChange={(e) => updateRow(index, { depth: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '정렬순서' : undefined}
-              type="number"
-              placeholder="선택"
-              value={row.sortOrder}
-              onChange={(e) => updateRow(index, { sortOrder: e.target.value })}
-            />
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={() => removeRow(index)}
-              disabled={rows.length === 1}
-              aria-label="이 행 삭제"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        ))}
+      <div className="flex items-end gap-2">
+        <Input
+          label="생성 개수"
+          type="number"
+          min="1"
+          value={bulkCount}
+          onChange={(e) => setBulkCount(e.target.value)}
+          className="w-32"
+        />
+        <Button type="button" variant="secondary" size="sm" onClick={addAutoNumberedRows}>
+          자동 채번해서 추가
+        </Button>
       </div>
+      <p className="text-label-sm text-on-surface-variant -mt-2">
+        부스 번호는 100개마다 A, B, C… 접두어가 바뀌며 자동으로 채워집니다(예: A-01 ~ A-100, B-01
+        ~). 필요하면 아래에서 개별 수정할 수 있습니다.
+      </p>
 
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" size="sm" onClick={addRow}>
-          행 추가
-        </Button>
-        <Button type="button" size="sm" loading={createMutation.isPending} onClick={handleSubmit}>
-          일괄 등록
-        </Button>
-      </div>
+      {rows.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {rows.map((row, index) => (
+            <div
+              key={index}
+              className="border-outline-variant grid grid-cols-[1fr_auto] items-end gap-2 rounded border p-3"
+            >
+              <Input
+                label={index === 0 ? '부스 번호' : undefined}
+                placeholder="A-01"
+                value={row.boothNumber}
+                onChange={(e) => updateRow(index, { boothNumber: e.target.value })}
+              />
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => removeRow(index)}
+                aria-label="이 행 삭제"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="flex gap-2">
+          <Button type="button" size="sm" loading={createMutation.isPending} onClick={handleSubmit}>
+            일괄 등록
+          </Button>
+        </div>
+      )}
       {formError && <p className="text-label-sm text-error">{formError}</p>}
     </Card>
   )
@@ -177,7 +197,13 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
 type ProductRowState = {
   included: boolean
   supplyPrice: string
-  vatAmount: string
+}
+
+/** "A-01" → "A". 하이픈이 없으면 부스 번호 전체를 그룹으로 본다. */
+const boothGroupPrefix = (boothNumber: string) => boothNumber.split('-')[0] || boothNumber
+
+type GroupPriceState = {
+  supplyPrice: string
 }
 
 /**
@@ -193,6 +219,8 @@ const BulkCreateBoothProductsSection = ({
 }) => {
   const [formError, setFormError] = useState<string | null>(null)
   const [rowState, setRowState] = useState<Record<number, ProductRowState>>({})
+  const [groupPrices, setGroupPrices] = useState<Record<string, GroupPriceState>>({})
+  const [showIndividualRows, setShowIndividualRows] = useState(false)
   const {
     data: booths,
     isPending: boothsPending,
@@ -229,10 +257,38 @@ const BulkCreateBoothProductsSection = ({
   const registrableBooths = booths.filter((booth) => !registeredBoothIds.has(booth.id))
 
   const stateFor = (boothId: number): ProductRowState =>
-    rowState[boothId] ?? { included: true, supplyPrice: '', vatAmount: '0' }
+    rowState[boothId] ?? { included: true, supplyPrice: '' }
 
   const updateRow = (boothId: number, patch: Partial<ProductRowState>) => {
     setRowState((prev) => ({ ...prev, [boothId]: { ...stateFor(boothId), ...patch } }))
+  }
+
+  const groups = registrableBooths.reduce<Record<string, typeof registrableBooths>>(
+    (acc, booth) => {
+      const key = boothGroupPrefix(booth.boothNumber)
+      acc[key] = [...(acc[key] ?? []), booth]
+      return acc
+    },
+    {}
+  )
+  const groupKeys = Object.keys(groups).sort()
+
+  const groupPriceFor = (key: string): GroupPriceState => groupPrices[key] ?? { supplyPrice: '' }
+
+  const updateGroupPrice = (key: string, patch: Partial<GroupPriceState>) => {
+    setGroupPrices((prev) => ({ ...prev, [key]: { ...groupPriceFor(key), ...patch } }))
+  }
+
+  const applyGroupPrice = (key: string) => {
+    const { supplyPrice } = groupPriceFor(key)
+    if (!supplyPrice) return
+    setRowState((prev) => {
+      const next = { ...prev }
+      for (const booth of groups[key]) {
+        next[booth.id] = { included: true, supplyPrice }
+      }
+      return next
+    })
   }
 
   const handleSubmit = () => {
@@ -250,7 +306,7 @@ const BulkCreateBoothProductsSection = ({
       recruitmentNoticeId: noticeId,
       boothId: booth.id,
       supplyPrice: Number(stateFor(booth.id).supplyPrice),
-      vatAmount: Number(stateFor(booth.id).vatAmount || '0'),
+      vatAmount: 0,
       vatIncluded: true,
       paymentEnabled: true,
     }))
@@ -273,40 +329,92 @@ const BulkCreateBoothProductsSection = ({
           description="이 구역의 부스가 이미 전부 이 공고의 판매 상품으로 등록돼 있거나, 구역에 등록된 부스가 없습니다."
         />
       ) : (
-        <div className="flex flex-col gap-3">
-          {registrableBooths.map((booth) => {
-            const state = stateFor(booth.id)
+        <div className="flex flex-col gap-2">
+          <p className="text-label-sm text-on-surface-variant">
+            그룹별 가격 일괄 적용 — 부스 번호 접두어(A, B, C…)가 같은 부스끼리 한 번에 가격을
+            채웁니다.
+          </p>
+          {groupKeys.map((key) => {
+            const price = groupPriceFor(key)
             return (
               <div
-                key={booth.id}
-                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_1fr_1fr]"
+                key={key}
+                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_auto]"
               >
-                <Checkbox
-                  label={booth.boothNumber}
-                  checked={state.included}
-                  onChange={(e) => updateRow(booth.id, { included: e.target.checked })}
-                />
+                <p className="text-label-md font-medium">
+                  {key}그룹 ({groups[key].length}개)
+                </p>
                 <Input
                   label="공급가(원)"
                   type="number"
-                  value={state.supplyPrice}
-                  onChange={(e) => updateRow(booth.id, { supplyPrice: e.target.value })}
-                  disabled={!state.included}
+                  value={price.supplyPrice}
+                  onChange={(e) => updateGroupPrice(key, { supplyPrice: e.target.value })}
                 />
-                <Input
-                  label="부가세(원)"
-                  type="number"
-                  value={state.vatAmount}
-                  onChange={(e) => updateRow(booth.id, { vatAmount: e.target.value })}
-                  disabled={!state.included}
-                />
-                <p className="text-label-sm text-on-surface-variant">
-                  총액{' '}
-                  {formatCurrency(Number(state.supplyPrice || 0) + Number(state.vatAmount || 0))}
-                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => applyGroupPrice(key)}
+                >
+                  그룹에 적용
+                </Button>
               </div>
             )
           })}
+        </div>
+      )}
+
+      {registrableBooths.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => setShowIndividualRows((prev) => !prev)}
+          >
+            {showIndividualRows
+              ? '개별 부스 목록 접기'
+              : `개별 부스 목록 펼치기 (${registrableBooths.length}개)`}
+          </Button>
+
+          {showIndividualRows && (
+            <div className="border-outline-variant max-h-[480px] overflow-y-auto rounded border">
+              <table className="w-full text-left">
+                <thead className="bg-surface-container-low sticky top-0">
+                  <tr className="text-label-sm text-on-surface-variant">
+                    <th className="px-3 py-2 font-medium">부스</th>
+                    <th className="px-3 py-2 font-medium">공급가(원)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrableBooths.map((booth) => {
+                    const state = stateFor(booth.id)
+                    return (
+                      <tr key={booth.id} className="border-outline-variant border-t">
+                        <td className="px-3 py-1.5">
+                          <Checkbox
+                            label={booth.boothNumber}
+                            checked={state.included}
+                            onChange={(e) => updateRow(booth.id, { included: e.target.checked })}
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <Input
+                            type="number"
+                            value={state.supplyPrice}
+                            onChange={(e) => updateRow(booth.id, { supplyPrice: e.target.value })}
+                            disabled={!state.included}
+                            className="w-28"
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -396,8 +504,12 @@ const AdminBoothRegistrationPage = () => {
           )}
         </Card>
 
-        <BulkCreateBoothsSection zoneId={zoneId} />
-        <BulkCreateBoothProductsSection noticeId={noticeId} zoneId={zoneId} />
+        <BulkCreateBoothsSection key={zoneId ?? 'none'} zoneId={zoneId} />
+        <BulkCreateBoothProductsSection
+          key={`${zoneId ?? 'none'}-${noticeId ?? 'none'}`}
+          noticeId={noticeId}
+          zoneId={zoneId}
+        />
       </div>
     </div>
   )
