@@ -171,6 +171,77 @@ class PhoneVerificationServiceTest {
         assertThat(expired.getStatus()).isEqualTo(PhoneVerificationStatus.EXPIRED);
     }
 
+    // ---------- 회원가입이 인증 결과를 소비한다 ----------
+
+    @Test
+    void marksVerificationUsedOnSignup() {
+        String token = "signup-token";
+        PhoneVerification verified = verifiedWithSignupToken(token, Instant.now().plusSeconds(600));
+        when(repository.findByPhoneNumberAndStatus(NORMALIZED, PhoneVerificationStatus.VERIFIED))
+                .thenReturn(java.util.List.of(verified));
+
+        service.consumeForSignup(PHONE, token, 42L);
+
+        // USED 가 아니면 같은 토큰으로 계정을 여러 개 만들 수 있다.
+        assertThat(verified.getStatus()).isEqualTo(PhoneVerificationStatus.USED);
+        assertThat(verified.getUserId()).isEqualTo(42L);
+    }
+
+    @Test
+    void rejectsSignupWithAWrongToken() {
+        PhoneVerification verified =
+                verifiedWithSignupToken("real-token", Instant.now().plusSeconds(600));
+        when(repository.findByPhoneNumberAndStatus(NORMALIZED, PhoneVerificationStatus.VERIFIED))
+                .thenReturn(java.util.List.of(verified));
+
+        assertThatThrownBy(() -> service.consumeForSignup(PHONE, "someone-elses-token", 42L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID);
+
+        assertThat(verified.getStatus()).isEqualTo(PhoneVerificationStatus.VERIFIED);
+    }
+
+    @Test
+    void rejectsSignupWhenNoVerificationExistsForThatNumber() {
+        // 인증을 아예 하지 않고 API 를 직접 부른 경우다. 이걸 막는 것이 이 기능의 목적이다.
+        when(repository.findByPhoneNumberAndStatus(NORMALIZED, PhoneVerificationStatus.VERIFIED))
+                .thenReturn(java.util.List.of());
+
+        assertThatThrownBy(() -> service.consumeForSignup(PHONE, "any-token", 42L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID);
+    }
+
+    @Test
+    void rejectsSignupWhenTheSignupTokenHasExpired() {
+        String token = "signup-token";
+        PhoneVerification stale = verifiedWithSignupToken(token, Instant.now().minusSeconds(1));
+        when(repository.findByPhoneNumberAndStatus(NORMALIZED, PhoneVerificationStatus.VERIFIED))
+                .thenReturn(java.util.List.of(stale));
+
+        assertThatThrownBy(() -> service.consumeForSignup(PHONE, token, 42L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID);
+    }
+
+    @Test
+    void rejectsRowsThatPredateSignupTokens() {
+        // 이 기능 이전에 만들어진 행은 signup_token_hash 가 NULL 이다. 되살리지 않는다.
+        PhoneVerification legacy =
+                verification(Instant.now(), Instant.now().plus(3, ChronoUnit.MINUTES));
+        legacy.markVerified(null, Instant.now(), null);
+        when(repository.findByPhoneNumberAndStatus(NORMALIZED, PhoneVerificationStatus.VERIFIED))
+                .thenReturn(java.util.List.of(legacy));
+
+        assertThatThrownBy(() -> service.consumeForSignup(PHONE, "any-token", 42L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID);
+    }
+
     // ---------- 도우미 ----------
 
     /** 커밋을 흉내 내 {@code afterCommit} 에 걸어 둔 문자 발송을 실행시킨다. */
@@ -193,6 +264,13 @@ class PhoneVerificationServiceTest {
         ArgumentCaptor<PhoneVerification> captor = ArgumentCaptor.forClass(PhoneVerification.class);
         verify(repository, Mockito.atLeastOnce()).save(captor.capture());
         return captor.getAllValues();
+    }
+
+    private PhoneVerification verifiedWithSignupToken(String token, Instant tokenExpiresAt) {
+        PhoneVerification v =
+                verification(Instant.now(), Instant.now().plus(3, ChronoUnit.MINUTES));
+        v.markVerified(passwordEncoder.encode(token), Instant.now(), tokenExpiresAt);
+        return v;
     }
 
     private PhoneVerification verification(Instant requestedAt, Instant expiresAt) {

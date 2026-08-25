@@ -43,6 +43,12 @@ public record ClientSignupRequest(
                         example = "7f3c2a1b-9d4e-5f6a-8b7c-1d2e3f4a5b6c")
                 @NotBlank(message = "이메일 인증을 완료해 주세요.")
                 String emailVerificationToken,
+        @Schema(
+                        description =
+                                "휴대폰 인증 완료 토큰 (POST /api/auth/phone-verifications/confirm 응답값)",
+                        example = "33653ff9-35ba-424a-b366-cb0caf958afa")
+                @NotBlank(message = "휴대폰 본인인증을 완료해 주세요.")
+                String phoneVerificationToken,
 
         // ----- 기업 정보 -----
         @Schema(description = "정식 기업명", example = "주식회사 에스포틱")

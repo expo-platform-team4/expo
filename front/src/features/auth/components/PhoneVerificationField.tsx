@@ -16,17 +16,21 @@ import { useConfirmPhoneVerification, useRequestPhoneVerification } from '../hoo
  *
  * 인증번호는 백엔드가 요청마다 무작위 6자리를 만들어 SMS 로 보낸다. 응답에는 들어 있지 않으므로
  * 화면이 미리 알 수 있는 값이 없다. 같은 번호로 재요청하려면 60초를 기다려야 한다(429).
+ *
+ * 확인에 성공하면 `signupVerificationToken` 을 부모에게 넘긴다. 회원가입 API 가 이 토큰으로
+ * "이 번호를 정말 인증했는가" 를 검증하므로, 불리언만 넘기면 화면의 버튼만 잠그는 꼴이 된다.
+ * `EmailVerificationField` 의 `onVerified` 와 같은 계약이다.
  */
 export const PhoneVerificationField = <T extends FieldValues>({
   control,
   name,
   verified,
-  onVerifiedChange,
+  onVerified,
 }: {
   control: Control<T>
   name: Path<T>
   verified: boolean
-  onVerifiedChange: (verified: boolean) => void
+  onVerified: (signupVerificationToken: string | null) => void
 }) => {
   const { field, fieldState } = useController({ control, name })
   const [verificationId, setVerificationId] = useState<number | null>(null)
@@ -43,7 +47,7 @@ export const PhoneVerificationField = <T extends FieldValues>({
   const handleRequest = () => {
     setRequestError(null)
     setConfirmError(null)
-    onVerifiedChange(false)
+    onVerified(null)
     requestMutation.mutate(phoneNumber, {
       onSuccess: (result) => {
         setVerificationId(result.verificationId)
@@ -60,7 +64,7 @@ export const PhoneVerificationField = <T extends FieldValues>({
     confirmMutation.mutate(
       { verificationId, verificationCode: code },
       {
-        onSuccess: () => onVerifiedChange(true),
+        onSuccess: (result) => onVerified(result.signupVerificationToken),
         onError: (error) => setConfirmError(getErrorMessage(error)),
       }
     )
@@ -77,7 +81,8 @@ export const PhoneVerificationField = <T extends FieldValues>({
             disabled={verified}
             error={fieldState.error?.message}
             onChange={(event) => {
-              onVerifiedChange(false)
+              // 번호가 바뀌면 앞서 받은 토큰은 그 즉시 무효다 — 다른 번호의 인증이기 때문이다.
+              onVerified(null)
               setVerificationId(null)
               field.onChange(event)
             }}

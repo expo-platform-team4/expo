@@ -89,6 +89,8 @@ app:
     # 같은 번호로 재발송 가능해지기까지의 최소 간격. 이 API 는 로그인 없이 열려 있고
     # SMS 는 건당 과금이라, 제한이 없으면 남의 번호로 무한 발송을 시킬 수 있다.
     resend-cooldown-seconds: ${PHONE_VERIFICATION_RESEND_COOLDOWN_SECONDS:60}
+    # 인증을 마친 뒤 나머지 가입 항목을 채우는 시간. 이메일 인증과 같은 값이다.
+    signup-token-expire-minutes: ${PHONE_VERIFICATION_SIGNUP_TOKEN_EXPIRE_MINUTES:30}
 
   email-verification:
     # 휴대폰(3분)보다 여유를 둔다. 메일 수신이 SMS보다 느릴 수 있어서다.
