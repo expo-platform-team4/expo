@@ -7,15 +7,21 @@ import {
   confirmBoothPayment,
   createBoothContent,
   createBoothOrder,
+  createBoothProductsBulk,
+  createBoothsBulk,
   getMyBoothAllocation,
   getMyBoothContentByAllocation,
   getMyBoothOrder,
   getPublishedBoothContent,
   initiateBoothPayment,
+  listAdminBooths,
+  listAdminBoothProducts,
   listMyConfirmedBooths,
   submitBoothContentForReview,
   updateBoothContent,
   type BoothContentFormPayload,
+  type CreateBoothPayload,
+  type CreateBoothProductPayload,
 } from './api'
 import { boothKeys } from './queryKeys'
 
@@ -136,3 +142,44 @@ export const useInitiateBoothPayment = () => useMutation({ mutationFn: initiateB
 
 /** 결제 승인 확정. 토스 결제창에서 돌아온 성공 콜백 페이지가 마운트 시 자동으로 부른다. */
 export const useConfirmBoothPayment = () => useMutation({ mutationFn: confirmBoothPayment })
+
+/** 구역 내 부스 공간 목록. 관리자 부스 등록 화면에서 이미 등록된 부스를 보여줄 때 쓴다. */
+export const useAdminBooths = (zoneId: number | null) =>
+  useQuery({
+    queryKey: boothKeys.adminBooths(zoneId ?? 0),
+    queryFn: () => listAdminBooths(zoneId as number),
+    enabled: zoneId !== null,
+  })
+
+/** 부스 공간 일괄 등록. 성공하면 그 구역의 부스 목록 캐시를 무효화한다. */
+export const useCreateBoothsBulk = (zoneId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (booths: CreateBoothPayload[]) => createBoothsBulk(zoneId, booths),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.adminBooths(zoneId) })
+    },
+  })
+}
+
+/** 공고별 부스 상품 목록(전체 상태). 관리자 부스 상품 등록 화면에서 이미 등록된 상품을 걸러낼 때 쓴다. */
+export const useAdminBoothProducts = (recruitmentNoticeId: number | null) =>
+  useQuery({
+    queryKey: boothKeys.adminProducts(recruitmentNoticeId ?? 0),
+    queryFn: () => listAdminBoothProducts(recruitmentNoticeId as number),
+    enabled: recruitmentNoticeId !== null,
+  })
+
+/** 부스 상품 일괄 등록. 성공하면 그 공고의 부스 상품 목록 캐시를 무효화한다. */
+export const useCreateBoothProductsBulk = (recruitmentNoticeId: number) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (boothProducts: CreateBoothProductPayload[]) =>
+      createBoothProductsBulk(boothProducts),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: boothKeys.adminProducts(recruitmentNoticeId),
+      })
+    },
+  })
+}

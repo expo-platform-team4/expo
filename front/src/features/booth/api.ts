@@ -285,3 +285,127 @@ export const confirmBoothPayment = async (
   )
   return data.data
 }
+
+/** 부스 공간(물리적 자리). `com.expo.booth.dto.BoothResponse` 와 대응한다. */
+export type AdminBooth = {
+  id: number
+  venueZoneId: number
+  boothTemplateId: number | null
+  boothNumber: string
+  shapeCode: string
+  width: string
+  height: string | null
+  depth: string
+  dimensionUnit: string
+  positionX: string | null
+  positionY: string | null
+  rotationDegree: string | null
+  sortOrder: number
+  operationalStatus: 'ACTIVE' | 'INACTIVE'
+  createdAt: string
+  updatedAt: string
+}
+
+/** `POST /api/admin/venue-zones/{zoneId}/booths` 요청 바디 한 건. `CreateBoothRequest` 와 대응한다. */
+export type CreateBoothPayload = {
+  boothTemplateId?: number
+  boothNumber: string
+  shapeCode: string
+  width: number
+  height?: number
+  depth: number
+  dimensionUnit?: string
+  positionX?: number
+  positionY?: number
+  rotationDegree?: number
+  sortOrder?: number
+}
+
+/** `GET /api/admin/venue-zones/{zoneId}/booths` — 구역 내 부스 공간 목록. ADMIN 전용. */
+export const listAdminBooths = async (zoneId: number): Promise<AdminBooth[]> => {
+  const { data } = await api.get<ApiEnvelope<AdminBooth[]>>(`/admin/venue-zones/${zoneId}/booths`)
+  return data.data
+}
+
+/**
+ * `POST /api/admin/venue-zones/{zoneId}/booths/bulk` — 구역 안에 부스 공간 일괄 등록. ADMIN 전용.
+ * 배치 안의 중복이든 기존 등록분과의 중복이든 하나라도 걸리면 전체가 저장되지 않는다.
+ */
+export const createBoothsBulk = async (
+  zoneId: number,
+  booths: CreateBoothPayload[]
+): Promise<AdminBooth[]> => {
+  const { data } = await api.post<ApiEnvelope<AdminBooth[]>>(
+    `/admin/venue-zones/${zoneId}/booths/bulk`,
+    { booths }
+  )
+  return data.data
+}
+
+/** `com.expo.booth.entity.BoothSalesStatus`. */
+export type BoothSalesStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'UNAVAILABLE' | 'CANCELED'
+
+/**
+ * 관리자 관점의 부스 상품. `com.expo.booth.dto.BoothProductResponse` 와 대응한다.
+ *
+ * 참여 신청 화면(`features/participation/api.ts`)에도 같은 모양의 `BoothProduct` 타입이 따로
+ * 있다 — 그쪽은 공개 API(구매 가능한 것만) 응답이고 이건 관리자 API(전체 상태) 응답이라, 일부러
+ * 재사용하지 않고 이 화면이 필요한 만큼만 따로 둔다.
+ */
+export type AdminBoothProduct = {
+  id: number
+  recruitmentNoticeId: number
+  boothId: number
+  boothNumber: string
+  venueHallId: number
+  venueHallName: string
+  venueZoneId: number
+  venueZoneName: string
+  supplyPrice: string
+  vatAmount: string
+  totalPrice: string
+  vatIncluded: boolean
+  includedItems: string | null
+  salesStartAt: string | null
+  salesEndAt: string | null
+  paymentEnabled: boolean
+  salesStatus: BoothSalesStatus
+  createdAt: string
+  updatedAt: string
+}
+
+/** `GET /api/admin/booth-products?recruitmentNoticeId=` — 공고별 부스 상품 목록(전체 상태). ADMIN 전용. */
+export const listAdminBoothProducts = async (
+  recruitmentNoticeId: number
+): Promise<AdminBoothProduct[]> => {
+  const { data } = await api.get<ApiEnvelope<AdminBoothProduct[]>>('/admin/booth-products', {
+    params: { recruitmentNoticeId },
+  })
+  return data.data
+}
+
+/** `POST /api/admin/booth-products` 요청 바디 한 건. `CreateBoothProductRequest` 와 대응한다. */
+export type CreateBoothProductPayload = {
+  recruitmentNoticeId: number
+  boothId: number
+  supplyPrice: number
+  vatAmount?: number
+  vatIncluded: boolean
+  includedItems?: string
+  salesStartAt?: string
+  salesEndAt?: string
+  paymentEnabled: boolean
+}
+
+/**
+ * `POST /api/admin/booth-products/bulk` — 부스 상품 일괄 등록. ADMIN 전용. 배치 안에서 같은
+ * (공고, 부스) 조합이 중복되거나 기존 등록분과 겹치면 하나라도 걸려 전체가 저장되지 않는다.
+ */
+export const createBoothProductsBulk = async (
+  boothProducts: CreateBoothProductPayload[]
+): Promise<AdminBoothProduct[]> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothProduct[]>>('/admin/booth-products/bulk', {
+    boothProducts,
+  })
+  return data.data
+}

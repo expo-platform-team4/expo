@@ -3,6 +3,7 @@ package com.expo.booth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -310,6 +311,74 @@ class BoothProductServiceTest {
 
         assertThatThrownBy(() -> service.create(request()))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private CreateBoothProductRequest requestForBooth(Long boothId) {
+        return new CreateBoothProductRequest(
+                NOTICE_ID,
+                boothId,
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(100_000),
+                true,
+                null,
+                null,
+                null,
+                true);
+    }
+
+    @Test
+    void createBulkRejectsDuplicateNoticeBoothPairWithinBatch() {
+        assertThatThrownBy(
+                        () ->
+                                service.createBulk(
+                                        List.of(
+                                                requestForBooth(BOOTH_ID),
+                                                requestForBooth(BOOTH_ID))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_BOOTH_PRODUCT);
+        verify(boothProductRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void createBulkRejectsWhenAnyItemFailsValidation() {
+        Long otherBoothId = 99L;
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(NOTICE_ID, BOOTH_ID))
+                .thenReturn(false);
+        when(boothRepository.existsById(otherBoothId)).thenReturn(false);
+
+        assertThatThrownBy(
+                        () ->
+                                service.createBulk(
+                                        List.of(
+                                                requestForBooth(BOOTH_ID),
+                                                requestForBooth(otherBoothId))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.BOOTH_NOT_FOUND);
+        verify(boothProductRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void createBulkSucceeds() {
+        Long otherBoothId = 99L;
+        when(recruitmentNoticeRepository.findById(NOTICE_ID))
+                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
+        when(boothRepository.existsById(BOOTH_ID)).thenReturn(true);
+        when(boothRepository.existsById(otherBoothId)).thenReturn(true);
+        when(boothProductRepository.existsByRecruitmentNoticeIdAndBoothId(eq(NOTICE_ID), any()))
+                .thenReturn(false);
+        when(boothProductRepository.saveAllAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<BoothProductResponse> responses =
+                service.createBulk(
+                        List.of(requestForBooth(BOOTH_ID), requestForBooth(otherBoothId)));
+
+        assertThat(responses).hasSize(2);
     }
 
     @Test

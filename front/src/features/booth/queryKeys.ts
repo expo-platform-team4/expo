@@ -8,4 +8,7 @@ export const boothKeys = {
     [...boothKeys.all, 'published-content', allocationId] as const,
   myContent: (allocationId: number) => [...boothKeys.all, 'my-content', allocationId] as const,
   orderDetail: (orderId: number) => [...boothKeys.all, 'order', orderId] as const,
+  adminBooths: (zoneId: number) => [...boothKeys.all, 'admin-booths', zoneId] as const,
+  adminProducts: (recruitmentNoticeId: number) =>
+    [...boothKeys.all, 'admin-products', recruitmentNoticeId] as const,
 }

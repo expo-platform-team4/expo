@@ -3,6 +3,7 @@ package com.expo.booth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -151,6 +152,87 @@ class BoothServiceTest {
 
         assertThatThrownBy(() -> service.create(ZONE_ID, requestWithTemplate(null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private CreateBoothRequest requestWithNumber(String boothNumber) {
+        return new CreateBoothRequest(
+                null,
+                boothNumber,
+                "STANDARD-3X3",
+                BigDecimal.valueOf(3),
+                null,
+                BigDecimal.valueOf(3),
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    @Test
+    void createBulkRejectsWhenZoneNotFound() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.createBulk(ZONE_ID, List.of(requestWithNumber("A-01"))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VENUE_ZONE_NOT_FOUND);
+        verify(boothRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void createBulkRejectsDuplicateBoothNumberWithinBatch() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
+
+        assertThatThrownBy(
+                        () ->
+                                service.createBulk(
+                                        ZONE_ID,
+                                        List.of(
+                                                requestWithNumber("A-01"),
+                                                requestWithNumber("A-01"))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_BOOTH_NUMBER);
+        verify(boothRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void createBulkRejectsWhenAnyBoothNumberAlreadyExists() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-01")).thenReturn(false);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(ZONE_ID, "A-02")).thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                service.createBulk(
+                                        ZONE_ID,
+                                        List.of(
+                                                requestWithNumber("A-01"),
+                                                requestWithNumber("A-02"))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.DUPLICATE_BOOTH_NUMBER);
+        verify(boothRepository, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void createBulkSucceeds() {
+        when(venueZoneRepository.existsById(ZONE_ID)).thenReturn(true);
+        when(boothRepository.existsByVenueZoneIdAndBoothNumber(eq(ZONE_ID), any()))
+                .thenReturn(false);
+        when(boothRepository.saveAllAndFlush(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<BoothResponse> responses =
+                service.createBulk(
+                        ZONE_ID, List.of(requestWithNumber("A-01"), requestWithNumber("A-02")));
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses)
+                .extracting(BoothResponse::boothNumber)
+                .containsExactly("A-01", "A-02");
     }
 
     private static void withId(Object entity, Long id) {
