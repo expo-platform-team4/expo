@@ -3,6 +3,7 @@
 import {
   Bell,
   Building2,
+  CalendarCheck,
   ClipboardCheck,
   LayoutDashboard,
   LayoutGrid,
@@ -38,6 +39,7 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
     items: [
       { label: '카테고리 관리', href: '/admin/categories', icon: Tag },
       { label: '가상 장소 관리', href: '/admin/venues', icon: MapPin },
+      { label: '장소 예약 관리', href: '/admin/venue-reservations', icon: CalendarCheck },
       { label: '부스 등록', href: '/admin/booths', icon: LayoutGrid },
       { label: '알림 이력·재발송', href: '/admin/notifications', icon: Bell },
     ],
