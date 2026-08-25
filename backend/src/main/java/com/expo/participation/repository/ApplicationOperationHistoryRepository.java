@@ -14,6 +14,11 @@ public interface ApplicationOperationHistoryRepository
     List<ApplicationOperationHistory> findAllByApplicationIdOrderByCreatedAtDescIdDesc(
             Long applicationId);
 
+    /** 신청 기업에게 공개할 유형만 거른 이력. 관리자 메모(MEMO_UPDATED)는 내부용이라 뺀다. */
+    List<ApplicationOperationHistory>
+            findAllByApplicationIdAndActionTypeInOrderByCreatedAtDescIdDesc(
+                    Long applicationId, Collection<ApplicationOperationActionType> actionTypes);
+
     /** {@code createdAt} 이 같은 이력이 있어도 {@code id} 로 최신 순서를 결정적으로 가린다. */
     Optional<ApplicationOperationHistory> findFirstByApplicationIdOrderByCreatedAtDescIdDesc(
             Long applicationId);
