@@ -12,9 +12,12 @@ import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestZone;
 import com.expo.recruitment.entity.VenueConflictStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
+import com.expo.venue.entity.VenueReservation;
+import com.expo.venue.entity.VenueReservationStatus;
 import com.expo.venue.repository.VenueHallRepository;
 import com.expo.venue.repository.VenueReservationRepository;
 import com.expo.venue.repository.VenueZoneRepository;
@@ -22,11 +25,16 @@ import com.expo.venue.repository.VirtualVenueRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+// 생성자를 직접 쓰지 않는다. 의존이 9개라 Checkstyle 의 ParameterNumber(최대 8)에 걸린다 -
+// 스케줄러들과 같은 방식으로 Lombok 이 만들게 둔다.
+@RequiredArgsConstructor
 public class RecruitmentNoticeRequestService {
 
     private final RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository;
@@ -37,26 +45,8 @@ public class RecruitmentNoticeRequestService {
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
     private final VenueReservationRepository venueReservationRepository;
+    private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter;
-
-    public RecruitmentNoticeRequestService(
-            RecruitmentNoticeRequestRepository recruitmentNoticeRequestRepository,
-            RecruitmentNoticeRequestZoneRepository recruitmentNoticeRequestZoneRepository,
-            RecruitmentNoticeRequestHistoryRepository recruitmentNoticeRequestHistoryRepository,
-            VirtualVenueRepository virtualVenueRepository,
-            VenueHallRepository venueHallRepository,
-            VenueZoneRepository venueZoneRepository,
-            VenueReservationRepository venueReservationRepository,
-            RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter) {
-        this.recruitmentNoticeRequestRepository = recruitmentNoticeRequestRepository;
-        this.recruitmentNoticeRequestZoneRepository = recruitmentNoticeRequestZoneRepository;
-        this.recruitmentNoticeRequestHistoryRepository = recruitmentNoticeRequestHistoryRepository;
-        this.virtualVenueRepository = virtualVenueRepository;
-        this.venueHallRepository = venueHallRepository;
-        this.venueZoneRepository = venueZoneRepository;
-        this.venueReservationRepository = venueReservationRepository;
-        this.recruitmentNoticeRequestConverter = recruitmentNoticeRequestConverter;
-    }
 
     /**
      * 모집공고 생성 요청 작성 및 제출. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가
@@ -135,7 +125,8 @@ public class RecruitmentNoticeRequestService {
                     RecruitmentNoticeRequestZone.create(
                             saved.getId(), request.venueHallId(), zoneId));
         }
-        return recruitmentNoticeRequestConverter.toResponse(saved, venueZoneIds);
+        // 방금 만든 요청이다. 장소 예약도 공고도 아직 있을 수 없다.
+        return recruitmentNoticeRequestConverter.toResponse(saved, venueZoneIds, false, false);
     }
 
     /** 주최 클라이언트 본인이 작성한 모집공고 생성 요청 목록 조회. */
@@ -215,10 +206,42 @@ public class RecruitmentNoticeRequestService {
         return toResponseWithZones(entity);
     }
 
+    /**
+     * 요청 한 건을 응답으로 바꾼다.
+     *
+     * <h2>왜 예약·공고 존재 여부를 같이 싣나</h2>
+     *
+     * 화면이 <b>"이 요청으로 초안을 만들 수 있는가"</b> 를 판단할 수 있어야 하기 때문이다. 예전에는
+     * {@code status == APPROVED} 만 보고 골랐는데, 그 상태는 <b>장소 판정의 부산물</b>이다
+     * ({@code RecruitmentNoticeRequest#decideVenue} 가 ALLOWED 면 APPROVED 로 바꾼다). 그래서
+     * 장소만 허용하고 예약은 아직 안 잡은 요청도 목록에 떠 버렸고, 고르면 제출 단계에서야
+     * "장소 예약이 없다" 로 막혔다.
+     *
+     * <p>조건은 {@code RecruitmentNoticeService#create} 가 검사하는 것과 같아야 한다. 어긋나면
+     * 화면은 만들 수 있다고 하고 서버는 거절하는 상태로 돌아간다.
+     */
     private RecruitmentNoticeRequestResponse toResponseWithZones(RecruitmentNoticeRequest request) {
         List<Long> venueZoneIds =
                 recruitmentNoticeRequestZoneRepository.findVenueZoneIdsByRequestId(request.getId());
-        return recruitmentNoticeRequestConverter.toResponse(request, venueZoneIds);
+        return recruitmentNoticeRequestConverter.toResponse(
+                request,
+                venueZoneIds,
+                isVenueReservationConfirmed(
+                        venueReservationRepository.findAllByNoticeRequestId(request.getId())),
+                recruitmentNoticeRepository.existsByRequestId(request.getId()));
+    }
+
+    /**
+     * 장소 예약이 <b>초안을 만들 수 있는 상태</b>인가.
+     *
+     * <p>한 건도 없으면 아직 예약 전이고, 해제된 예약이 섞여 있으면 그 구역은 더 이상 우리 것이
+     * 아니다. 둘 다 초안을 만들면 안 되는 상태다 — 구역마다 예약이 하나씩 생기므로 <b>전부</b>
+     * 확정이어야 한다.
+     */
+    private boolean isVenueReservationConfirmed(List<VenueReservation> reservations) {
+        return !reservations.isEmpty()
+                && reservations.stream()
+                        .allMatch(r -> r.getStatus() == VenueReservationStatus.CONFIRMED);
     }
 
     private List<RecruitmentNoticeRequestResponse> toResponsesWithZones(
@@ -232,13 +255,23 @@ public class RecruitmentNoticeRequestService {
                                         Collectors.mapping(
                                                 RecruitmentNoticeRequestZone::getVenueZoneId,
                                                 Collectors.toList())));
+        // 예약·공고 존재 여부도 한 번에 모은다. 요청마다 조회하면 목록 하나에 쿼리가 요청 수만큼 늘어난다.
+        Map<Long, List<VenueReservation>> reservationsByRequestId =
+                venueReservationRepository.findAllByNoticeRequestIdIn(requestIds).stream()
+                        .collect(Collectors.groupingBy(VenueReservation::getNoticeRequestId));
+        Set<Long> requestIdsWithNotice =
+                Set.copyOf(recruitmentNoticeRepository.findRequestIdsByRequestIdIn(requestIds));
+
         return requests.stream()
                 .map(
                         request ->
                                 recruitmentNoticeRequestConverter.toResponse(
                                         request,
-                                        zoneIdsByRequestId.getOrDefault(
-                                                request.getId(), List.of())))
+                                        zoneIdsByRequestId.getOrDefault(request.getId(), List.of()),
+                                        isVenueReservationConfirmed(
+                                                reservationsByRequestId.getOrDefault(
+                                                        request.getId(), List.of())),
+                                        requestIdsWithNotice.contains(request.getId())))
                 .toList();
     }
 }

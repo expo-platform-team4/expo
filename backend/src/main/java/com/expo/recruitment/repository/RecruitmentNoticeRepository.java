@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** 허용된 장소 요청을 기준으로 관리자가 작성·게시하는 기업 모집공고 영속성 접근 인터페이스. */
 public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNotice, Long> {
@@ -17,6 +19,10 @@ public interface RecruitmentNoticeRepository extends JpaRepository<RecruitmentNo
     List<RecruitmentNotice> findAllByExpoId(Long expoId);
 
     List<RecruitmentNotice> findAllByStatus(RecruitmentNoticeStatus status);
+
+    /** 이미 공고가 만들어진 요청 ID 들. 요청 목록에서 "초안 생성 가능" 판단에 쓴다. */
+    @Query("select n.requestId from RecruitmentNotice n where n.requestId in :requestIds")
+    List<Long> findRequestIdsByRequestIdIn(@Param("requestIds") Collection<Long> requestIds);
 
     Optional<RecruitmentNotice> findByIdAndStatus(Long id, RecruitmentNoticeStatus status);
 

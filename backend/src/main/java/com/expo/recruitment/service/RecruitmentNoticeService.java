@@ -95,8 +95,10 @@ public class RecruitmentNoticeService {
         }
         List<VenueReservation> reservations =
                 venueReservationRepository.findAllByNoticeRequestId(request.requestId());
+        // "존재하지 않는 장소 예약입니다" 를 쓰지 않는다. 관리자는 예약을 지정한 적이 없어서
+        // 그 문구로는 무엇을 해야 하는지 알 수 없다 - 다음에 할 일을 문구에 담는다.
         if (reservations.isEmpty()) {
-            throw new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+            throw new BusinessException(ErrorCode.VENUE_RESERVATION_NOT_CONFIRMED);
         }
         boolean anyNotConfirmed =
                 reservations.stream()

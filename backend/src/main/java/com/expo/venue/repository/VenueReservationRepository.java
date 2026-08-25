@@ -14,6 +14,9 @@ public interface VenueReservationRepository extends JpaRepository<VenueReservati
     /** 모집공고 생성 요청이 승인된 뒤 확정한 예약 목록 (구역마다 한 건씩). */
     List<VenueReservation> findAllByNoticeRequestId(Long noticeRequestId);
 
+    /** 여러 요청의 예약을 한 번에. 목록 화면이 요청마다 조회하면 N+1 이 된다. */
+    List<VenueReservation> findAllByNoticeRequestIdIn(Collection<Long> noticeRequestIds);
+
     /** 특정 모집공고에 딸린 예약 목록. 취소 시 일괄 해제할 때 쓴다. */
     List<VenueReservation> findAllByRecruitmentNoticeId(Long recruitmentNoticeId);
 

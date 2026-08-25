@@ -164,7 +164,7 @@ class RecruitmentNoticeServiceTest {
         assertThatThrownBy(() -> service.create(ADMIN_ID, createRequest()))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_FOUND);
+                .isEqualTo(ErrorCode.VENUE_RESERVATION_NOT_CONFIRMED);
     }
 
     /** 딸린 예약 중 하나라도 이미 해제됐다면 공고를 만들 수 없어야 한다. */
