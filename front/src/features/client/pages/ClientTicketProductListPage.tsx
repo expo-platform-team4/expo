@@ -30,7 +30,7 @@ import {
   type CreateTicketProductFormValues,
 } from '@/features/ticket/schemas'
 import { formatCurrency } from '@/lib/currency'
-import { formatDateTime } from '@/lib/date'
+import { formatDateTime, toDateInputValue } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import { useClientMyExpos } from '../hooks'
@@ -182,13 +182,24 @@ const CreateProductForm = ({ expoId }: { expoId: number }) => {
             {...register('maxQuantityPerOrder', { valueAsNumber: true })}
           />
         </div>
-        <p className="text-body-sm text-on-surface-variant">
-          판매 기간은 박람회 개최 신청 때 정한 기간을 그대로 씁니다
-          {expo
-            ? ` — ${formatDateTime(expo.salesStartAt)} ~ ${formatDateTime(expo.salesEndAt)}`
-            : ''}
-          .
-        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="티켓 판매 시작"
+            type="date"
+            readOnly
+            className="bg-surface-container-low"
+            hint="박람회 개최 신청 때 정한 기간으로 고정됩니다."
+            value={expo ? toDateInputValue(expo.salesStartAt) : ''}
+          />
+          <Input
+            label="티켓 판매 종료"
+            type="date"
+            readOnly
+            className="bg-surface-container-low"
+            hint="박람회 개최 신청 때 정한 기간으로 고정됩니다."
+            value={expo ? toDateInputValue(expo.salesEndAt) : ''}
+          />
+        </div>
 
         {formError && <p className="text-label-sm text-error">{formError}</p>}
 
