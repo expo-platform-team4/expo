@@ -4,6 +4,8 @@ import Link from 'next/link'
 
 import { Button, EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/ui'
 
+import MainBannerCarousel from '@/features/banner/pages/MainBannerCarousel'
+
 import { ExpoCardItem } from '../components/ExpoCardItem'
 import { useExpoCards } from '../hooks'
 
@@ -16,7 +18,8 @@ const FEATURED_COUNT = 6
  * 추천은 목록 API 의 인기순 상위를 그대로 쓴다(`sort=POPULAR`). 인기 점수는 뷰가
  * 판매량·주문량으로 계산한다 — 별도 추천 엔진이 있는 것이 아니다.
  *
- * 배너는 여전히 범위 밖이다(이슈 #103).
+ * 배너는 `MainBannerCarousel` 이 맡는다. 노출할 배너가 없으면 아무것도 그리지 않아서,
+ * 광고가 없는 날 홈 상단이 빈 상자로 남지 않는다.
  */
 const HomePage = () => {
   const { data, isPending, isError, error, refetch } = useExpoCards({ sort: 'POPULAR' })
@@ -28,9 +31,7 @@ const HomePage = () => {
         description="다양한 박람회를 둘러보고 티켓을 예매해 보세요."
       />
 
-      <section aria-label="배너">
-        <EmptyState notReady title="배너" description="배너 영역은 아직 연결되지 않았습니다." />
-      </section>
+      <MainBannerCarousel />
 
       <section aria-label="박람회 추천" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
