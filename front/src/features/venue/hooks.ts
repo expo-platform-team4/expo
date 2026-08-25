@@ -16,7 +16,7 @@ export const useAdminVirtualVenues = () =>
     queryFn: listAdminVirtualVenues,
   })
 
-/** `/admin/virtual-venues/{venueId}/halls` — 장소 내 홀 목록. */
+/** `/admin/virtual-venues/{venueId}/halls` — 장소 내 전시장 목록. */
 export const useAdminVenueHalls = (venueId: number | undefined) =>
   useQuery({
     queryKey: venueKeys.halls(venueId ?? -1),
@@ -24,7 +24,7 @@ export const useAdminVenueHalls = (venueId: number | undefined) =>
     enabled: venueId !== undefined,
   })
 
-/** `/admin/venue-halls/{hallId}/zones` — 홀 내 구역 목록. */
+/** `/admin/venue-halls/{hallId}/zones` — 전시장 내 홀 목록. */
 export const useAdminVenueZones = (hallId: number | undefined) =>
   useQuery({
     queryKey: venueKeys.zones(hallId ?? -1),
@@ -32,7 +32,7 @@ export const useAdminVenueZones = (hallId: number | undefined) =>
     enabled: hallId !== undefined,
   })
 
-/** 홀 배치도 교체. 성공하면 그 장소의 홀 목록 캐시를 무효화한다. */
+/** 전시장 배치도 교체. 성공하면 그 장소의 전시장 목록 캐시를 무효화한다. */
 export const useUpdateVenueHallLayout = (venueId: number) => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -44,7 +44,7 @@ export const useUpdateVenueHallLayout = (venueId: number) => {
   })
 }
 
-/** 구역 배치도 교체. 성공하면 그 홀의 구역 목록 캐시를 무효화한다. */
+/** 홀 배치도 교체. 성공하면 그 전시장의 홀 목록 캐시를 무효화한다. */
 export const useUpdateVenueZoneLayout = (hallId: number) => {
   const queryClient = useQueryClient()
   return useMutation({

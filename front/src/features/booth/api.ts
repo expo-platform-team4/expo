@@ -390,14 +390,14 @@ export type CreateBoothPayload = {
   sortOrder?: number
 }
 
-/** `GET /api/admin/venue-zones/{zoneId}/booths` — 구역 내 부스 공간 목록. ADMIN 전용. */
+/** `GET /api/admin/venue-zones/{zoneId}/booths` — 홀 내 부스 공간 목록. ADMIN 전용. */
 export const listAdminBooths = async (zoneId: number): Promise<AdminBooth[]> => {
   const { data } = await api.get<ApiEnvelope<AdminBooth[]>>(`/admin/venue-zones/${zoneId}/booths`)
   return data.data
 }
 
 /**
- * `POST /api/admin/venue-zones/{zoneId}/booths/bulk` — 구역 안에 부스 공간 일괄 등록. ADMIN 전용.
+ * `POST /api/admin/venue-zones/{zoneId}/booths/bulk` — 홀 안에 부스 공간 일괄 등록. ADMIN 전용.
  * 배치 안의 중복이든 기존 등록분과의 중복이든 하나라도 걸리면 전체가 저장되지 않는다.
  */
 export const createBoothsBulk = async (

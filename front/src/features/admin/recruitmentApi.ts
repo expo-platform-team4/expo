@@ -41,7 +41,6 @@ export type CreateAdminNoticeRequestPayload = {
   venueHallId: number
   venueZoneIds: number[]
   targetCompanyCount: number
-  requestedBoothConfig?: string
 }
 
 /** `POST /api/admin/recruitment-notice-requests` — 모집공고 생성 요청 작성(관리자). */

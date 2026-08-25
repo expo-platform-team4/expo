@@ -131,7 +131,7 @@ export const listVirtualVenues = async (): Promise<VirtualVenue[]> => {
   return data.data
 }
 
-/** 홀. `VenueHallResponse` 와 필드가 대응한다. */
+/** 전시장. `VenueHallResponse` 와 필드가 대응한다. */
 export type VenueHall = {
   id: number
   venueId: number
@@ -146,9 +146,9 @@ export type VenueHall = {
 }
 
 /**
- * `GET /api/virtual-venues/{venueId}/halls` — 장소 내 홀 목록. 공개.
+ * `GET /api/virtual-venues/{venueId}/halls` — 장소 내 전시장 목록. 공개.
  *
- * 전에는 홀·구역 목록 조회가 `/api/admin/**` 전용이라 CLIENT 가 부를 수 없어 공고 생성 요청
+ * 전에는 전시장·홀 목록 조회가 `/api/admin/**` 전용이라 CLIENT 가 부를 수 없어 공고 생성 요청
  * 폼에서 ID 직접 입력을 받았다(이슈 #107). `PublicVenueHallController`/`PublicVenueZoneController`
  * 로 공개 엔드포인트가 추가되어(PR #110) 이제 실제 드롭다운으로 고를 수 있다.
  */
@@ -159,7 +159,7 @@ export const listVenueHalls = async (virtualVenueId: number): Promise<VenueHall[
   return data.data
 }
 
-/** 구역. `VenueZoneResponse` 와 필드가 대응한다. */
+/** 홀. `VenueZoneResponse` 와 필드가 대응한다. */
 export type VenueZone = {
   id: number
   hallId: number
@@ -174,7 +174,7 @@ export type VenueZone = {
   updatedAt: string
 }
 
-/** `GET /api/venue-halls/{hallId}/zones` — 홀 내 구역 목록. 공개. */
+/** `GET /api/venue-halls/{hallId}/zones` — 전시장 내 홀 목록. 공개. */
 export const listVenueZones = async (hallId: number): Promise<VenueZone[]> => {
   const { data } = await api.get<ApiEnvelope<VenueZone[]>>(`/venue-halls/${hallId}/zones`)
   return data.data

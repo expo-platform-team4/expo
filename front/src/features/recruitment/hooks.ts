@@ -63,7 +63,7 @@ export const useVirtualVenues = () =>
     queryFn: listVirtualVenues,
   })
 
-/** 선택한 가상 장소의 홀 목록. 장소를 고르기 전에는 부르지 않는다(`enabled`). */
+/** 선택한 가상 장소의 전시장 목록. 장소를 고르기 전에는 부르지 않는다(`enabled`). */
 export const useVenueHalls = (virtualVenueId: number | null) =>
   useQuery({
     queryKey: recruitmentKeys.venueHalls(virtualVenueId ?? 0),
@@ -71,7 +71,7 @@ export const useVenueHalls = (virtualVenueId: number | null) =>
     enabled: virtualVenueId !== null,
   })
 
-/** 선택한 홀의 구역 목록. 홀을 고르기 전에는 부르지 않는다(`enabled`). */
+/** 선택한 전시장의 홀 목록. 전시장을 고르기 전에는 부르지 않는다(`enabled`). */
 export const useVenueZones = (hallId: number | null) =>
   useQuery({
     queryKey: recruitmentKeys.venueZones(hallId ?? 0),

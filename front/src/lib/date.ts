@@ -38,3 +38,11 @@ export const toDatetimeLocalValue = (isoInstant: string): string => {
   const localMs = date.getTime() - date.getTimezoneOffset() * 60_000
   return new Date(localMs).toISOString().slice(0, 16)
 }
+
+/**
+ * UTC ISO 문자열을 `<input type="date">` 에 넣을 수 있는 `YYYY-MM-DD` 형태(브라우저 로컬
+ * 타임존 기준)로 바꾼다. {@link toDatetimeLocalValue} 와 같은 이유로 `slice(0, 10)` 로 UTC
+ * 문자열을 그냥 잘라 쓰면 안 된다.
+ */
+export const toDateInputValue = (isoInstant: string): string =>
+  toDatetimeLocalValue(isoInstant).slice(0, 10)

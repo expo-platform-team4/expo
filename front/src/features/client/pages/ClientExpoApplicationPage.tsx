@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 
 import {
@@ -29,6 +29,29 @@ import {
   useSubmitExpoOpeningRequest,
 } from '../hooks'
 import { expoOpeningRequestSchema, type ExpoOpeningRequestFormValues } from '../schemas'
+
+/** 행사 시작·종료 시각을 고정한다 — 날짜만 고르고 시간은 매번 묻지 않는다. */
+const EVENT_START_TIME = '09:00:00'
+const EVENT_END_TIME = '21:00:00'
+
+/** 티켓 판매 시작·종료 시각도 고정한다 — 판매일 자정부터 그날 자정 직전까지. */
+const SALES_START_TIME = '00:00:00'
+const SALES_END_TIME = '23:59:59'
+
+/** 티켓 판매 기간은 직접 고르지 않는다 — 행사 시작일 2주 전 ~ 행사 종료일 하루 전으로 자동 계산한다. */
+const SALES_START_OFFSET_DAYS = -14
+const SALES_END_OFFSET_DAYS = -1
+
+/** "YYYY-MM-DD" 문자열에 날짜를 더한다(음수면 뺀다). 로컬 날짜로만 계산해 타임존 어긋남이 없다. */
+const addDaysToDateString = (dateString: string, deltaDays: number): string => {
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + deltaDays)
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
 
 const STATUS_VARIANT: Record<ExpoOpeningRequestStatus, 'success' | 'neutral' | 'error' | 'info'> = {
   DRAFT: 'neutral',
@@ -85,7 +108,23 @@ const ClientExpoApplicationPage = () => {
     },
   })
 
+  const eventStartAt = useWatch({ control, name: 'eventStartAt' })
+  const eventEndAt = useWatch({ control, name: 'eventEndAt' })
   const selectedVenueId = useWatch({ control, name: 'desiredVenueId' })
+
+  useEffect(() => {
+    if (!eventStartAt) return
+    setValue('salesStartAt', addDaysToDateString(eventStartAt, SALES_START_OFFSET_DAYS), {
+      shouldValidate: true,
+    })
+  }, [eventStartAt, setValue])
+
+  useEffect(() => {
+    if (!eventEndAt) return
+    setValue('salesEndAt', addDaysToDateString(eventEndAt, SALES_END_OFFSET_DAYS), {
+      shouldValidate: true,
+    })
+  }, [eventEndAt, setValue])
   const selectedHallId = useWatch({ control, name: 'desiredVenueHallId' })
   const { data: halls, isPending: hallsPending } = useVenueHalls(
     selectedVenueId ? Number(selectedVenueId) : null
@@ -102,10 +141,10 @@ const ClientExpoApplicationPage = () => {
         content: {
           title: values.title,
           description: values.description,
-          eventStartAt: new Date(values.eventStartAt).toISOString(),
-          eventEndAt: new Date(values.eventEndAt).toISOString(),
-          salesStartAt: new Date(values.salesStartAt).toISOString(),
-          salesEndAt: new Date(values.salesEndAt).toISOString(),
+          eventStartAt: new Date(`${values.eventStartAt}T${EVENT_START_TIME}`).toISOString(),
+          eventEndAt: new Date(`${values.eventEndAt}T${EVENT_END_TIME}`).toISOString(),
+          salesStartAt: new Date(`${values.salesStartAt}T${SALES_START_TIME}`).toISOString(),
+          salesEndAt: new Date(`${values.salesEndAt}T${SALES_END_TIME}`).toISOString(),
           desiredVenueId: Number(values.desiredVenueId),
           desiredVenueHallId: values.desiredVenueHallId
             ? Number(values.desiredVenueHallId)
@@ -117,7 +156,10 @@ const ClientExpoApplicationPage = () => {
         },
       },
       {
-        onSuccess: () => reset(),
+        onSuccess: () => {
+          reset()
+          router.push('/client/expos')
+        },
         onError: (err) => setFormError(getErrorMessage(err)),
       }
     )
@@ -153,25 +195,34 @@ const ClientExpoApplicationPage = () => {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="행사 시작일"
-              type="datetime-local"
+              type="date"
+              hint="오전 9시 시작으로 고정됩니다."
               error={errors.eventStartAt?.message}
               {...register('eventStartAt')}
             />
             <Input
               label="행사 종료일"
-              type="datetime-local"
+              type="date"
+              hint="오후 9시 종료로 고정됩니다."
+              min={eventStartAt || undefined}
               error={errors.eventEndAt?.message}
               {...register('eventEndAt')}
             />
             <Input
               label="티켓 판매 시작"
-              type="datetime-local"
+              type="date"
+              readOnly
+              className="bg-surface-container-low"
+              hint="행사 시작일 2주 전으로 자동 계산됩니다."
               error={errors.salesStartAt?.message}
               {...register('salesStartAt')}
             />
             <Input
               label="티켓 판매 종료"
-              type="datetime-local"
+              type="date"
+              readOnly
+              className="bg-surface-container-low"
+              hint="행사 종료일 하루 전으로 자동 계산됩니다."
               error={errors.salesEndAt?.message}
               {...register('salesEndAt')}
             />
@@ -203,7 +254,7 @@ const ClientExpoApplicationPage = () => {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
-              label="희망 전시관 (선택)"
+              label="희망 전시장 (선택)"
               disabled={!selectedVenueId}
               hint={!selectedVenueId ? '먼저 장소를 선택해 주세요.' : undefined}
               {...register('desiredVenueHallId', {
@@ -218,9 +269,9 @@ const ClientExpoApplicationPage = () => {
               ))}
             </Select>
             <Select
-              label="희망 구역 (선택)"
+              label="희망 홀 (선택)"
               disabled={!selectedHallId}
-              hint={!selectedHallId ? '먼저 전시관을 선택해 주세요.' : undefined}
+              hint={!selectedHallId ? '먼저 전시장을 선택해 주세요.' : undefined}
               {...register('desiredVenueZoneId')}
             >
               <option value="">{zonesPending && selectedHallId ? '불러오는 중…' : '미정'}</option>

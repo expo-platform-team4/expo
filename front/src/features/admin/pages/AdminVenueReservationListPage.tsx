@@ -66,7 +66,7 @@ const ReservationRow = ({ reservation }: { reservation: AdminVenueReservation })
             {reservation.reservationSourceType === 'RECRUITMENT_NOTICE'
               ? `모집공고 생성 요청 #${reservation.noticeRequestId}`
               : '박람회 직접 등록'}{' '}
-            · 가상 장소 #{reservation.virtualVenueId} · 전시관 #{reservation.venueHallId} · 구역 #
+            · 가상 장소 #{reservation.virtualVenueId} · 전시장 #{reservation.venueHallId} · 홀 #
             {reservation.venueZoneId}
           </p>
           <p className="text-label-sm text-on-surface-variant">

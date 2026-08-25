@@ -85,11 +85,11 @@ const ClientRecruitmentNoticeRequestDetailPage = () => {
             <dd>{request.virtualVenueId}</dd>
           </div>
           <div>
-            <dt className="text-label-sm text-on-surface-variant">전시관(홀) ID</dt>
+            <dt className="text-label-sm text-on-surface-variant">전시장 ID</dt>
             <dd>{request.venueHallId}</dd>
           </div>
           <div>
-            <dt className="text-label-sm text-on-surface-variant">구역 ID</dt>
+            <dt className="text-label-sm text-on-surface-variant">홀 ID</dt>
             <dd>{request.venueZoneIds.join(', ')}</dd>
           </div>
         </dl>

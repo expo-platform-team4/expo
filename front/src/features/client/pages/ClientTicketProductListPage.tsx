@@ -30,8 +30,10 @@ import {
   type CreateTicketProductFormValues,
 } from '@/features/ticket/schemas'
 import { formatCurrency } from '@/lib/currency'
-import { formatDateTime } from '@/lib/date'
+import { formatDateTime, toDateInputValue } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
+
+import { useClientMyExpos } from '../hooks'
 
 const STATUS_LABEL: Record<TicketProductStatus, string> = {
   DRAFT: '작성 중',
@@ -93,6 +95,8 @@ const CreateProductForm = ({ expoId }: { expoId: number }) => {
   const [open, setOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const createMutation = useCreateTicketProduct(expoId)
+  const { data: myExpos } = useClientMyExpos()
+  const expo = myExpos?.find((item) => item.expoId === expoId)
 
   const {
     register,
@@ -105,8 +109,6 @@ const CreateProductForm = ({ expoId }: { expoId: number }) => {
       name: '',
       description: '',
       price: 0,
-      salesStartAt: '',
-      salesEndAt: '',
       totalQuantity: 0,
       maxQuantityPerOrder: 4,
     },
@@ -121,14 +123,18 @@ const CreateProductForm = ({ expoId }: { expoId: number }) => {
   }
 
   const onSubmit = (values: CreateTicketProductFormValues) => {
+    if (!expo) {
+      setFormError('박람회 정보를 아직 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
+      return
+    }
     setFormError(null)
     createMutation.mutate(
       {
         name: values.name,
         description: values.description || undefined,
         price: values.price,
-        salesStartAt: new Date(values.salesStartAt).toISOString(),
-        salesEndAt: new Date(values.salesEndAt).toISOString(),
+        salesStartAt: expo.salesStartAt,
+        salesEndAt: expo.salesEndAt,
         totalQuantity: values.totalQuantity,
         maxQuantityPerOrder: values.maxQuantityPerOrder,
       },
@@ -178,16 +184,20 @@ const CreateProductForm = ({ expoId }: { expoId: number }) => {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
-            label="판매 시작 일시"
-            type="datetime-local"
-            error={errors.salesStartAt?.message}
-            {...register('salesStartAt')}
+            label="티켓 판매 시작"
+            type="date"
+            readOnly
+            className="bg-surface-container-low"
+            hint="박람회 개최 신청 때 정한 기간으로 고정됩니다."
+            value={expo ? toDateInputValue(expo.salesStartAt) : ''}
           />
           <Input
-            label="판매 종료 일시"
-            type="datetime-local"
-            error={errors.salesEndAt?.message}
-            {...register('salesEndAt')}
+            label="티켓 판매 종료"
+            type="date"
+            readOnly
+            className="bg-surface-container-low"
+            hint="박람회 개최 신청 때 정한 기간으로 고정됩니다."
+            value={expo ? toDateInputValue(expo.salesEndAt) : ''}
           />
         </div>
 

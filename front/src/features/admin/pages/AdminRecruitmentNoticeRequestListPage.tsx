@@ -38,9 +38,9 @@ import { useCreateVenueReservations } from '../venueReservationHooks'
 /**
  * 요청 한 건의 확정 장소 예약 생성 폼. `venueDecision` 이 `ALLOWED` 일 때만 펼쳐 보인다.
  *
- * 장소·홀·구역은 이미 요청에 실려있어(희망 장소) 다시 고르지 않는다 — 사용 기간만 받는다.
+ * 장소·전시장·홀은 이미 요청에 실려있어(희망 장소) 다시 고르지 않는다 — 사용 기간만 받는다.
  * 이미 예약이 확정된 요청에 또 만들면 백엔드가 기간 겹침으로 거절한다(하나만 확정될 수 있는
- * 건 아니고, 같은 구역·기간 조합만 막힌다 — 여기서 중복 여부를 미리 알 방법이 없어 에러
+ * 건 아니고, 같은 홀·기간 조합만 막힌다 — 여기서 중복 여부를 미리 알 방법이 없어 에러
  * 메시지로 알린다).
  */
 const VenueReservationForm = ({
@@ -183,7 +183,7 @@ const RequestCard = ({ request }: { request: RecruitmentNoticeRequest }) => {
         행사 기간 {formatDateTime(request.eventStartAt)} ~ {formatDateTime(request.eventEndAt)}
       </p>
       <p className="text-label-sm text-on-surface-variant mt-1">
-        희망 장소 — 가상 장소 #{request.virtualVenueId} · 전시관 #{request.venueHallId} · 구역{' '}
+        희망 장소 — 가상 장소 #{request.virtualVenueId} · 전시장 #{request.venueHallId} · 홀{' '}
         {request.venueZoneIds.join(', ')}
       </p>
 
