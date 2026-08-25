@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/lib/auth'
 
 import {
+  approveBoothContent,
+  cancelBoothAllocation,
   cancelBoothOrder,
+  checkBoothContent,
   confirmBoothPayment,
   createBoothContent,
   createBoothOrder,
@@ -13,10 +16,16 @@ import {
   getMyBoothContentByAllocation,
   getMyBoothOrder,
   getPublishedBoothContent,
+  hideBoothContent,
   initiateBoothPayment,
   listAdminBooths,
+  listAdminBoothAllocations,
+  listAdminBoothContents,
   listAdminBoothProducts,
   listMyConfirmedBooths,
+  reassignBoothAllocation,
+  requestBoothContentCorrection,
+  restoreBoothContent,
   submitBoothContentForReview,
   updateBoothContent,
   type BoothContentFormPayload,
@@ -181,5 +190,97 @@ export const useCreateBoothProductsBulk = (recruitmentNoticeId: number) => {
         queryKey: boothKeys.adminProducts(recruitmentNoticeId),
       })
     },
+  })
+}
+
+/** 부스 확정 배정 목록(전체 상태). `/admin/booth-allocations` 화면. */
+export const useAdminBoothAllocations = () =>
+  useQuery({
+    queryKey: boothKeys.adminAllocations(),
+    queryFn: listAdminBoothAllocations,
+  })
+
+/** 확정 배정 취소(운영상 정정 전용). 성공하면 배정 목록 캐시를 무효화한다. */
+export const useCancelBoothAllocation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ allocationId, reason }: { allocationId: number; reason: string }) =>
+      cancelBoothAllocation(allocationId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.adminAllocations() })
+    },
+  })
+}
+
+/** 확정 배정을 다른 부스 상품으로 재배정. 성공하면 배정 목록 캐시를 무효화한다. */
+export const useReassignBoothAllocation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      allocationId,
+      boothProductId,
+      reason,
+    }: {
+      allocationId: number
+      boothProductId: number
+      reason: string
+    }) => reassignBoothAllocation(allocationId, boothProductId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.adminAllocations() })
+    },
+  })
+}
+
+/** 부스 콘텐츠 목록(전체 상태). `/admin/booth-contents` 화면. */
+export const useAdminBoothContents = () =>
+  useQuery({
+    queryKey: boothKeys.adminContents(),
+    queryFn: listAdminBoothContents,
+  })
+
+const useInvalidateAdminBoothContents = () => {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: boothKeys.adminContents() })
+}
+
+/** 운영 확인(검수 시작). 보완 요청·숨김 이력이 있어도 다시 검수 대기로 돌아온 콘텐츠에 쓴다. */
+export const useCheckBoothContent = () => {
+  const invalidate = useInvalidateAdminBoothContents()
+  return useMutation({ mutationFn: checkBoothContent, onSuccess: invalidate })
+}
+
+/** 검수 승인 — 공개(PUBLISHED)로 전환한다. */
+export const useApproveBoothContent = () => {
+  const invalidate = useInvalidateAdminBoothContents()
+  return useMutation({ mutationFn: approveBoothContent, onSuccess: invalidate })
+}
+
+/** 보완 요청 — 사유를 남기고 기업이 다시 고쳐 쓰게 한다. */
+export const useRequestBoothContentCorrection = () => {
+  const invalidate = useInvalidateAdminBoothContents()
+  return useMutation({
+    mutationFn: ({ contentId, message }: { contentId: number; message: string }) =>
+      requestBoothContentCorrection(contentId, message),
+    onSuccess: invalidate,
+  })
+}
+
+/** 직권 숨김 — 이미 공개된 콘텐츠를 내린다. */
+export const useHideBoothContent = () => {
+  const invalidate = useInvalidateAdminBoothContents()
+  return useMutation({
+    mutationFn: ({ contentId, reason }: { contentId: number; reason?: string }) =>
+      hideBoothContent(contentId, reason),
+    onSuccess: invalidate,
+  })
+}
+
+/** 숨김 해제 — 다시 공개 상태로 되돌린다. */
+export const useRestoreBoothContent = () => {
+  const invalidate = useInvalidateAdminBoothContents()
+  return useMutation({
+    mutationFn: ({ contentId, reason }: { contentId: number; reason?: string }) =>
+      restoreBoothContent(contentId, reason),
+    onSuccess: invalidate,
   })
 }

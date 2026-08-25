@@ -409,3 +409,175 @@ export const createBoothProductsBulk = async (
   })
   return data.data
 }
+
+/** Spring `Page<T>` 응답. 페이지네이션 컨트롤은 아직 두지 않고, 한 번에 넉넉히 불러와 목록만 보여준다. */
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+}
+
+/** 부스 확정 배정. `com.expo.booth.dto.BoothAllocationResponse` 와 대응한다. */
+export type AdminBoothAllocation = {
+  id: number
+  applicationId: number
+  boothOrderId: number
+  boothProductId: number
+  clientUserId: number
+  allocatedAt: string
+  status: BoothAllocationStatus
+  canceledAt: string | null
+  cancelReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * `GET /api/admin/booth-allocations` — 부스 확정 배정 목록(전체 상태). ADMIN 전용.
+ *
+ * `totalElements` 도 함께 돌려준다 — 한 번에 최대 200건만 가져오므로, 실제 건수가 그보다
+ * 많으면 화면이 "일부만 보임"을 알 수 있어야 한다(조용히 잘려나가면 안 된다).
+ */
+export const listAdminBoothAllocations = async (): Promise<PageResponse<AdminBoothAllocation>> => {
+  const { data } = await api.get<ApiEnvelope<PageResponse<AdminBoothAllocation>>>(
+    '/admin/booth-allocations',
+    { params: { size: 200 } }
+  )
+  return data.data
+}
+
+/**
+ * `POST /api/admin/booth-allocations/{allocationId}/cancel` — 확정 배정 취소. 이중 배정 등
+ * 운영상 정정 전용이다(일반적인 취소·환불 흐름과 다르다).
+ */
+export const cancelBoothAllocation = async (
+  allocationId: number,
+  reason: string
+): Promise<AdminBoothAllocation> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothAllocation>>(
+    `/admin/booth-allocations/${allocationId}/cancel`,
+    { reason }
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-allocations/{allocationId}/reassign` — 다른 부스 상품으로 재배정. */
+export const reassignBoothAllocation = async (
+  allocationId: number,
+  boothProductId: number,
+  reason: string
+): Promise<AdminBoothAllocation> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothAllocation>>(
+    `/admin/booth-allocations/${allocationId}/reassign`,
+    { boothProductId, reason }
+  )
+  return data.data
+}
+
+/** 부스 콘텐츠 첨부 파일. `com.expo.booth.dto.BoothContentFileResponse` 와 대응한다. */
+export type AdminBoothContentFile = {
+  id: number
+  fileId: number
+  fileType: string
+  title: string | null
+  sortOrder: number
+  createdAt: string
+}
+
+/** 부스 콘텐츠 외부 링크. `com.expo.booth.dto.ExternalLinkResponse` 와 대응한다. */
+export type AdminBoothContentLink = {
+  id: number
+  linkType: string
+  label: string
+  url: string
+  sortOrder: number
+}
+
+/** 관리자 관점의 부스 콘텐츠. `com.expo.booth.dto.BoothContentResponse` 와 대응한다. */
+export type AdminBoothContent = {
+  id: number
+  boothAllocationId: number
+  clientUserId: number
+  companyDisplayName: string
+  title: string
+  companyDescription: string | null
+  boothDescription: string | null
+  productDescription: string | null
+  logoFileId: number | null
+  mainImageFileId: number | null
+  status: BoothContentStatus
+  publishedAt: string | null
+  correctionRequestedAt: string | null
+  correctionMessage: string | null
+  checkedByAdminId: number | null
+  checkedAt: string | null
+  files: AdminBoothContentFile[]
+  links: AdminBoothContentLink[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * `GET /api/admin/booth-contents` — 부스 콘텐츠 목록(전체 상태). ADMIN 전용.
+ *
+ * `totalElements` 도 함께 돌려준다 — 한 번에 최대 200건만 가져오므로, 실제 건수가 그보다
+ * 많으면 화면이 "일부만 보임"을 알 수 있어야 한다(조용히 잘려나가면 안 된다).
+ */
+export const listAdminBoothContents = async (): Promise<PageResponse<AdminBoothContent>> => {
+  const { data } = await api.get<ApiEnvelope<PageResponse<AdminBoothContent>>>(
+    '/admin/booth-contents',
+    { params: { size: 200 } }
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-contents/{contentId}/check` — 운영 확인(검수 시작). */
+export const checkBoothContent = async (contentId: number): Promise<AdminBoothContent> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothContent>>(
+    `/admin/booth-contents/${contentId}/check`
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-contents/{contentId}/approve` — 검수 승인(공개). */
+export const approveBoothContent = async (contentId: number): Promise<AdminBoothContent> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothContent>>(
+    `/admin/booth-contents/${contentId}/approve`
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-contents/{contentId}/request-correction` — 보완 요청. */
+export const requestBoothContentCorrection = async (
+  contentId: number,
+  message: string
+): Promise<AdminBoothContent> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothContent>>(
+    `/admin/booth-contents/${contentId}/request-correction`,
+    { message }
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-contents/{contentId}/hide` — 직권 숨김(공개 중인 콘텐츠를 내림). */
+export const hideBoothContent = async (
+  contentId: number,
+  reason?: string
+): Promise<AdminBoothContent> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothContent>>(
+    `/admin/booth-contents/${contentId}/hide`,
+    reason ? { reason } : undefined
+  )
+  return data.data
+}
+
+/** `POST /api/admin/booth-contents/{contentId}/restore` — 숨김 해제. */
+export const restoreBoothContent = async (
+  contentId: number,
+  reason?: string
+): Promise<AdminBoothContent> => {
+  const { data } = await api.post<ApiEnvelope<AdminBoothContent>>(
+    `/admin/booth-contents/${contentId}/restore`,
+    reason ? { reason } : undefined
+  )
+  return data.data
+}

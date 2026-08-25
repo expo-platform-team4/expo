@@ -11,4 +11,6 @@ export const boothKeys = {
   adminBooths: (zoneId: number) => [...boothKeys.all, 'admin-booths', zoneId] as const,
   adminProducts: (recruitmentNoticeId: number) =>
     [...boothKeys.all, 'admin-products', recruitmentNoticeId] as const,
+  adminAllocations: () => [...boothKeys.all, 'admin-allocations'] as const,
+  adminContents: () => [...boothKeys.all, 'admin-contents'] as const,
 }

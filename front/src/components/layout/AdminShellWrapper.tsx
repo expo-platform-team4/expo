@@ -3,12 +3,14 @@
 import {
   Bell,
   Building2,
+  ClipboardCheck,
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
   MapPin,
   Megaphone,
   Receipt,
+  Shuffle,
   Tag,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -26,6 +28,8 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
       { label: '박람회 개최 승인 관리', href: '/admin/expos', icon: Building2 },
       { label: '공고 신청 관리', href: '/admin/recruitment-notice-requests', icon: ListChecks },
       { label: '공고 모집 관리', href: '/admin/recruitment-notices', icon: Megaphone },
+      { label: '부스 콘텐츠 관리', href: '/admin/booth-contents', icon: ClipboardCheck },
+      { label: '부스 배정 관리', href: '/admin/booth-allocations', icon: Shuffle },
       { label: '정산 관리', href: '/admin/settlements', icon: Receipt },
     ],
   },
