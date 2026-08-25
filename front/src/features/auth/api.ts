@@ -91,7 +91,15 @@ export const checkNicknameAvailability = async (nickname: string): Promise<Avail
   return data.data
 }
 
-/** `GET /api/auth/business-number-availability`. 테스트 번호: 1234567890 / 1111111111 / 2222222222. */
+/**
+ * `GET /api/auth/business-number-availability`.
+ *
+ * 테스트 번호는 여덟이다 — 1234567890 / 1111111111 / 2222222222 / 3333333333 /
+ * 4444444444 / 5555555555 / 6666666666 / 7777777777.
+ *
+ * 목록의 정본은 백엔드 `BusinessNumberValidationService.TEST_BUSINESS_NUMBERS` 다.
+ * 이미 가입에 쓴 번호는 중복으로 거절되므로, 목록에 있다고 항상 통과하는 것은 아니다.
+ */
 export const checkBusinessNumberAvailability = async (
   businessNumber: string
 ): Promise<AvailabilityResult> => {
