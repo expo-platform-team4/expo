@@ -16,7 +16,7 @@ const ClientRecruitmentNoticeRequestListPage = () => {
     <div>
       <PageHeader
         title="모집공고 요청 관리"
-        description="내가 작성한 모집공고 생성 요청 목록입니다. 신규 요청은 관리자가 승인된 박람회를 기준으로 작성합니다."
+        description="내가 작성한 모집공고 생성 요청 목록입니다. 신규 요청은 관리자가 승인한 박람회를 기준으로 작성합니다."
       />
 
       {isPending ? (
@@ -26,7 +26,7 @@ const ClientRecruitmentNoticeRequestListPage = () => {
       ) : requests.length === 0 ? (
         <EmptyState
           title="작성한 요청이 없습니다"
-          description="모집공고 생성 요청은 관리자가 승인된 박람회를 기준으로 작성합니다."
+          description="모집공고 생성 요청은 관리자가 승인한 박람회를 기준으로 작성합니다."
         />
       ) : (
         <ul className="flex flex-col gap-3">
