@@ -131,6 +131,30 @@ class RecruitmentNoticeRequestServiceTest {
     }
 
     @Test
+    void createRejectsWhenApplicationPeriodExceedsEventPeriod() {
+        // 신청 마감(T4)이 행사 시작(T3)보다 늦다 - 행사가 시작한 뒤에야 모집을 마감하는 꼴이라 막아야 한다.
+        CreateRecruitmentNoticeRequestRequest request =
+                new CreateRecruitmentNoticeRequestRequest(
+                        "제목",
+                        "설명",
+                        T1,
+                        T4,
+                        T3,
+                        T4.plusSeconds(3600),
+                        VENUE_ID,
+                        HALL_ID,
+                        List.of(ZONE_ID),
+                        null,
+                        null);
+
+        assertThatThrownBy(() -> service.create(HOST_CLIENT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD);
+        verify(virtualVenueRepository, never()).existsById(any());
+    }
+
+    @Test
     void createRejectsWhenVenueNotFound() {
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(false);
 
