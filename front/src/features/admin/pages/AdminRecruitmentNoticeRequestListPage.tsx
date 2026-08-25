@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
@@ -219,7 +220,12 @@ const AdminRecruitmentNoticeRequestListPage = () => {
     <div>
       <PageHeader
         title="공고 신청 관리"
-        description="주최사의 모집공고 생성 요청을 확인하고 장소 충돌을 판정합니다."
+        description="승인된 박람회를 골라 모집공고 생성 요청을 작성하고, 장소 충돌을 판정합니다."
+        action={
+          <Link href="/admin/recruitment-notice-requests/new">
+            <Button>새 요청 작성</Button>
+          </Link>
+        }
       />
 
       {isPending ? (
@@ -229,7 +235,12 @@ const AdminRecruitmentNoticeRequestListPage = () => {
       ) : requests.length === 0 ? (
         <EmptyState
           title="접수된 요청이 없습니다"
-          description="주최사가 모집공고 생성을 요청하면 여기 표시됩니다."
+          description="승인된 박람회를 골라 모집공고 생성 요청을 작성해 보세요."
+          action={
+            <Link href="/admin/recruitment-notice-requests/new">
+              <Button>새 요청 작성</Button>
+            </Link>
+          }
         />
       ) : (
         <ul className="flex flex-col gap-3">

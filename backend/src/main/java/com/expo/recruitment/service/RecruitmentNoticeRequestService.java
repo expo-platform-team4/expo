@@ -2,6 +2,8 @@ package com.expo.recruitment.service;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.expo.entity.Expo;
+import com.expo.expo.repository.ExpoRepository;
 import com.expo.recruitment.converter.RecruitmentNoticeRequestConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
 import com.expo.recruitment.dto.DecideVenueRequest;
@@ -32,7 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-// 생성자를 직접 쓰지 않는다. 의존이 9개라 Checkstyle 의 ParameterNumber(최대 8)에 걸린다 -
+// 생성자를 직접 쓰지 않는다. 의존이 10개라 Checkstyle 의 ParameterNumber(최대 8)에 걸린다 -
 // 스케줄러들과 같은 방식으로 Lombok 이 만들게 둔다.
 @RequiredArgsConstructor
 public class RecruitmentNoticeRequestService {
@@ -45,12 +47,17 @@ public class RecruitmentNoticeRequestService {
     private final VenueHallRepository venueHallRepository;
     private final VenueZoneRepository venueZoneRepository;
     private final VenueReservationRepository venueReservationRepository;
+    private final ExpoRepository expoRepository;
     private final RecruitmentNoticeRepository recruitmentNoticeRepository;
     private final RecruitmentNoticeRequestConverter recruitmentNoticeRequestConverter;
 
     /**
-     * 모집공고 생성 요청 작성 및 제출. 희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가
-     * 올바른지 검증한다. 별도의 초안 수정 단계가 없어 작성과 동시에 제출된다.
+     * 모집공고 생성 요청 작성 및 제출. 관리자가 승인된 박람회를 골라 대신 작성한다({@code expoId} 필수) — 주최
+     * 클라이언트는 더 이상 직접 작성하지 않는다. {@code hostClientId}는 그 박람회의 소유주로 그대로 이어받는다
+     * (호출한 관리자 본인의 ID가 아니다).
+     *
+     * <p>희망 전시관(홀)이 실제로 존재하는지, 고른 구역이 전부 그 전시관 소속인지, 기간 순서가 올바른지 검증한다.
+     * 별도의 초안 수정 단계가 없어 작성과 동시에 제출된다.
      *
      * <p>신청 기간과 행사 기간은 쌍끼리(시작&lt;종료)만이 아니라 서로도 맞물려야 한다 - 신청 마감이 행사 시작보다
      * 늦으면 행사가 시작한 뒤에야 모집을 마감하는 꼴이 된다. 신청 시작이 행사 시작보다 늦는 경우는 이 검증과 신청
@@ -64,8 +71,12 @@ public class RecruitmentNoticeRequestService {
      * EXCLUDE 제약이 맡는다.
      */
     @Transactional
-    public RecruitmentNoticeRequestResponse create(
-            Long hostClientId, CreateRecruitmentNoticeRequestRequest request) {
+    public RecruitmentNoticeRequestResponse create(CreateRecruitmentNoticeRequestRequest request) {
+        Expo expo =
+                expoRepository
+                        .findById(request.expoId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.EXPO_NOT_FOUND));
+        Long hostClientId = expo.getHostClientId();
         if (!request.applicationEndAt().isAfter(request.applicationStartAt())) {
             throw new BusinessException(ErrorCode.APPLICATION_PERIOD_INVALID);
         }
@@ -114,7 +125,8 @@ public class RecruitmentNoticeRequestService {
                         .withVenueDetails(
                                 request.venueHallId(),
                                 request.targetCompanyCount(),
-                                request.requestedBoothConfig());
+                                request.requestedBoothConfig())
+                        .withExpoId(request.expoId());
         entity.submit(
                 anyZoneOverlapsExistingReservation
                         ? VenueConflictStatus.CONFLICT_PENDING

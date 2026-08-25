@@ -4,11 +4,13 @@ import {
   cancelAdminNotice,
   closeAdminNotice,
   createAdminNotice,
+  createAdminNoticeRequest,
   decideVenue,
   listAdminNoticeRequests,
   listAdminNotices,
   publishAdminNotice,
   type CreateAdminNoticePayload,
+  type CreateAdminNoticeRequestPayload,
   type DecideVenuePayload,
 } from './recruitmentApi'
 import { adminKeys } from './queryKeys'
@@ -19,6 +21,17 @@ export const useAdminNoticeRequests = () =>
     queryKey: adminKeys.noticeRequests(),
     queryFn: listAdminNoticeRequests,
   })
+
+/** 모집공고 생성 요청 작성. 승인된 박람회를 근거로 관리자가 대신 작성한다. */
+export const useCreateAdminNoticeRequest = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateAdminNoticeRequestPayload) => createAdminNoticeRequest(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.noticeRequests() })
+    },
+  })
+}
 
 /** 장소 충돌 판정. 성공하면 요청 목록 캐시를 무효화한다. */
 export const useDecideVenue = () => {

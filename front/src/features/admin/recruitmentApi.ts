@@ -24,6 +24,37 @@ export const listAdminNoticeRequests = async (): Promise<RecruitmentNoticeReques
   return data.data
 }
 
+/**
+ * `POST /api/admin/recruitment-notice-requests` 요청 바디. `CreateRecruitmentNoticeRequestRequest`
+ * 와 짝이다. `expoId` 로 승인된 박람회를 지정하면 `hostClientId` 는 그 박람회 소유주로 서버가
+ * 자동으로 이어받는다(호출한 관리자 ID가 아니다) — 그래서 이 payload 엔 hostClientId가 없다.
+ */
+export type CreateAdminNoticeRequestPayload = {
+  expoId: number
+  title: string
+  description: string
+  applicationStartAt: string
+  applicationEndAt: string
+  eventStartAt: string
+  eventEndAt: string
+  virtualVenueId: number
+  venueHallId: number
+  venueZoneIds: number[]
+  targetCompanyCount: number
+  requestedBoothConfig?: string
+}
+
+/** `POST /api/admin/recruitment-notice-requests` — 모집공고 생성 요청 작성(관리자). */
+export const createAdminNoticeRequest = async (
+  payload: CreateAdminNoticeRequestPayload
+): Promise<RecruitmentNoticeRequest> => {
+  const { data } = await api.post<ApiEnvelope<RecruitmentNoticeRequest>>(
+    '/admin/recruitment-notice-requests',
+    payload
+  )
+  return data.data
+}
+
 /** `DecideVenueRequest` 와 짝이다. `decision` 은 `ALLOWED`·`CANCELED` 만 허용한다. */
 export type DecideVenuePayload = {
   decision: 'ALLOWED' | 'CANCELED'

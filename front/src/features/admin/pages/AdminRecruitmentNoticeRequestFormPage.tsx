@@ -6,27 +6,26 @@ import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 
 import { Button, Card, CardTitle, Input, LoadingBlock, Select, Textarea } from '@/components/ui'
+import { useExpoCards } from '@/features/expo/hooks'
+import { useVenueHalls, useVenueZones, useVirtualVenues } from '@/features/recruitment/hooks'
 import { getErrorMessage } from '@/lib/errorMessage'
 
-import {
-  useCreateRecruitmentNoticeRequest,
-  useVenueHalls,
-  useVenueZones,
-  useVirtualVenues,
-} from '../hooks'
-import { createNoticeRequestSchema, type CreateNoticeRequestFormValues } from '../schemas'
+import { useCreateAdminNoticeRequest } from '../recruitmentHooks'
+import { createAdminNoticeRequestSchema, type CreateAdminNoticeRequestFormValues } from '../schemas'
 
 /**
- * `/client/recruitment-notice-requests/new`. Function.md 3절 — "새 요청 작성". CLIENT 전용.
+ * `/admin/recruitment-notice-requests/new`. 승인된 박람회를 골라 관리자가 대신 모집공고
+ * 생성 요청을 작성한다 — 예전엔 CLIENT가 직접 썼지만(구 `ClientRecruitmentNoticeRequestFormPage`),
+ * 결정된 서비스 흐름(클라이언트는 박람회 개최 신청만, 나머지는 관리자 담당)에 맞춰 옮겨왔다.
  *
- * `CreateRecruitmentNoticeRequestRequest` 를 그대로 채우는 실제 폼이다. 가상 장소 → 전시관(홀)
- * → 구역 순으로 실제 드롭다운을 연쇄시킨다(PR #110 로 공개 홀·구역 목록 API 가 생겨서 이제
- * 가능하다 — 전에는 ADMIN 전용이라 숫자 ID 직접 입력을 받았다).
+ * `hostClientId`는 폼에서 안 받는다 — 서버가 `expoId`로 조회한 박람회 소유주를 그대로 쓴다.
+ * 가상 장소 → 전시관(홀) → 구역 연쇄 선택은 기존 클라이언트 폼과 같은 패턴이다.
  */
-const ClientRecruitmentNoticeRequestFormPage = () => {
+const AdminRecruitmentNoticeRequestFormPage = () => {
   const router = useRouter()
+  const { data: expos, isPending: exposPending } = useExpoCards()
   const { data: virtualVenues, isPending: venuesPending } = useVirtualVenues()
-  const createMutation = useCreateRecruitmentNoticeRequest()
+  const createMutation = useCreateAdminNoticeRequest()
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -35,9 +34,10 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
     setValue,
     control,
     formState: { errors },
-  } = useForm<CreateNoticeRequestFormValues>({
-    resolver: zodResolver(createNoticeRequestSchema),
+  } = useForm<CreateAdminNoticeRequestFormValues>({
+    resolver: zodResolver(createAdminNoticeRequestSchema),
     defaultValues: {
+      expoId: '',
       title: '',
       description: '',
       applicationStartAt: '',
@@ -62,10 +62,11 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
     selectedHallId ? Number(selectedHallId) : null
   )
 
-  const onSubmit = (values: CreateNoticeRequestFormValues) => {
+  const onSubmit = (values: CreateAdminNoticeRequestFormValues) => {
     setFormError(null)
     createMutation.mutate(
       {
+        expoId: Number(values.expoId),
         title: values.title,
         description: values.description,
         applicationStartAt: new Date(values.applicationStartAt).toISOString(),
@@ -79,7 +80,7 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
         requestedBoothConfig: values.requestedBoothConfig || undefined,
       },
       {
-        onSuccess: (result) => router.push(`/client/recruitment-notice-requests/${result.id}`),
+        onSuccess: () => router.push('/admin/recruitment-notice-requests'),
         onError: (error) => setFormError(getErrorMessage(error)),
       }
     )
@@ -88,8 +89,21 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
   return (
     <div className="flex justify-center">
       <Card className="w-full max-w-2xl">
-        <CardTitle>공고 생성 요청</CardTitle>
+        <CardTitle>모집공고 생성 요청 작성</CardTitle>
         <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          {exposPending ? (
+            <LoadingBlock label="박람회 목록을 불러오는 중입니다" />
+          ) : (
+            <Select label="대상 박람회" error={errors.expoId?.message} {...register('expoId')}>
+              <option value="">선택해 주세요</option>
+              {expos?.map((expo) => (
+                <option key={expo.expoId} value={expo.expoId}>
+                  #{expo.expoId} · {expo.title}
+                </option>
+              ))}
+            </Select>
+          )}
+
           <Input label="제목" error={errors.title?.message} {...register('title')} />
           <Textarea label="설명" error={errors.description?.message} {...register('description')} />
 
@@ -201,7 +215,7 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
           {formError && <p className="text-label-sm text-error">{formError}</p>}
 
           <Button type="submit" size="lg" loading={createMutation.isPending}>
-            요청 제출
+            요청 작성
           </Button>
         </form>
       </Card>
@@ -209,4 +223,4 @@ const ClientRecruitmentNoticeRequestFormPage = () => {
   )
 }
 
-export default ClientRecruitmentNoticeRequestFormPage
+export default AdminRecruitmentNoticeRequestFormPage

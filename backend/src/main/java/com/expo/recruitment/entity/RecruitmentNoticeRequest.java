@@ -130,6 +130,12 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
         return this;
     }
 
+    /** 이 요청이 어느 박람회를 위한 것인지 연결한다. */
+    public RecruitmentNoticeRequest withExpoId(Long expoId) {
+        this.expoId = expoId;
+        return this;
+    }
+
     /**
      * 요청 제출. 별도의 초안 수정 단계 없이 작성과 동시에 제출되므로 {@code create()} 직후 바로 호출된다.
      *

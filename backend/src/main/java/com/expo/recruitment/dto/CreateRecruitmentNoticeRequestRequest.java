@@ -12,6 +12,7 @@ import java.util.List;
 /** 모집공고 생성 요청 작성. */
 @Schema(description = "모집공고 생성 요청 작성")
 public record CreateRecruitmentNoticeRequestRequest(
+        @Schema(description = "대상 박람회 ID") @NotNull(message = "박람회 ID는 필수입니다.") Long expoId,
         @Schema(description = "제목", example = "2026 서울 테크 박람회 참가기업 모집")
                 @NotBlank(message = "제목은 필수입니다.")
                 @Size(max = 255, message = "제목은 255자 이하여야 합니다.")

@@ -59,6 +59,7 @@ export type VenueDecision = 'PENDING' | 'ALLOWED' | 'CANCELED'
 export type RecruitmentNoticeRequest = {
   id: number
   hostClientId: number
+  expoId: number | null
   title: string
   description: string
   applicationStartAt: string
@@ -83,32 +84,6 @@ export type RecruitmentNoticeRequest = {
   noticeCreated: boolean
   createdAt: string
   updatedAt: string
-}
-
-/** `POST /api/client/recruitment-notice-requests` 요청 바디. `CreateRecruitmentNoticeRequestRequest` 와 대응한다. */
-export type CreateRecruitmentNoticeRequestPayload = {
-  title: string
-  description: string
-  applicationStartAt: string
-  applicationEndAt: string
-  eventStartAt: string
-  eventEndAt: string
-  virtualVenueId: number
-  venueHallId: number
-  venueZoneIds: number[]
-  targetCompanyCount: number
-  requestedBoothConfig?: string
-}
-
-/** `POST /api/client/recruitment-notice-requests` — 모집공고 생성 요청 작성. */
-export const createRecruitmentNoticeRequest = async (
-  payload: CreateRecruitmentNoticeRequestPayload
-): Promise<RecruitmentNoticeRequest> => {
-  const { data } = await api.post<ApiEnvelope<RecruitmentNoticeRequest>>(
-    '/client/recruitment-notice-requests',
-    payload
-  )
-  return data.data
 }
 
 /** `GET /api/client/recruitment-notice-requests` — 내 모집공고 생성 요청 목록. */
