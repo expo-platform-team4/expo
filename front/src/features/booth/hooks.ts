@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/lib/auth'
 
 import {
+  addBoothContentFile,
+  addBoothContentLink,
   approveBoothContent,
   cancelBoothAllocation,
   cancelBoothOrder,
@@ -24,13 +26,17 @@ import {
   listAdminBoothProducts,
   listMyConfirmedBooths,
   reassignBoothAllocation,
+  removeBoothContentFile,
+  removeBoothContentLink,
   requestBoothContentCorrection,
   restoreBoothContent,
   submitBoothContentForReview,
   updateBoothContent,
+  type BoothContentFileType,
   type BoothContentFormPayload,
   type CreateBoothPayload,
   type CreateBoothProductPayload,
+  type ExternalLinkType,
 } from './api'
 import { boothKeys } from './queryKeys'
 
@@ -117,6 +123,78 @@ export const useSubmitBoothContentForReview = () => {
     mutationFn: ({ contentId }: { contentId: number; allocationId: number }) =>
       submitBoothContentForReview(contentId),
     onSuccess: (_content, { allocationId }) => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.myContent(allocationId) })
+    },
+  })
+}
+
+/** 콘텐츠 첨부 파일 등록. 성공하면 그 배정의 내 콘텐츠 캐시를 무효화한다. */
+export const useAddBoothContentFile = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      contentId,
+      payload,
+    }: {
+      contentId: number
+      allocationId: number
+      payload: { fileId: number; fileType: BoothContentFileType; title?: string }
+    }) => addBoothContentFile(contentId, payload),
+    onSuccess: (_file, { allocationId }) => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.myContent(allocationId) })
+    },
+  })
+}
+
+/** 콘텐츠 첨부 파일 삭제. */
+export const useRemoveBoothContentFile = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      contentId,
+      fileEntryId,
+    }: {
+      contentId: number
+      fileEntryId: number
+      allocationId: number
+    }) => removeBoothContentFile(contentId, fileEntryId),
+    onSuccess: (_void, { allocationId }) => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.myContent(allocationId) })
+    },
+  })
+}
+
+/** 콘텐츠 외부 링크 등록. */
+export const useAddBoothContentLink = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      contentId,
+      payload,
+    }: {
+      contentId: number
+      allocationId: number
+      payload: { linkType: ExternalLinkType; label?: string; url: string }
+    }) => addBoothContentLink(contentId, payload),
+    onSuccess: (_link, { allocationId }) => {
+      queryClient.invalidateQueries({ queryKey: boothKeys.myContent(allocationId) })
+    },
+  })
+}
+
+/** 콘텐츠 외부 링크 삭제. */
+export const useRemoveBoothContentLink = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      contentId,
+      linkId,
+    }: {
+      contentId: number
+      linkId: number
+      allocationId: number
+    }) => removeBoothContentLink(contentId, linkId),
+    onSuccess: (_void, { allocationId }) => {
       queryClient.invalidateQueries({ queryKey: boothKeys.myContent(allocationId) })
     },
   })
