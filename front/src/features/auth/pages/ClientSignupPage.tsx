@@ -144,7 +144,7 @@ const ClientSignupPage = () => {
           <Input
             label="사업자등록번호"
             placeholder="123-45-67890"
-            hint="테스트 번호: 1234567890 · 1111111111 · 2222222222"
+            hint="테스트 번호: 1234567890 · 1111111111 · 2222222222 · 3333333333 · 4444444444 · 5555555555 · 6666666666 · 7777777777"
             error={
               errors.businessNumber?.message ??
               (businessNumberAvailability.hint?.ok === false
