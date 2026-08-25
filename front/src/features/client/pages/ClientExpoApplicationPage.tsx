@@ -156,7 +156,10 @@ const ClientExpoApplicationPage = () => {
         },
       },
       {
-        onSuccess: () => reset(),
+        onSuccess: () => {
+          reset()
+          router.push('/client/expos')
+        },
         onError: (err) => setFormError(getErrorMessage(err)),
       }
     )
