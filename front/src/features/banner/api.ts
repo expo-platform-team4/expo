@@ -135,3 +135,8 @@ export const rejectBannerRequest = async (params: {
 }): Promise<void> => {
   await api.post(`/admin/banner-requests/${params.requestId}/reject`, { reason: params.reason })
 }
+
+/** `POST /api/client/banner-requests/{id}/cancel` — 승인 전인 본인 신청을 취소한다. */
+export const cancelBannerRequest = async (requestId: number): Promise<void> => {
+  await api.post(`/client/banner-requests/${requestId}/cancel`)
+}

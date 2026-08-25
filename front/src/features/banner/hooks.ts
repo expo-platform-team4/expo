@@ -4,6 +4,7 @@ import { useAuthStore } from '@/lib/auth'
 
 import {
   approveBannerRequest,
+  cancelBannerRequest,
   createBannerRequest,
   fetchActiveBanners,
   listAdminBannerRequests,
@@ -93,3 +94,14 @@ const useReviewMutation = <TVariables, TData>(
 
 export const useApproveBannerRequest = () => useReviewMutation(approveBannerRequest)
 export const useRejectBannerRequest = () => useReviewMutation(rejectBannerRequest)
+
+/** 배너 신청 취소. 성공하면 내 목록 캐시를 무효화한다. */
+export const useCancelBannerRequest = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: cancelBannerRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: bannerKeys.myRequests() })
+    },
+  })
+}

@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 
+import { useState } from 'react'
+
 import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   LoadingBlock,
@@ -13,9 +16,10 @@ import {
 } from '@/components/ui'
 import { useClientMyExpos } from '@/features/client/hooks'
 import { formatDateTime } from '@/lib/date'
+import { getErrorMessage } from '@/lib/errorMessage'
 
 import { bannerImageUrl, type BannerApplication } from '../api'
-import { useMyBannerRequests } from '../hooks'
+import { useCancelBannerRequest, useMyBannerRequests } from '../hooks'
 import { BANNER_REVIEW_STATUS } from '../statusLabels'
 
 const RequestCard = ({
@@ -26,6 +30,11 @@ const RequestCard = ({
   expoTitle: string | undefined
 }) => {
   const status = BANNER_REVIEW_STATUS[request.reviewStatus]
+  const [confirming, setConfirming] = useState(false)
+  const cancelMutation = useCancelBannerRequest()
+  // 승인되면 이미 노출 배너가 만들어져 슬롯 자리를 차지한다. 신청서만 취소하면 배너는 계속
+  // 노출되는데 신청서는 취소됨인 어긋난 상태가 되므로, 심사 대기일 때만 내준다.
+  const cancelable = request.reviewStatus === 'UNDER_REVIEW'
 
   return (
     <Card>
@@ -66,6 +75,33 @@ const RequestCard = ({
           반려 사유 — {request.rejectionReason}
         </p>
       )}
+
+      {cancelable && (
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+            신청 취소
+          </Button>
+        </div>
+      )}
+
+      {cancelMutation.isError && (
+        <p className="text-label-sm text-error mt-2">{getErrorMessage(cancelMutation.error)}</p>
+      )}
+
+      {/* 되돌릴 수 없으므로 한 번 묻는다. 다시 신청하려면 이미지부터 새로 올려야 한다. */}
+      <ConfirmDialog
+        open={confirming}
+        danger
+        title="배너 신청을 취소할까요?"
+        description="취소하면 되돌릴 수 없습니다. 다시 노출하려면 새로 신청해야 합니다."
+        confirmLabel="신청 취소"
+        cancelLabel="닫기"
+        loading={cancelMutation.isPending}
+        onConfirm={() =>
+          cancelMutation.mutate(request.id, { onSuccess: () => setConfirming(false) })
+        }
+        onCancel={() => setConfirming(false)}
+      />
     </Card>
   )
 }
