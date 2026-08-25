@@ -24,6 +24,7 @@ const baseSignupShape = {
     .max(50, '닉네임은 2자 이상 50자 이하여야 합니다.'),
   phoneNumber: z.string().regex(PHONE_PATTERN, '휴대폰 번호 형식이 올바르지 않습니다.'),
   emailVerificationToken: z.string().min(1, '이메일 인증을 완료해 주세요.'),
+  phoneVerificationToken: z.string().min(1, '휴대폰 본인인증을 완료해 주세요.'),
   serviceTermsAgreed: z.boolean().refine((agreed) => agreed, '서비스 이용약관에 동의해 주세요.'),
   privacyPolicyAgreed: z
     .boolean()

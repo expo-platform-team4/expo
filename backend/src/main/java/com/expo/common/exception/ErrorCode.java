@@ -29,6 +29,7 @@ public enum ErrorCode {
     PHONE_VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "인증번호가 만료되었습니다."),
     PHONE_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않습니다."),
     PHONE_VERIFICATION_TOO_FREQUENT(HttpStatus.TOO_MANY_REQUESTS, "인증번호를 다시 요청하기까지 잠시 기다려 주세요."),
+    PHONE_VERIFICATION_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "휴대폰 본인인증을 다시 진행해 주세요."),
 
     // --- 이메일 본인인증 ---
     EMAIL_VERIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "유효하지 않은 인증 요청입니다."),

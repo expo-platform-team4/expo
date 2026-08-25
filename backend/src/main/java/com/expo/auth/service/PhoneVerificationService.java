@@ -13,6 +13,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -149,7 +150,9 @@ public class PhoneVerificationService {
         // DB에는 BCrypt 해시만 저장하고, 평문 signupToken은 응답으로 클라이언트에만 전달.
         String signupToken = UUID.randomUUID().toString();
         String signupTokenHash = passwordEncoder.encode(signupToken);
-        verification.markVerified(signupTokenHash, now);
+        Instant signupTokenExpiresAt =
+                now.plus(properties.getSignupTokenExpireMinutes(), ChronoUnit.MINUTES);
+        verification.markVerified(signupTokenHash, now, signupTokenExpiresAt);
         phoneVerificationRepository.save(verification);
 
         // Controller가 ApiResponse로 감싸서 JSON 응답 (HTTP 200).
@@ -159,6 +162,47 @@ public class PhoneVerificationService {
                 now,
                 signupToken,
                 "휴대폰 인증이 완료되었습니다.");
+    }
+
+    /**
+     * 회원가입이 휴대폰 인증 결과를 소비한다.
+     *
+     * <p>이게 없으면 인증은 화면의 버튼만 잠근다 — API 를 직접 부르면 인증하지 않은 번호로도
+     * 가입할 수 있다. {@code EmailVerificationService#consumeForSignup} 과 같은 구조다.
+     *
+     * <p>가입토큰은 해시로만 저장하므로 번호로 후보를 좁힌 뒤 하나씩 대조한다. 원문으로 바로
+     * 찾을 수 없는 것은 의도된 대가다 — DB 가 유출돼도 토큰을 복원할 수 없다.
+     *
+     * @throws BusinessException 일치하는 인증이 없거나, 가입토큰이 만료됐을 때
+     */
+    @Transactional
+    public void consumeForSignup(String phoneNumber, String signupVerificationToken, Long userId) {
+        String normalized = normalize(phoneNumber);
+        List<PhoneVerification> candidates =
+                phoneVerificationRepository.findByPhoneNumberAndStatus(
+                        normalized, PhoneVerificationStatus.VERIFIED);
+
+        PhoneVerification matched =
+                candidates.stream()
+                        .filter(
+                                candidate ->
+                                        candidate.getSignupTokenHash() != null
+                                                && passwordEncoder.matches(
+                                                        signupVerificationToken,
+                                                        candidate.getSignupTokenHash()))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID));
+
+        if (matched.isSignupTokenExpired(Instant.now())) {
+            throw new BusinessException(ErrorCode.PHONE_VERIFICATION_TOKEN_INVALID);
+        }
+
+        // USED 로 바꿔 같은 토큰으로 계정을 여러 개 만들지 못하게 한다.
+        matched.markUsed(userId);
+        phoneVerificationRepository.save(matched);
     }
 
     /**

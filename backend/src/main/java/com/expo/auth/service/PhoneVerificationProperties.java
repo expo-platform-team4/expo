@@ -28,6 +28,14 @@ public class PhoneVerificationProperties {
      */
     @Positive private int resendCooldownSeconds = 60;
 
+    /**
+     * 인증 성공 시 발급하는 회원가입용 토큰의 유효 시간(분). 기본 30분.
+     *
+     * <p>인증번호 유효시간(3분)과 다르다. 인증을 마친 뒤 나머지 가입 항목을 채우는 시간이라
+     * 넉넉해야 하지만, 무기한이면 발급된 토큰이 영영 살아 있게 된다. 이메일 인증과 같은 값이다.
+     */
+    @Positive private int signupTokenExpireMinutes = 30;
+
     public int getCodeExpireMinutes() {
         return codeExpireMinutes;
     }
@@ -38,6 +46,14 @@ public class PhoneVerificationProperties {
 
     public int getResendCooldownSeconds() {
         return resendCooldownSeconds;
+    }
+
+    public int getSignupTokenExpireMinutes() {
+        return signupTokenExpireMinutes;
+    }
+
+    public void setSignupTokenExpireMinutes(int signupTokenExpireMinutes) {
+        this.signupTokenExpireMinutes = signupTokenExpireMinutes;
     }
 
     public void setResendCooldownSeconds(int resendCooldownSeconds) {

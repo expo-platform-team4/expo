@@ -3,6 +3,7 @@ package com.expo.auth.repository;
 import com.expo.auth.entity.PhoneVerification;
 import com.expo.auth.entity.PhoneVerificationStatus;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -36,4 +37,12 @@ public interface PhoneVerificationRepository extends JpaRepository<PhoneVerifica
       WHERE p.phoneNumber = :phoneNumber
       """)
     Instant findLatestRequestedAt(@Param("phoneNumber") String phoneNumber);
+
+    /**
+     * 회원가입이 소비할 후보를 찾는다. 가입토큰은 해시로만 저장하므로 번호로 좁힌 뒤
+     * 후보를 하나씩 대조하는 수밖에 없다 — {@code idx_phone_verifications_phone_status} 가
+     * 이 조건과 정확히 같다.
+     */
+    List<PhoneVerification> findByPhoneNumberAndStatus(
+            String phoneNumber, PhoneVerificationStatus status);
 }

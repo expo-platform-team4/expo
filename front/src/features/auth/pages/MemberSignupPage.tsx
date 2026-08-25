@@ -41,6 +41,7 @@ const MemberSignupPage = () => {
       nickname: '',
       phoneNumber: '',
       emailVerificationToken: '',
+      phoneVerificationToken: '',
       serviceTermsAgreed: false,
       privacyPolicyAgreed: false,
       marketingAgreed: false,
@@ -123,7 +124,10 @@ const MemberSignupPage = () => {
             control={control}
             name="phoneNumber"
             verified={phoneVerified}
-            onVerifiedChange={setPhoneVerified}
+            onVerified={(token) => {
+              setValue('phoneVerificationToken', token ?? '', { shouldValidate: true })
+              setPhoneVerified(Boolean(token))
+            }}
           />
 
           <div className="flex flex-col gap-2 pt-2">

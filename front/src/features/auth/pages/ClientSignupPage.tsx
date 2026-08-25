@@ -47,6 +47,7 @@ const ClientSignupPage = () => {
       nickname: '',
       phoneNumber: '',
       emailVerificationToken: '',
+      phoneVerificationToken: '',
       companyName: '',
       businessNumber: '',
       serviceTermsAgreed: false,
@@ -132,7 +133,10 @@ const ClientSignupPage = () => {
             control={control}
             name="phoneNumber"
             verified={phoneVerified}
-            onVerifiedChange={setPhoneVerified}
+            onVerified={(token) => {
+              setValue('phoneVerificationToken', token ?? '', { shouldValidate: true })
+              setPhoneVerified(Boolean(token))
+            }}
           />
 
           <p className="text-label-sm text-on-surface-variant mt-2">기업 정보</p>

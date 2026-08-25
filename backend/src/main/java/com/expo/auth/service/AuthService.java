@@ -27,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final BusinessNumberValidationService businessNumberValidationService;
     private final EmailVerificationService emailVerificationService;
+    private final PhoneVerificationService phoneVerificationService;
 
     public AuthService(
             UserRepository userRepository,
@@ -35,7 +36,8 @@ public class AuthService {
             ClientProfileConverter clientProfileConverter,
             PasswordEncoder passwordEncoder,
             BusinessNumberValidationService businessNumberValidationService,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            PhoneVerificationService phoneVerificationService) {
         this.userRepository = userRepository;
         this.clientProfileRepository = clientProfileRepository;
         this.userConverter = userConverter;
@@ -43,6 +45,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.businessNumberValidationService = businessNumberValidationService;
         this.emailVerificationService = emailVerificationService;
+        this.phoneVerificationService = phoneVerificationService;
     }
 
     /**
@@ -71,6 +74,8 @@ public class AuthService {
 
         emailVerificationService.consumeForSignup(
                 request.email(), request.emailVerificationToken(), saved.getId());
+        phoneVerificationService.consumeForSignup(
+                request.phoneNumber(), request.phoneVerificationToken(), saved.getId());
 
         return userConverter.toSignupResponse(saved);
     }
@@ -117,6 +122,8 @@ public class AuthService {
 
         emailVerificationService.consumeForSignup(
                 request.email(), request.emailVerificationToken(), savedUser.getId());
+        phoneVerificationService.consumeForSignup(
+                request.phoneNumber(), request.phoneVerificationToken(), savedUser.getId());
 
         return clientProfileConverter.toClientSignupResponse(savedUser, profile);
     }

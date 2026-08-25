@@ -42,6 +42,12 @@ public record SignupRequest(
                         example = "7f3c2a1b-9d4e-5f6a-8b7c-1d2e3f4a5b6c")
                 @NotBlank(message = "이메일 인증을 완료해 주세요.")
                 String emailVerificationToken,
+        @Schema(
+                        description =
+                                "휴대폰 인증 완료 토큰 (POST /api/auth/phone-verifications/confirm 응답값)",
+                        example = "33653ff9-35ba-424a-b366-cb0caf958afa")
+                @NotBlank(message = "휴대폰 본인인증을 완료해 주세요.")
+                String phoneVerificationToken,
         @Schema(description = "[필수] 서비스 이용약관 동의", example = "true")
                 @AssertTrue(message = "서비스 이용약관에 동의해 주세요.")
                 boolean serviceTermsAgreed,

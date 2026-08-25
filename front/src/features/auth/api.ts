@@ -34,6 +34,8 @@ export type SignupMemberPayload = {
   phoneNumber: string
   /** `POST /api/auth/email-verifications/confirm` 응답의 `signupVerificationToken`. */
   emailVerificationToken: string
+  /** `POST /api/auth/phone-verifications/confirm` 응답의 `signupVerificationToken`. */
+  phoneVerificationToken: string
   serviceTermsAgreed: boolean
   privacyPolicyAgreed: boolean
   marketingAgreed: boolean
