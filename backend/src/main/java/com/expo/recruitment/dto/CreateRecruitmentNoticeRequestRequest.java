@@ -33,4 +33,4 @@ public record CreateRecruitmentNoticeRequestRequest(
                 List<Long> venueZoneIds,
         @Schema(description = "목표 참가 기업 수") @Min(value = 1, message = "목표 참가 기업 수는 1 이상이어야 합니다.")
                 Integer targetCompanyCount,
-        @Schema(description = "희망 부스 구성(JSON 문자열)") String requestedBoothConfig) {}
+        @Schema(description = "희망 부스 구성(자유 텍스트)") String requestedBoothConfig) {}

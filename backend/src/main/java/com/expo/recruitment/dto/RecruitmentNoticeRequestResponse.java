@@ -23,7 +23,7 @@ public record RecruitmentNoticeRequestResponse(
         @Schema(description = "희망 전시관(홀) ID") Long venueHallId,
         @Schema(description = "희망 구역(홀) ID 목록") List<Long> venueZoneIds,
         @Schema(description = "목표 참가 기업 수") Integer targetCompanyCount,
-        @Schema(description = "희망 부스 구성(JSON 문자열)") String requestedBoothConfig,
+        @Schema(description = "희망 부스 구성(자유 텍스트)") String requestedBoothConfig,
         @Schema(description = "처리 상태") RecruitmentNoticeRequestStatus status,
         @Schema(description = "장소 충돌 검토 상태") VenueConflictStatus venueConflictStatus,
         @Schema(description = "장소 최종 결정") VenueDecision venueDecision,

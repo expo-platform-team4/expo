@@ -13,8 +13,6 @@ import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /** 허용된 장소 요청을 기준으로 관리자가 작성·게시하는 기업 모집공고. */
 @Getter
@@ -46,9 +44,8 @@ public class RecruitmentNotice extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String eligibility;
 
-    /** 제출 자료 스냅샷(JSONB). 전용 JSON 컨버터가 생기기 전까지는 원문 문자열로 다룬다. */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "submission_requirements", columnDefinition = "jsonb")
+    /** 제출 자료 요구사항. 자유 텍스트다(JSON이 아니다) - 신청 기업에게 그대로 노출된다. */
+    @Column(name = "submission_requirements", columnDefinition = "TEXT")
     private String submissionRequirements;
 
     @Column(name = "application_start_at", nullable = false)
