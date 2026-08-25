@@ -1,0 +1,115 @@
+---
+title: 11. 정산 및 회계 (com.expo.settlement)
+---
+erDiagram
+
+EXPO_DAILY_SALES_SUMMARIES {
+    bigint id PK
+    bigint expo_id FK "UK with sales_date"
+    date sales_date
+    int paid_order_count
+    int canceled_order_count
+    int sold_ticket_quantity
+    int refund_ticket_quantity
+    numeric ticket_sales_amount
+    numeric booking_fee_amount
+    numeric refund_ticket_amount
+    numeric refund_booking_fee_amount
+    numeric buyer_payment_amount
+    numeric client_settlement_base_amount
+    timestamptz calculated_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+SETTLEMENTS {
+    bigint id PK
+    bigint expo_id "FK,UK"
+    bigint host_client_id FK
+    numeric gross_ticket_sales_amount
+    numeric ticket_refund_amount
+    numeric net_ticket_sales_amount
+    numeric booking_fee_gross_amount
+    numeric booking_fee_refund_amount
+    numeric booking_fee_net_amount
+    numeric gross_booth_sales_amount
+    numeric pg_fee_reference_amount
+    numeric adjustment_amount
+    numeric remittance_due_amount
+    timestamptz settlement_due_at
+    timestamptz confirmed_at
+    bigint confirmed_by FK
+    varchar status "WAITING/CALCULATED/UNDER_REVIEW/CONFIRMED/REMITTANCE_PENDING/REMITTED/ON_HOLD"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+SETTLEMENT_ITEMS {
+    bigint id PK
+    bigint settlement_id FK
+    varchar item_type "TICKET_SALE/TICKET_REFUND/BOOKING_FEE/BOOKING_FEE_REFUND/BOOTH_SALE/ADJUSTMENT"
+    varchar source_type "NULL 허용"
+    bigint source_id "NULL 허용"
+    numeric amount "부호 포함"
+    boolean included_in_remittance
+    timestamptz occurred_at
+    timestamptz created_at
+}
+
+SETTLEMENT_ADJUSTMENTS {
+    bigint id PK
+    bigint settlement_id FK
+    varchar adjustment_type "ADD/DEDUCT"
+    numeric amount
+    text reason
+    bigint created_by_admin_id FK
+    bigint approved_by_admin_id FK "NULL 허용"
+    varchar status "DRAFT/APPROVED/CANCELED"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+REMITTANCES {
+    bigint id PK
+    bigint settlement_id FK "PENDING/PROCESSING 진행중 1건만 (부분 UNIQUE)"
+    timestamptz scheduled_at
+    numeric remitted_amount
+    timestamptz remitted_at
+    varchar status "PENDING/PROCESSING/REMITTED/FAILED/CANCELED"
+    varchar reference_number
+    text memo
+    bigint processed_by FK
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+SETTLEMENT_REPORTS {
+    bigint id PK
+    bigint settlement_id FK "UK with format, report_version"
+    bigint file_id FK
+    varchar format "PDF/XLSX"
+    int report_version
+    bigint generated_by_admin_id FK "NULL 허용"
+    timestamptz generated_at
+    timestamptz created_at
+}
+
+%% 외부 클러스터 참조 스텁
+EXPOS_EXT["expos (외부)"] { bigint id PK }
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+USERS_EXT["users (외부)"] { bigint id PK }
+FILE_METADATA_EXT["file_metadata (외부)"] { bigint id PK }
+
+EXPOS_EXT ||--o{ EXPO_DAILY_SALES_SUMMARIES : expo_id
+EXPOS_EXT ||--o| SETTLEMENTS : expo_id
+CLIENT_PROFILES_EXT ||--o{ SETTLEMENTS : host_client_id
+USERS_EXT ||--o{ SETTLEMENTS : confirmed_by
+SETTLEMENTS ||--o{ SETTLEMENT_ITEMS : settlement_id
+SETTLEMENTS ||--o{ SETTLEMENT_ADJUSTMENTS : settlement_id
+USERS_EXT ||--o{ SETTLEMENT_ADJUSTMENTS : created_by_admin_id
+USERS_EXT ||--o{ SETTLEMENT_ADJUSTMENTS : approved_by_admin_id
+SETTLEMENTS ||--o{ REMITTANCES : settlement_id
+USERS_EXT ||--o{ REMITTANCES : processed_by
+SETTLEMENTS ||--o{ SETTLEMENT_REPORTS : settlement_id
+FILE_METADATA_EXT ||--o{ SETTLEMENT_REPORTS : file_id
+USERS_EXT ||--o{ SETTLEMENT_REPORTS : generated_by_admin_id

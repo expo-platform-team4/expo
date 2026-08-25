@@ -1,0 +1,226 @@
+---
+title: 03. 박람회 관리 (com.expo.expo)
+---
+erDiagram
+
+CATEGORIES {
+    bigint id PK
+    bigint parent_id FK "self, NULL 허용"
+    varchar name UK
+    varchar slug UK
+    int sort_order
+    boolean active
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_OPENING_REQUESTS {
+    bigint id PK
+    bigint host_client_id FK
+    bigint recruitment_result_id FK "NULL 허용"
+    varchar title
+    text description
+    timestamptz event_start_at
+    timestamptz event_end_at
+    timestamptz sales_start_at
+    timestamptz sales_end_at
+    bigint desired_venue_id FK "NULL 허용"
+    bigint desired_venue_hall_id FK "NULL 허용"
+    bigint desired_venue_zone_id FK "NULL 허용"
+    varchar status "DRAFT/SUBMITTED/UNDER_REVIEW/APPROVED/REJECTED/CANCELED"
+    timestamptz submitted_at
+    bigint reviewed_by_admin_id FK
+    timestamptz reviewed_at
+    text rejection_reason
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPOS {
+    bigint id PK
+    bigint host_client_id FK
+    bigint opening_request_id FK,UK
+    varchar title
+    text description
+    varchar region_code
+    timestamptz event_start_at
+    timestamptz event_end_at
+    timestamptz sales_start_at
+    timestamptz sales_end_at
+    varchar review_status "DRAFT/UNDER_REVIEW/REJECTED/APPROVED"
+    varchar visibility_status "PRIVATE/PUBLIC/ARCHIVED"
+    varchar event_status "SCHEDULED/ONGOING/ENDED/CANCELED"
+    bigint approved_by_admin_id FK
+    timestamptz approved_at
+    text rejection_reason
+    timestamptz canceled_at
+    bigint version "낙관적 락"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_VENUE_ASSIGNMENTS {
+    bigint id PK
+    bigint expo_id FK,UK
+    bigint venue_reservation_id FK,UK "CONFIRMED 예약만 허용 (트리거)"
+    bigint assigned_by_admin_id FK
+    timestamptz assigned_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_CATEGORIES {
+    bigint expo_id PK,FK
+    bigint category_id PK,FK
+    timestamptz created_at
+}
+
+EXPO_IMAGES {
+    bigint id PK
+    bigint expo_id FK
+    bigint file_id FK
+    varchar image_type "THUMBNAIL/DETAIL/GALLERY"
+    varchar alt_text
+    int sort_order
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_FILES {
+    bigint id PK
+    bigint expo_id FK
+    bigint file_id FK
+    varchar file_purpose "INTRO_PDF/CATALOG/LEAFLET/PROMO_VIDEO/OTHER"
+    varchar title
+    int sort_order
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXTERNAL_LINKS {
+    bigint id PK
+    bigint expo_id FK "NULL 허용, expo XOR booth_content"
+    bigint booth_content_id FK "NULL 허용"
+    varchar link_type "HOMEPAGE/SOCIAL/RESERVATION/PRODUCT/OTHER"
+    varchar label
+    varchar url
+    int sort_order
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_COMPANIES {
+    bigint id PK
+    bigint expo_id FK
+    bigint client_user_id FK
+    bigint booth_allocation_id FK "NULL 허용"
+    varchar display_name
+    varchar participation_status "CONFIRMED/CANCELED"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_REVIEW_HISTORIES {
+    bigint id PK
+    bigint expo_id FK
+    bigint reviewer_admin_id FK
+    varchar decision "SUBMIT/APPROVE/REJECT"
+    text reason
+    varchar from_status
+    varchar to_status
+    timestamptz reviewed_at
+}
+
+EXPO_CHANGE_REQUESTS {
+    bigint id PK
+    bigint expo_id FK
+    bigint requester_client_id FK
+    text change_reason
+    jsonb requested_changes
+    varchar status "SUBMITTED/UNDER_REVIEW/APPLIED/REJECTED/CANCELED"
+    bigint processed_by_admin_id FK
+    timestamptz processed_at
+    text rejection_reason
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_CHANGE_HISTORIES {
+    bigint id PK
+    bigint expo_id FK
+    bigint change_request_id FK "NULL 허용"
+    bigint changed_by_admin_id FK
+    jsonb before_data
+    jsonb after_data
+    text reason
+    timestamptz created_at
+}
+
+EXPO_CANCELLATION_REQUESTS {
+    bigint id PK
+    bigint expo_id FK
+    bigint requester_client_id FK
+    text reason
+    varchar status "SUBMITTED/APPROVED/REJECTED/PROCESSING_REFUNDS/COMPLETED"
+    bigint processed_by_admin_id FK
+    timestamptz processed_at
+    text rejection_reason
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+EXPO_OPENING_REQUEST_CATEGORIES {
+    bigint opening_request_id PK,FK
+    bigint category_id PK,FK
+    timestamptz created_at
+}
+
+%% 외부 클러스터 참조 스텁
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+USERS_EXT["users (외부)"] { bigint id PK }
+VIRTUAL_VENUES_EXT["virtual_venues (외부)"] { bigint id PK }
+VENUE_HALLS_EXT["venue_halls (외부)"] { bigint id PK }
+VENUE_ZONES_EXT["venue_zones (외부)"] { bigint id PK }
+VENUE_RESERVATIONS_EXT["venue_reservations (외부)"] { bigint id PK }
+RECRUITMENT_RESULTS_EXT["recruitment_results (외부)"] { bigint id PK }
+BOOTH_CONTENTS_EXT["booth_contents (외부)"] { bigint id PK }
+BOOTH_ALLOCATIONS_EXT["booth_allocations (외부)"] { bigint id PK }
+FILE_METADATA_EXT["file_metadata (외부)"] { bigint id PK }
+
+CATEGORIES ||--o{ CATEGORIES : parent_id
+CLIENT_PROFILES_EXT ||--o{ EXPO_OPENING_REQUESTS : host_client_id
+RECRUITMENT_RESULTS_EXT ||--o{ EXPO_OPENING_REQUESTS : recruitment_result_id
+VIRTUAL_VENUES_EXT ||--o{ EXPO_OPENING_REQUESTS : desired_venue_id
+VENUE_HALLS_EXT ||--o{ EXPO_OPENING_REQUESTS : desired_venue_hall_id
+VENUE_ZONES_EXT ||--o{ EXPO_OPENING_REQUESTS : desired_venue_zone_id
+USERS_EXT ||--o{ EXPO_OPENING_REQUESTS : reviewed_by_admin_id
+CLIENT_PROFILES_EXT ||--o{ EXPOS : host_client_id
+EXPO_OPENING_REQUESTS ||--o| EXPOS : opening_request_id
+USERS_EXT ||--o{ EXPOS : approved_by_admin_id
+EXPOS ||--o| EXPO_VENUE_ASSIGNMENTS : expo_id
+VENUE_RESERVATIONS_EXT ||--o| EXPO_VENUE_ASSIGNMENTS : venue_reservation_id
+USERS_EXT ||--o{ EXPO_VENUE_ASSIGNMENTS : assigned_by_admin_id
+EXPOS ||--o{ EXPO_CATEGORIES : expo_id
+CATEGORIES ||--o{ EXPO_CATEGORIES : category_id
+EXPOS ||--o{ EXPO_IMAGES : expo_id
+FILE_METADATA_EXT ||--o{ EXPO_IMAGES : file_id
+EXPOS ||--o{ EXPO_FILES : expo_id
+FILE_METADATA_EXT ||--o{ EXPO_FILES : file_id
+EXPOS ||--o{ EXTERNAL_LINKS : expo_id
+BOOTH_CONTENTS_EXT ||--o{ EXTERNAL_LINKS : booth_content_id
+EXPOS ||--o{ EXPO_COMPANIES : expo_id
+CLIENT_PROFILES_EXT ||--o{ EXPO_COMPANIES : client_user_id
+BOOTH_ALLOCATIONS_EXT ||--o{ EXPO_COMPANIES : booth_allocation_id
+EXPOS ||--o{ EXPO_REVIEW_HISTORIES : expo_id
+USERS_EXT ||--o{ EXPO_REVIEW_HISTORIES : reviewer_admin_id
+EXPOS ||--o{ EXPO_CHANGE_REQUESTS : expo_id
+CLIENT_PROFILES_EXT ||--o{ EXPO_CHANGE_REQUESTS : requester_client_id
+USERS_EXT ||--o{ EXPO_CHANGE_REQUESTS : processed_by_admin_id
+EXPOS ||--o{ EXPO_CHANGE_HISTORIES : expo_id
+EXPO_CHANGE_REQUESTS ||--o{ EXPO_CHANGE_HISTORIES : change_request_id
+USERS_EXT ||--o{ EXPO_CHANGE_HISTORIES : changed_by_admin_id
+EXPOS ||--o{ EXPO_CANCELLATION_REQUESTS : expo_id
+CLIENT_PROFILES_EXT ||--o{ EXPO_CANCELLATION_REQUESTS : requester_client_id
+USERS_EXT ||--o{ EXPO_CANCELLATION_REQUESTS : processed_by_admin_id
+EXPO_OPENING_REQUESTS ||--o{ EXPO_OPENING_REQUEST_CATEGORIES : opening_request_id
+CATEGORIES ||--o{ EXPO_OPENING_REQUEST_CATEGORIES : category_id

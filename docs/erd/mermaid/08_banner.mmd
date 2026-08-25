@@ -1,0 +1,78 @@
+---
+title: 08. 광고 배너 (com.expo.banner)
+---
+erDiagram
+
+BANNER_SLOTS {
+    bigint id PK
+    varchar slot_code UK
+    varchar name
+    int max_active_count
+    int width_px
+    int height_px
+    boolean active
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BANNER_APPLICATIONS {
+    bigint id PK
+    bigint client_user_id FK
+    bigint expo_id FK
+    bigint image_file_id FK
+    varchar headline
+    timestamptz requested_start_at
+    timestamptz requested_end_at
+    varchar review_status "DRAFT/UNDER_REVIEW/REJECTED/APPROVED/CANCELED"
+    timestamptz submitted_at
+    bigint reviewed_by_admin_id FK
+    timestamptz reviewed_at
+    text rejection_reason
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BANNERS {
+    bigint id PK
+    bigint banner_application_id "FK,UK"
+    bigint banner_slot_id FK
+    bigint expo_id FK
+    bigint image_file_id FK
+    varchar headline
+    timestamptz start_at
+    timestamptz end_at
+    varchar display_status "SCHEDULED/ACTIVE/ENDED/CANCELED"
+    int sort_order
+    timestamptz activated_at
+    timestamptz ended_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BANNER_REVIEW_HISTORIES {
+    bigint id PK
+    bigint banner_application_id FK
+    bigint reviewer_admin_id FK
+    varchar decision "SUBMIT/APPROVE/REJECT/CANCEL"
+    text reason
+    varchar from_status
+    varchar to_status
+    timestamptz reviewed_at
+}
+
+%% 외부 클러스터 참조 스텁
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+EXPOS_EXT["expos (외부)"] { bigint id PK }
+FILE_METADATA_EXT["file_metadata (외부)"] { bigint id PK }
+USERS_EXT["users (외부)"] { bigint id PK }
+
+CLIENT_PROFILES_EXT ||--o{ BANNER_APPLICATIONS : client_user_id
+EXPOS_EXT ||--o{ BANNER_APPLICATIONS : expo_id
+FILE_METADATA_EXT ||--o{ BANNER_APPLICATIONS : image_file_id
+USERS_EXT ||--o{ BANNER_APPLICATIONS : reviewed_by_admin_id
+BANNER_APPLICATIONS ||--|| BANNERS : banner_application_id
+BANNER_SLOTS ||--o{ BANNERS : banner_slot_id
+EXPOS_EXT ||--o{ BANNERS : expo_id
+FILE_METADATA_EXT ||--o{ BANNERS : image_file_id
+BANNER_APPLICATIONS ||--o{ BANNER_REVIEW_HISTORIES : banner_application_id
+USERS_EXT ||--o{ BANNER_REVIEW_HISTORIES : reviewer_admin_id

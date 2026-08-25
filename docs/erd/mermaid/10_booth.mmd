@@ -1,0 +1,206 @@
+---
+title: 10. 부스 판매 · 결제 · 배정 · 관리 (com.expo.booth, 결제부분은 com.expo.payment)
+---
+erDiagram
+
+BOOTH_TEMPLATES {
+    bigint id PK
+    varchar shape_code UK
+    varchar name
+    numeric width
+    numeric height
+    numeric depth
+    varchar dimension_unit
+    jsonb default_included_items
+    varchar operational_status "ACTIVE/INACTIVE"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTHS {
+    bigint id PK
+    bigint venue_zone_id FK
+    bigint booth_template_id FK "NULL 허용"
+    varchar booth_number "UK with venue_zone_id"
+    varchar shape_code
+    numeric width
+    numeric height
+    numeric depth
+    varchar dimension_unit
+    numeric position_x
+    numeric position_y
+    numeric rotation_degree
+    int sort_order
+    varchar operational_status
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_PRODUCTS {
+    bigint id PK
+    bigint recruitment_notice_id FK
+    bigint booth_id FK,UK "UK with recruitment_notice_id"
+    numeric supply_price
+    numeric vat_amount
+    numeric total_price "= supply_price + vat_amount"
+    boolean vat_included
+    jsonb included_items
+    timestamptz sales_start_at
+    timestamptz sales_end_at
+    boolean payment_enabled
+    varchar sales_status "AVAILABLE/RESERVED/SOLD/UNAVAILABLE/CANCELED"
+    bigint version "낙관적 락"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_ORDERS {
+    bigint id PK
+    bigint application_id FK "취소·만료 제외 활성 주문 1건 (부분 UNIQUE, V202608111500)"
+    bigint client_user_id FK
+    bigint booth_product_id FK
+    varchar order_number UK
+    numeric unit_price
+    numeric total_amount "= unit_price (단일 부스)"
+    varchar status "PENDING_PAYMENT/PAYMENT_COMPLETED/FAILED/CANCELED/EXPIRED"
+    timestamptz expires_at
+    timestamptz paid_at
+    varchar idempotency_key UK
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_RESERVATIONS {
+    bigint id PK
+    bigint booth_product_id FK "부스상품당 ACTIVE 1건 (부분 UNIQUE 인덱스)"
+    bigint booth_order_id FK
+    bigint reserved_by_client_id FK
+    timestamptz reserved_at
+    timestamptz expires_at
+    timestamptz released_at
+    varchar status "ACTIVE/CONFIRMED/EXPIRED/RELEASED"
+    boolean active_guard
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_PAYMENTS {
+    bigint id PK
+    bigint booth_order_id FK
+    varchar payment_key UK
+    varchar pg_order_id UK
+    varchar method
+    varchar status "READY/IN_PROGRESS/APPROVED/CANCELED/FAILED"
+    numeric requested_amount
+    numeric approved_amount
+    timestamptz approved_at
+    numeric canceled_amount
+    varchar last_failure_code
+    varchar idempotency_key UK
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_PAYMENT_HISTORIES {
+    bigint id PK
+    bigint booth_payment_id FK
+    varchar event_type "REQUEST/APPROVE/FAIL/CANCEL"
+    varchar from_status
+    varchar to_status
+    numeric amount
+    varchar pg_transaction_key
+    jsonb response_payload
+    timestamptz occurred_at
+}
+
+BOOTH_ALLOCATIONS {
+    bigint id PK
+    bigint application_id "FK,UK"
+    bigint booth_order_id "FK,UK"
+    bigint booth_product_id "FK,UK"
+    bigint client_user_id FK
+    timestamptz allocated_at
+    varchar status "ASSIGNED/CANCELED/REASSIGNED"
+    timestamptz canceled_at
+    text cancel_reason
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_MANAGEMENT_HISTORIES {
+    bigint id PK
+    bigint booth_allocation_id FK
+    bigint booth_content_id FK "NULL 허용"
+    varchar action_type "ALLOCATION_CORRECTED/INFORMATION_UPDATED/CONTENT_APPROVED/CORRECTION_REQUESTED/CONTENT_HIDDEN/CONTENT_RESTORED"
+    jsonb before_data
+    jsonb after_data
+    text reason
+    bigint processed_by_admin_id FK
+    timestamptz created_at
+}
+
+BOOTH_CONTENTS {
+    bigint id PK
+    bigint booth_allocation_id "FK,UK"
+    bigint client_user_id FK
+    varchar company_display_name
+    varchar title
+    text company_description
+    text booth_description
+    text product_description
+    bigint logo_file_id FK "NULL 허용"
+    bigint main_image_file_id FK "NULL 허용"
+    varchar status "DRAFT/UNDER_REVIEW/PUBLISHED/CORRECTION_REQUESTED/HIDDEN (V202608181100: UNDER_REVIEW 추가)"
+    timestamptz published_at
+    timestamptz correction_requested_at
+    text correction_message
+    bigint checked_by_admin_id FK
+    timestamptz checked_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+BOOTH_CONTENT_FILES {
+    bigint id PK
+    bigint booth_content_id FK "UK with file_id"
+    bigint file_id FK
+    varchar file_type "GALLERY_IMAGE/PROMO_VIDEO/CATALOG/LEAFLET/OTHER"
+    varchar title
+    int sort_order
+    timestamptz created_at
+}
+
+%% 외부 클러스터 참조 스텁
+VENUE_ZONES_EXT["venue_zones (외부)"] { bigint id PK }
+RECRUITMENT_NOTICES_EXT["recruitment_notices (외부)"] { bigint id PK }
+PARTICIPATION_APPLICATIONS_EXT["participation_applications (외부)"] { bigint id PK }
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+USERS_EXT["users (외부)"] { bigint id PK }
+FILE_METADATA_EXT["file_metadata (외부)"] { bigint id PK }
+
+VENUE_ZONES_EXT ||--o{ BOOTHS : venue_zone_id
+BOOTH_TEMPLATES ||--o{ BOOTHS : booth_template_id
+RECRUITMENT_NOTICES_EXT ||--o{ BOOTH_PRODUCTS : recruitment_notice_id
+BOOTHS ||--o{ BOOTH_PRODUCTS : booth_id
+PARTICIPATION_APPLICATIONS_EXT ||--o| BOOTH_ORDERS : application_id
+CLIENT_PROFILES_EXT ||--o{ BOOTH_ORDERS : client_user_id
+BOOTH_PRODUCTS ||--o{ BOOTH_ORDERS : booth_product_id
+BOOTH_PRODUCTS ||--o{ BOOTH_RESERVATIONS : booth_product_id
+BOOTH_ORDERS ||--o{ BOOTH_RESERVATIONS : booth_order_id
+CLIENT_PROFILES_EXT ||--o{ BOOTH_RESERVATIONS : reserved_by_client_id
+BOOTH_ORDERS ||--o{ BOOTH_PAYMENTS : booth_order_id
+BOOTH_PAYMENTS ||--o{ BOOTH_PAYMENT_HISTORIES : booth_payment_id
+PARTICIPATION_APPLICATIONS_EXT ||--o| BOOTH_ALLOCATIONS : application_id
+BOOTH_ORDERS ||--o| BOOTH_ALLOCATIONS : booth_order_id
+BOOTH_PRODUCTS ||--o| BOOTH_ALLOCATIONS : booth_product_id
+CLIENT_PROFILES_EXT ||--o{ BOOTH_ALLOCATIONS : client_user_id
+BOOTH_ALLOCATIONS ||--o{ BOOTH_MANAGEMENT_HISTORIES : booth_allocation_id
+USERS_EXT ||--o{ BOOTH_MANAGEMENT_HISTORIES : processed_by_admin_id
+BOOTH_ALLOCATIONS ||--o| BOOTH_CONTENTS : booth_allocation_id
+CLIENT_PROFILES_EXT ||--o{ BOOTH_CONTENTS : client_user_id
+FILE_METADATA_EXT ||--o{ BOOTH_CONTENTS : logo_file_id
+FILE_METADATA_EXT ||--o{ BOOTH_CONTENTS : main_image_file_id
+USERS_EXT ||--o{ BOOTH_CONTENTS : checked_by_admin_id
+BOOTH_CONTENTS ||--o{ BOOTH_MANAGEMENT_HISTORIES : booth_content_id
+BOOTH_CONTENTS ||--o{ BOOTH_CONTENT_FILES : booth_content_id
+FILE_METADATA_EXT ||--o{ BOOTH_CONTENT_FILES : file_id

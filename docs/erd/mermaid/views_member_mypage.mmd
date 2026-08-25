@@ -1,0 +1,50 @@
+---
+title: 뷰 매핑 1 - 검색 노출 및 일반 회원 마이페이지 (R__01~R__04)
+---
+flowchart LR
+
+subgraph VIEWS["SQL VIEW (조회 전용, PK/FK 없음)"]
+  v_public_expo_cards["v_public_expo_cards<br/>(6-4 검색·노출)"]
+  v_member_mypage_profile["v_member_mypage_profile"]
+  v_member_mypage_orders["v_member_mypage_orders"]
+  v_member_mypage_tickets["v_member_mypage_tickets"]
+end
+
+subgraph TABLES["참조하는 물리 테이블"]
+  expos
+  ticket_products
+  ticket_inventories
+  ticket_order_items
+  expo_images
+  file_metadata
+  users
+  ticket_orders
+  ticket_payments
+  ticket_refunds
+  issued_tickets
+  ticket_access_tokens
+end
+
+v_public_expo_cards --> expos
+v_public_expo_cards --> ticket_products
+v_public_expo_cards --> ticket_inventories
+v_public_expo_cards --> ticket_order_items
+v_public_expo_cards --> expo_images
+v_public_expo_cards --> file_metadata
+
+v_member_mypage_profile --> users
+v_member_mypage_profile --> file_metadata
+
+v_member_mypage_orders --> ticket_orders
+v_member_mypage_orders --> ticket_order_items
+v_member_mypage_orders --> ticket_products
+v_member_mypage_orders --> expos
+v_member_mypage_orders --> ticket_payments
+v_member_mypage_orders --> ticket_refunds
+v_member_mypage_orders --> issued_tickets
+
+v_member_mypage_tickets --> issued_tickets
+v_member_mypage_tickets --> ticket_order_items
+v_member_mypage_tickets --> ticket_orders
+v_member_mypage_tickets --> expos
+v_member_mypage_tickets --> ticket_access_tokens

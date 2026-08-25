@@ -1,0 +1,285 @@
+---
+title: Expo Platform - 전체 스키마 조망 (물리 테이블 71개, 도메인 클러스터 11개)
+---
+flowchart LR
+
+subgraph C1["1. 공통 · 인증"]
+  file_metadata
+  users
+  client_profiles
+  social_accounts
+  phone_verifications
+  password_reset_tokens
+  refresh_tokens
+  email_verifications
+end
+
+subgraph C2["2. 가상 장소"]
+  virtual_venues
+  venue_halls
+  venue_zones
+  venue_reservations
+  venue_reservation_histories
+end
+
+subgraph C3["3. 박람회 관리"]
+  categories
+  expo_opening_requests
+  expos
+  expo_venue_assignments
+  expo_categories
+  expo_images
+  expo_files
+  external_links
+  expo_companies
+  expo_review_histories
+  expo_change_requests
+  expo_change_histories
+  expo_cancellation_requests
+  expo_opening_request_categories
+end
+
+subgraph C4["4. 티켓 · 재고"]
+  ticket_products
+  ticket_inventories
+  inventory_reservations
+end
+
+subgraph C5["5. 주문 · 결제 · 환불"]
+  ticket_orders
+  ticket_order_items
+  guest_order_infos
+  ticket_payments
+  ticket_payment_histories
+  ticket_refunds
+end
+
+subgraph C6["6. 발권 · QR 체크인"]
+  issued_tickets
+  ticket_access_tokens
+  check_in_histories
+end
+
+subgraph C7["7. 알림"]
+  notifications
+  message_histories
+end
+
+subgraph C8["8. 광고 배너"]
+  banner_slots
+  banner_applications
+  banners
+  banner_review_histories
+end
+
+subgraph C9["9. 모집공고 · 참여신청"]
+  recruitment_notice_requests
+  recruitment_notice_request_zones
+  recruitment_notice_request_histories
+  recruitment_notices
+  recruitment_notice_histories
+  recruitment_results
+  recruitment_result_items
+  participation_applications
+  application_operation_histories
+end
+
+subgraph C10["10. 부스"]
+  booth_templates
+  booths
+  booth_products
+  booth_orders
+  booth_reservations
+  booth_payments
+  booth_payment_histories
+  booth_allocations
+  booth_management_histories
+  booth_contents
+  booth_content_files
+end
+
+subgraph C11["11. 정산 · 회계"]
+  expo_daily_sales_summaries
+  settlements
+  settlement_items
+  settlement_adjustments
+  remittances
+  settlement_reports
+end
+
+%% -- 공통 · 인증 --
+file_metadata --> users
+users --> file_metadata
+client_profiles --> users
+social_accounts --> users
+phone_verifications --> users
+password_reset_tokens --> users
+refresh_tokens --> users
+
+%% -- 가상 장소 --
+virtual_venues --> file_metadata
+venue_halls --> virtual_venues
+venue_halls --> file_metadata
+venue_zones --> venue_halls
+venue_zones --> file_metadata
+venue_reservations --> recruitment_notice_requests
+venue_reservations --> expo_opening_requests
+venue_reservations --> recruitment_notices
+venue_reservations --> virtual_venues
+venue_reservations --> venue_halls
+venue_reservations --> venue_zones
+venue_reservations --> users
+venue_reservation_histories --> venue_reservations
+venue_reservation_histories --> users
+
+%% -- 박람회 관리 --
+categories --> categories
+expo_opening_requests --> client_profiles
+expo_opening_requests --> recruitment_results
+expo_opening_requests --> virtual_venues
+expo_opening_requests --> venue_halls
+expo_opening_requests --> venue_zones
+expo_opening_requests --> users
+expos --> client_profiles
+expos --> expo_opening_requests
+expos --> users
+expo_venue_assignments --> expos
+expo_venue_assignments --> venue_reservations
+expo_venue_assignments --> users
+expo_categories --> expos
+expo_categories --> categories
+expo_images --> expos
+expo_images --> file_metadata
+expo_files --> expos
+expo_files --> file_metadata
+external_links --> expos
+external_links --> booth_contents
+expo_companies --> expos
+expo_companies --> client_profiles
+expo_companies --> booth_allocations
+expo_review_histories --> expos
+expo_review_histories --> users
+expo_change_requests --> expos
+expo_change_requests --> client_profiles
+expo_change_requests --> users
+expo_change_histories --> expos
+expo_change_histories --> expo_change_requests
+expo_change_histories --> users
+expo_cancellation_requests --> expos
+expo_cancellation_requests --> client_profiles
+expo_cancellation_requests --> users
+expo_opening_request_categories --> expo_opening_requests
+expo_opening_request_categories --> categories
+
+%% -- 티켓 · 재고 --
+ticket_products --> expos
+ticket_inventories --> ticket_products
+inventory_reservations --> ticket_products
+inventory_reservations --> ticket_orders
+
+%% -- 주문 · 결제 · 환불 --
+ticket_orders --> users
+ticket_order_items --> ticket_orders
+ticket_order_items --> ticket_products
+guest_order_infos --> ticket_orders
+ticket_payments --> ticket_orders
+ticket_payment_histories --> ticket_payments
+ticket_refunds --> ticket_orders
+ticket_refunds --> ticket_payments
+ticket_refunds --> users
+
+%% -- 발권 · QR 체크인 --
+issued_tickets --> ticket_order_items
+issued_tickets --> expos
+ticket_access_tokens --> ticket_orders
+ticket_access_tokens --> issued_tickets
+check_in_histories --> issued_tickets
+check_in_histories --> expos
+check_in_histories --> client_profiles
+
+%% -- 알림 --
+notifications --> users
+message_histories --> notifications
+
+%% -- 광고 배너 --
+banner_applications --> client_profiles
+banner_applications --> expos
+banner_applications --> file_metadata
+banner_applications --> users
+banners --> banner_applications
+banners --> banner_slots
+banners --> expos
+banners --> file_metadata
+banner_review_histories --> banner_applications
+banner_review_histories --> users
+
+%% -- 모집공고 · 참여신청 --
+recruitment_notice_requests --> client_profiles
+recruitment_notice_requests --> virtual_venues
+recruitment_notice_requests --> venue_halls
+recruitment_notice_requests --> users
+recruitment_notice_requests --> expos
+recruitment_notice_request_zones --> recruitment_notice_requests
+recruitment_notice_request_zones --> venue_zones
+recruitment_notice_request_histories --> recruitment_notice_requests
+recruitment_notice_request_histories --> users
+recruitment_notices --> recruitment_notice_requests
+recruitment_notices --> client_profiles
+recruitment_notices --> users
+recruitment_notices --> expos
+recruitment_notice_histories --> recruitment_notices
+recruitment_notice_histories --> users
+recruitment_results --> recruitment_notices
+recruitment_results --> client_profiles
+recruitment_result_items --> recruitment_results
+recruitment_result_items --> participation_applications
+recruitment_result_items --> client_profiles
+recruitment_result_items --> booth_allocations
+participation_applications --> recruitment_notices
+participation_applications --> client_profiles
+participation_applications --> booth_products
+participation_applications --> booth_orders
+participation_applications --> users
+application_operation_histories --> participation_applications
+application_operation_histories --> users
+
+%% -- 부스 --
+booths --> venue_zones
+booths --> booth_templates
+booth_products --> recruitment_notices
+booth_products --> booths
+booth_orders --> participation_applications
+booth_orders --> client_profiles
+booth_orders --> booth_products
+booth_reservations --> booth_products
+booth_reservations --> booth_orders
+booth_reservations --> client_profiles
+booth_payments --> booth_orders
+booth_payment_histories --> booth_payments
+booth_allocations --> participation_applications
+booth_allocations --> booth_orders
+booth_allocations --> booth_products
+booth_allocations --> client_profiles
+booth_management_histories --> booth_allocations
+booth_management_histories --> booth_contents
+booth_management_histories --> users
+booth_contents --> booth_allocations
+booth_contents --> client_profiles
+booth_contents --> file_metadata
+booth_contents --> users
+booth_content_files --> booth_contents
+booth_content_files --> file_metadata
+
+%% -- 정산 · 회계 --
+expo_daily_sales_summaries --> expos
+settlements --> expos
+settlements --> client_profiles
+settlements --> users
+settlement_items --> settlements
+settlement_adjustments --> settlements
+settlement_adjustments --> users
+remittances --> settlements
+remittances --> users
+settlement_reports --> settlements
+settlement_reports --> file_metadata
+settlement_reports --> users

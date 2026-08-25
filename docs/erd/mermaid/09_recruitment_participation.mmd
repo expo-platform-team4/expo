@@ -1,0 +1,169 @@
+---
+title: 09. 기업 모집공고 및 참여 신청 (com.expo.recruitment, com.expo.participation)
+---
+erDiagram
+
+RECRUITMENT_NOTICE_REQUESTS {
+    bigint id PK
+    bigint host_client_id FK
+    varchar title
+    text description
+    timestamptz application_start_at
+    timestamptz application_end_at
+    timestamptz event_start_at
+    timestamptz event_end_at
+    bigint virtual_venue_id FK
+    bigint venue_hall_id FK "NULL 허용"
+    int target_company_count
+    jsonb requested_booth_config
+    varchar status "DRAFT/SUBMITTED/UNDER_REVIEW/APPROVED/REJECTED/CANCELED"
+    varchar venue_conflict_status "CLEAR/CONFLICT_PENDING/RESOLVED"
+    varchar venue_decision "PENDING/ALLOWED/CANCELED"
+    varchar conflict_group_key
+    timestamptz submitted_at
+    bigint decided_by_admin_id FK
+    timestamptz decided_at
+    text decision_reason
+    bigint expo_id FK "NULL 허용, V202608251100 추가"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+RECRUITMENT_NOTICE_REQUEST_ZONES {
+    bigint request_id "PK,FK"
+    bigint venue_hall_id FK
+    bigint venue_zone_id "PK,FK"
+    timestamptz created_at
+}
+
+RECRUITMENT_NOTICE_REQUEST_HISTORIES {
+    bigint id PK
+    bigint request_id FK
+    varchar action_type "SUBMIT/REVIEW_START/VENUE_ALLOW/VENUE_CANCEL/APPROVE/REJECT/NOTICE_CREATED"
+    varchar from_status
+    varchar to_status
+    text reason
+    bigint processed_by_admin_id FK
+    timestamptz created_at
+}
+
+RECRUITMENT_NOTICES {
+    bigint id PK
+    bigint request_id "FK,UK"
+    bigint host_client_id FK
+    varchar title
+    text content
+    text eligibility
+    jsonb submission_requirements
+    timestamptz application_start_at
+    timestamptz application_end_at
+    varchar status "DRAFT/SCHEDULED/OPEN/CLOSED/CANCELED/ARCHIVED"
+    timestamptz published_at
+    timestamptz closed_at
+    bigint created_by_admin_id FK
+    bigint expo_id FK "NULL 허용, V202608251100 추가"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+RECRUITMENT_NOTICE_HISTORIES {
+    bigint id PK
+    bigint recruitment_notice_id FK
+    varchar action_type "CREATE/PUBLISH/ACTIVATE/UPDATE/CLOSE/CANCEL/ARCHIVE"
+    jsonb before_data
+    jsonb after_data
+    text reason
+    bigint processed_by_admin_id FK
+    timestamptz created_at
+}
+
+RECRUITMENT_RESULTS {
+    bigint id PK
+    bigint recruitment_notice_id "FK,UK"
+    bigint host_client_id FK
+    int confirmed_company_count
+    int confirmed_booth_count
+    numeric total_booth_sales_amount
+    varchar status "GENERATED/DELIVERED/CONFIRMED/USED_FOR_EXPO/CANCELED"
+    timestamptz generated_at
+    timestamptz delivered_at
+    timestamptz confirmed_by_host_at
+    timestamptz created_at
+}
+
+RECRUITMENT_RESULT_ITEMS {
+    bigint id PK
+    bigint recruitment_result_id FK
+    bigint application_id "FK,UK"
+    bigint client_user_id FK
+    bigint booth_allocation_id "FK,UK"
+    numeric booth_amount
+    timestamptz created_at
+}
+
+PARTICIPATION_APPLICATIONS {
+    bigint id PK
+    bigint recruitment_notice_id FK
+    bigint client_user_id FK
+    varchar company_name_snapshot
+    text participation_purpose
+    text exhibit_description
+    bigint selected_booth_product_id FK "NULL 허용"
+    bigint booth_order_id FK,UK "NULL 허용"
+    varchar status "DRAFT/PAYMENT_PENDING/SUBMITTED/PAYMENT_FAILED/CANCELED"
+    timestamptz submitted_at
+    timestamptz admin_checked_at
+    bigint admin_checked_by FK
+    text admin_memo
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+APPLICATION_OPERATION_HISTORIES {
+    bigint id PK
+    bigint application_id FK
+    varchar action_type "CHECKED/CORRECTION_REQUESTED/CORRECTION_COMPLETED/MEMO_UPDATED"
+    text message
+    bigint processed_by_admin_id FK
+    timestamptz created_at
+}
+
+%% 외부 클러스터 참조 스텁
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+VIRTUAL_VENUES_EXT["virtual_venues (외부)"] { bigint id PK }
+VENUE_HALLS_EXT["venue_halls (외부)"] { bigint id PK }
+VENUE_ZONES_EXT["venue_zones (외부)"] { bigint id PK }
+USERS_EXT["users (외부)"] { bigint id PK }
+EXPOS_EXT["expos (외부)"] { bigint id PK }
+BOOTH_PRODUCTS_EXT["booth_products (외부)"] { bigint id PK }
+BOOTH_ORDERS_EXT["booth_orders (외부)"] { bigint id PK }
+BOOTH_ALLOCATIONS_EXT["booth_allocations (외부)"] { bigint id PK }
+
+CLIENT_PROFILES_EXT ||--o{ RECRUITMENT_NOTICE_REQUESTS : host_client_id
+VIRTUAL_VENUES_EXT ||--o{ RECRUITMENT_NOTICE_REQUESTS : virtual_venue_id
+VENUE_HALLS_EXT ||--o{ RECRUITMENT_NOTICE_REQUESTS : venue_hall_id
+USERS_EXT ||--o{ RECRUITMENT_NOTICE_REQUESTS : decided_by_admin_id
+EXPOS_EXT ||--o{ RECRUITMENT_NOTICE_REQUESTS : expo_id
+RECRUITMENT_NOTICE_REQUESTS ||--o{ RECRUITMENT_NOTICE_REQUEST_ZONES : request_id
+VENUE_ZONES_EXT ||--o{ RECRUITMENT_NOTICE_REQUEST_ZONES : venue_zone_id
+RECRUITMENT_NOTICE_REQUESTS ||--o{ RECRUITMENT_NOTICE_REQUEST_HISTORIES : request_id
+USERS_EXT ||--o{ RECRUITMENT_NOTICE_REQUEST_HISTORIES : processed_by_admin_id
+RECRUITMENT_NOTICE_REQUESTS ||--o| RECRUITMENT_NOTICES : request_id
+CLIENT_PROFILES_EXT ||--o{ RECRUITMENT_NOTICES : host_client_id
+USERS_EXT ||--o{ RECRUITMENT_NOTICES : created_by_admin_id
+EXPOS_EXT ||--o{ RECRUITMENT_NOTICES : expo_id
+RECRUITMENT_NOTICES ||--o{ RECRUITMENT_NOTICE_HISTORIES : recruitment_notice_id
+USERS_EXT ||--o{ RECRUITMENT_NOTICE_HISTORIES : processed_by_admin_id
+RECRUITMENT_NOTICES ||--o| RECRUITMENT_RESULTS : recruitment_notice_id
+CLIENT_PROFILES_EXT ||--o{ RECRUITMENT_RESULTS : host_client_id
+RECRUITMENT_RESULTS ||--o{ RECRUITMENT_RESULT_ITEMS : recruitment_result_id
+PARTICIPATION_APPLICATIONS ||--o| RECRUITMENT_RESULT_ITEMS : application_id
+CLIENT_PROFILES_EXT ||--o{ RECRUITMENT_RESULT_ITEMS : client_user_id
+BOOTH_ALLOCATIONS_EXT ||--o| RECRUITMENT_RESULT_ITEMS : booth_allocation_id
+RECRUITMENT_NOTICES ||--o{ PARTICIPATION_APPLICATIONS : recruitment_notice_id
+CLIENT_PROFILES_EXT ||--o{ PARTICIPATION_APPLICATIONS : client_user_id
+BOOTH_PRODUCTS_EXT ||--o{ PARTICIPATION_APPLICATIONS : selected_booth_product_id
+BOOTH_ORDERS_EXT ||--o| PARTICIPATION_APPLICATIONS : booth_order_id
+USERS_EXT ||--o{ PARTICIPATION_APPLICATIONS : admin_checked_by
+PARTICIPATION_APPLICATIONS ||--o{ APPLICATION_OPERATION_HISTORIES : application_id
+USERS_EXT ||--o{ APPLICATION_OPERATION_HISTORIES : processed_by_admin_id
