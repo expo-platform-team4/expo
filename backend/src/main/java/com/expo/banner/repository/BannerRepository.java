@@ -65,4 +65,43 @@ public interface BannerRepository extends JpaRepository<Banner, Long> {
             @Param("statuses") List<DisplayStatus> statuses,
             @Param("startAt") OffsetDateTime startAt,
             @Param("endAt") OffsetDateTime endAt);
+
+    /**
+     * 시작 시각이 지났는데 아직 {@code SCHEDULED} 로 남아 있는 배너.
+     *
+     * <p>승인 시점에 시작일이 미래면 {@code SCHEDULED} 로 만들어 두는데, <b>그것을 켜 주는 주체가
+     * 없었다.</b> 엔티티에 {@code activate()} 는 있고 주석도 "스케줄러가 호출" 이라고 적혀 있었지만
+     * 부르는 코드가 저장소 어디에도 없어서, 예약된 배너가 영원히 노출되지 않았다.
+     *
+     * <p>{@code end_at} 도 함께 본다. 예약해 둔 사이 종료일까지 지나 버린 배너를 켰다가 바로 끄는
+     * 왕복을 피한다 — 그런 건 {@link #findDueToEnd} 가 한 번에 끝낸다.
+     */
+    @Query(
+            """
+        SELECT banner
+            FROM Banner banner
+            WHERE banner.displayStatus = com.expo.banner.entity.Banner.DisplayStatus.SCHEDULED
+                AND banner.startAt <= :now
+                AND banner.endAt   >  :now
+            ORDER BY banner.id
+    """)
+    List<Banner> findDueToActivate(@Param("now") OffsetDateTime now);
+
+    /**
+     * 종료 시각이 지났는데 아직 끝나지 않은 배너.
+     *
+     * <p>{@code SCHEDULED} 도 포함한다. 켜 보지도 못하고 기간이 지난 배너가 있을 수 있고, 그것도
+     * 끝난 것으로 정리해야 <b>슬롯 정원을 계속 차지하지 않는다.</b>
+     */
+    @Query(
+            """
+        SELECT banner
+            FROM Banner banner
+            WHERE banner.displayStatus IN (
+                    com.expo.banner.entity.Banner.DisplayStatus.SCHEDULED,
+                    com.expo.banner.entity.Banner.DisplayStatus.ACTIVE)
+                AND banner.endAt <= :now
+            ORDER BY banner.id
+    """)
+    List<Banner> findDueToEnd(@Param("now") OffsetDateTime now);
 }
