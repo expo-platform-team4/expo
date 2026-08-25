@@ -13,6 +13,7 @@ import {
   ErrorState,
   LoadingBlock,
   PageHeader,
+  Pagination,
 } from '@/components/ui'
 import { useClientMyExpos } from '@/features/client/hooks'
 import { formatDateTime } from '@/lib/date'
@@ -108,7 +109,8 @@ const RequestCard = ({
 
 /** `/client/banner-requests` — 내가 낸 배너 신청과 심사 결과. CLIENT 전용. */
 const ClientBannerRequestListPage = () => {
-  const { data, isPending, isError, error, refetch } = useMyBannerRequests()
+  const [page, setPage] = useState(1)
+  const { data, isPending, isError, error, refetch } = useMyBannerRequests(page)
   // 신청 응답에는 `expoId` 만 있다. 제목은 이미 불러 둔 내 박람회 목록에서 맞춘다 —
   // 행마다 박람회 상세를 부르면 목록 하나에 요청이 열 번 나간다.
   const { data: expos } = useClientMyExpos()
@@ -136,13 +138,21 @@ const ClientBannerRequestListPage = () => {
           description="메인 홈 상단에 박람회를 광고하려면 새 신청을 눌러 주세요."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {data.content.map((request) => (
-            <li key={request.id}>
-              <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-3">
+            {data.content.map((request) => (
+              <li key={request.id}>
+                <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
+              </li>
+            ))}
+          </ul>
+          <Pagination
+            page={page}
+            totalPages={data.totalPages}
+            totalElements={data.totalElements}
+            onChange={setPage}
+          />
+        </>
       )}
     </div>
   )

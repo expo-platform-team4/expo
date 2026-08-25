@@ -75,8 +75,19 @@ export type AdminBannerApplication = Omit<
   'submittedAt' | 'reviewedByAdminId' | 'reviewedAt' | 'rejectionReason' | 'updatedAt'
 > & { hasPeriodConflict: boolean }
 
-/** Spring `Page<T>`. 페이지네이션 컨트롤은 두지 않고 넉넉히 한 번에 부른다. */
-type PageResponse<T> = { content: T[]; totalElements: number }
+/** Spring `Page<T>` 중 화면이 쓰는 부분만 추린 것. */
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+}
+
+/**
+ * 한 페이지에 보여줄 건수.
+ *
+ * 배너 신청은 이미지가 딸린 카드라 한 화면에 많이 들어가지 않는다.
+ */
+export const BANNER_PAGE_SIZE = 10
 
 export type CreateBannerRequestPayload = {
   expoId: number
@@ -92,22 +103,33 @@ export const createBannerRequest = async (payload: CreateBannerRequestPayload): 
   return data.data
 }
 
-/** `GET /api/client/banner-requests` — 내 신청 목록. CLIENT 전용. */
-export const listMyBannerRequests = async (): Promise<PageResponse<BannerApplication>> => {
+/**
+ * `GET /api/client/banner-requests` — 내 신청 목록. CLIENT 전용.
+ *
+ * **`page` 는 1부터 센다.** 저장소 안에서도 통일되어 있지 않다 — 알림 이력 API 는 0부터 센다.
+ * 0을 보내면 에러가 아니라 **1페이지와 같은 결과**가 조용히 온다(백엔드가 `Math.max(page-1, 0)`
+ * 로 눌러 버린다). 그래서 여기서 기본값을 1로 못 박고, 화면은 이 함수만 부른다.
+ */
+export const listMyBannerRequests = async (page = 1): Promise<PageResponse<BannerApplication>> => {
   const { data } = await api.get<ApiEnvelope<PageResponse<BannerApplication>>>(
     '/client/banner-requests',
-    { params: { size: 100 } }
+    { params: { page, size: BANNER_PAGE_SIZE } }
   )
   return data.data
 }
 
-/** `GET /api/admin/banner-requests` — 심사 목록. 상태를 비우면 전체다. ADMIN 전용. */
+/**
+ * `GET /api/admin/banner-requests` — 심사 목록. 상태를 비우면 전체다. ADMIN 전용.
+ *
+ * `page` 는 1부터 센다 — 위 함수와 같은 이유다.
+ */
 export const listAdminBannerRequests = async (
-  status?: BannerReviewStatus
+  status?: BannerReviewStatus,
+  page = 1
 ): Promise<PageResponse<AdminBannerApplication>> => {
   const { data } = await api.get<ApiEnvelope<PageResponse<AdminBannerApplication>>>(
     '/admin/banner-requests',
-    { params: { size: 100, ...(status ? { status } : {}) } }
+    { params: { page, size: BANNER_PAGE_SIZE, ...(status ? { status } : {}) } }
   )
   return data.data
 }

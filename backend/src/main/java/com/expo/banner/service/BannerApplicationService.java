@@ -94,7 +94,7 @@ public class BannerApplicationService {
     public Page<BannerApplicationResponse> getMyApplications(
             Long clientUserId, int page, int size) {
         return applicationRepository
-                .findByClientUserId(clientUserId, pageOf(page, size))
+                .findByClientUserIdOrderByIdDesc(clientUserId, pageOf(page, size))
                 .map(BannerApplicationResponse::from);
     }
 
@@ -278,6 +278,13 @@ public class BannerApplicationService {
                                         "배너 슬롯을 찾을 수 없습니다. slotCode=" + MAIN_SLOT_CODE));
     }
 
+    /**
+     * 목록 API 의 {@code page} 는 <b>1부터 센다.</b>
+     *
+     * <p>저장소 안에서도 통일되어 있지 않다 — 알림 이력 API 는 0부터 센다. 부르는 쪽이 규칙을
+     * 반대로 알면 <b>조용히 틀린다:</b> 0을 보내면 {@code Math.max} 가 0으로 눌러 1페이지와 같은
+     * 결과를 주고, 에러도 경고도 없다. 프론트는 {@code features/banner/api.ts} 에서 1부터 센다.
+     */
     private Pageable pageOf(int page, int size) {
         return PageRequest.of(Math.max(page - 1, 0), size);
     }

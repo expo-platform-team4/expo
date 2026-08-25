@@ -12,6 +12,7 @@ import {
   ErrorState,
   LoadingBlock,
   PageHeader,
+  Pagination,
   Select,
   Textarea,
 } from '@/components/ui'
@@ -198,7 +199,11 @@ const STATUS_FILTERS: { value: '' | BannerReviewStatus; label: string }[] = [
  */
 const AdminBannerRequestListPage = () => {
   const [status, setStatus] = useState<'' | BannerReviewStatus>('UNDER_REVIEW')
-  const { data, isPending, isError, error, refetch } = useAdminBannerRequests(status || undefined)
+  const [page, setPage] = useState(1)
+  const { data, isPending, isError, error, refetch } = useAdminBannerRequests(
+    status || undefined,
+    page
+  )
   // 신청 응답에는 `expoId` 만 있다. 공개 박람회 목록 한 번으로 제목을 맞춘다 —
   // 행마다 상세를 부르면 목록 하나에 요청이 열 번 나간다. 배너는 공개된 박람회만 광고한다.
   const { data: expoCards } = useExpoCards()
@@ -213,7 +218,12 @@ const AdminBannerRequestListPage = () => {
           <Select
             label="상태"
             value={status}
-            onChange={(event) => setStatus(event.target.value as '' | BannerReviewStatus)}
+            onChange={(event) => {
+              setStatus(event.target.value as '' | BannerReviewStatus)
+              // 필터를 바꾸면 1페이지로 돌아간다. 3페이지를 보다 필터를 바꾸면 결과가 적어져
+              // 빈 화면이 뜨고, 사용자는 "해당하는 신청이 없다" 로 읽는다.
+              setPage(1)
+            }}
           >
             {STATUS_FILTERS.map((filter) => (
               <option key={filter.label} value={filter.value}>
@@ -234,13 +244,21 @@ const AdminBannerRequestListPage = () => {
           description="주최사가 배너 노출을 신청하면 여기 표시됩니다."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {data.content.map((request) => (
-            <li key={request.id}>
-              <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-3">
+            {data.content.map((request) => (
+              <li key={request.id}>
+                <RequestCard request={request} expoTitle={titleOf(request.expoId)} />
+              </li>
+            ))}
+          </ul>
+          <Pagination
+            page={page}
+            totalPages={data.totalPages}
+            totalElements={data.totalElements}
+            onChange={setPage}
+          />
+        </>
       )}
     </div>
   )

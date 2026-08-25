@@ -33,12 +33,14 @@ export const useActiveBanners = () =>
   })
 
 /** 내 배너 신청 목록. CLIENT 전용이라 토큰이 있을 때만 부른다. */
-export const useMyBannerRequests = () => {
+export const useMyBannerRequests = (page: number) => {
   const accessToken = useAuthStore((state) => state.accessToken)
   return useQuery({
-    queryKey: bannerKeys.myRequests(),
-    queryFn: listMyBannerRequests,
+    queryKey: bannerKeys.myRequests(page),
+    queryFn: () => listMyBannerRequests(page),
     enabled: Boolean(accessToken),
+    // 페이지를 넘길 때 목록이 빈 화면으로 깜빡이지 않게 이전 페이지를 잠깐 유지한다.
+    placeholderData: (previous) => previous,
   })
 }
 
@@ -48,16 +50,17 @@ export const useCreateBannerRequest = () => {
   return useMutation({
     mutationFn: createBannerRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bannerKeys.myRequests() })
+      queryClient.invalidateQueries({ queryKey: bannerKeys.myRequestsAll() })
     },
   })
 }
 
 /** 관리자 심사 목록. `status` 를 비우면 전체다. */
-export const useAdminBannerRequests = (status?: BannerReviewStatus) =>
+export const useAdminBannerRequests = (status: BannerReviewStatus | undefined, page: number) =>
   useQuery({
-    queryKey: bannerKeys.adminRequests(status),
-    queryFn: () => listAdminBannerRequests(status),
+    queryKey: bannerKeys.adminRequests(status, page),
+    queryFn: () => listAdminBannerRequests(status, page),
+    placeholderData: (previous) => previous,
   })
 
 /**
@@ -101,7 +104,7 @@ export const useCancelBannerRequest = () => {
   return useMutation({
     mutationFn: cancelBannerRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bannerKeys.myRequests() })
+      queryClient.invalidateQueries({ queryKey: bannerKeys.myRequestsAll() })
     },
   })
 }
