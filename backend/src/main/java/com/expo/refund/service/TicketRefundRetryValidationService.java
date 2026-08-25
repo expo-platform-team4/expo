@@ -16,7 +16,7 @@ class TicketRefundRetryValidationService {
 
     private final TicketRefundRepository ticketRefundRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void validateRetryable(Long refundId) {
         TicketRefund refund =
                 ticketRefundRepository
