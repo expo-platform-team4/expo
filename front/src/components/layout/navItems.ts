@@ -7,6 +7,6 @@
  */
 export const GLOBAL_NAV_ITEMS = [
   { label: '박람회', href: '/expos' },
-  { label: '공고 모집', href: '/recruitment-notices' },
+  { label: '모집공고', href: '/recruitment-notices' },
   { label: '비회원 주문 조회', href: '/orders/guest/search' },
 ] as const

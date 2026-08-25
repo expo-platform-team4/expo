@@ -219,7 +219,7 @@ const AdminRecruitmentNoticeRequestListPage = () => {
   return (
     <div>
       <PageHeader
-        title="공고 신청 관리"
+        title="모집공고 요청 관리"
         description="승인된 박람회를 골라 모집공고 생성 요청을 작성하고, 장소 충돌을 판정합니다."
         action={
           <Link href="/admin/recruitment-notice-requests/new">
