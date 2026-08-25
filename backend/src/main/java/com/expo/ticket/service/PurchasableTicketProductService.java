@@ -8,6 +8,7 @@ import com.expo.ticket.dto.PurchasableTicketProductResponse;
 import com.expo.ticket.entity.TicketProduct;
 import com.expo.ticket.entity.TicketProductStatus;
 import com.expo.ticket.repository.TicketProductRepository;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -26,7 +27,7 @@ public class PurchasableTicketProductService {
 
         List<TicketProduct> products =
                 ticketProductRepository.findPurchasableByExpoId(
-                        expoId, TicketProductStatus.ON_SALE);
+                        expoId, TicketProductStatus.ON_SALE, Instant.now());
 
         List<PurchasableTicketProductResponse> responses = new ArrayList<>();
 
