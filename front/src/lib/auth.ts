@@ -55,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
 export const homeRouteFor = (role: Role): string => {
   switch (role) {
     case 'CLIENT':
-      return '/client/dashboard'
+      return '/client'
     case 'ADMIN':
       return '/admin'
     case 'MEMBER':
@@ -129,12 +129,14 @@ const isOwnAreaOf = (role: Role, path: string): boolean => {
 /**
  * 헤더의 "Profile" 클릭 시 이동할 경로. `homeRouteFor` 와 다른 이유 —
  * MEMBER 는 역할 홈이 `/`(공개 홈)이라 프로필 진입점이 따로 필요하다.
- * CLIENT·ADMIN 은 대시보드 자체가 곧 프로필 진입점이라 겹친다.
+ * CLIENT 는 `/client`(주최사 포털 홈, `ClientHomePage`)가 `/mypage` 와 같은 "바로가기 카드"
+ * 랜딩이라 `homeRouteFor` 와 같은 경로를 쓴다. ADMIN 은 대시보드 자체가 곧 프로필
+ * 진입점이라 여전히 겹친다 — 어드민 전용 랜딩 페이지가 따로 없다.
  */
 export const profileRouteFor = (role: Role): string => {
   switch (role) {
     case 'CLIENT':
-      return '/client/dashboard'
+      return '/client'
     case 'ADMIN':
       return '/admin'
     case 'MEMBER':
