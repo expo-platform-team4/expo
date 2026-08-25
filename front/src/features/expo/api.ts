@@ -123,11 +123,32 @@ export type ExpoCardQuery = {
   regionCode?: string
   keyword?: string
   sort?: 'POPULAR'
+  categoryId?: number
 }
 
 /** 공개 박람회 목록. `GET /api/expos`. 공개된 박람회만 나온다. */
 export const fetchExpoCards = async (query: ExpoCardQuery = {}): Promise<ExpoCard[]> => {
   const { data } = await api.get<ApiEnvelope<ExpoCard[]>>('/expos', { params: query })
+  return data.data
+}
+
+/**
+ * 박람회 카테고리. 백엔드 `CategoryResponse` 와 짝이다 — 활성 카테고리만 내려온다.
+ *
+ * 박람회 목록 필터와 개최 신청 폼(카테고리 선택)이 공용으로 쓴다.
+ */
+export type Category = {
+  id: number
+  parentId?: number
+  name: string
+  slug: string
+  sortOrder: number
+  active: boolean
+}
+
+/** `GET /api/categories` — 공개 카테고리 목록 (활성만). */
+export const listPublicCategories = async (): Promise<Category[]> => {
+  const { data } = await api.get<ApiEnvelope<Category[]>>('/categories')
   return data.data
 }
 

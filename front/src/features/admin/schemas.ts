@@ -9,7 +9,6 @@ export const createCategorySchema = z.object({
     .string()
     .min(1, '카테고리명은 필수입니다.')
     .max(100, '카테고리명은 100자 이하여야 합니다.'),
-  parentId: z.string().optional(),
   sortOrder: z.string().optional(),
 })
 

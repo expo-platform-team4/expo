@@ -7,19 +7,19 @@
         조건이 두 군데로 갈리면 한쪽만 고쳤을 때 비공개 박람회가 새어 나간다.
     -->
     <select id="findCards" resultType="com.expo.expo.dto.PublicExpoCardRow">
-        SELECT expo_id,
-               title,
-               event_start_at,
-               event_end_at,
-               region_code,
-               minimum_price,
-               available_quantity,
-               display_sales_status,
-               thumbnail_file_id
-        FROM v_public_expo_cards
+        SELECT v.expo_id,
+               v.title,
+               v.event_start_at,
+               v.event_end_at,
+               v.region_code,
+               v.minimum_price,
+               v.available_quantity,
+               v.display_sales_status,
+               v.thumbnail_file_id
+        FROM v_public_expo_cards v
         <where>
             <if test="query.regionCode != null and query.regionCode != ''">
-                AND region_code = #{query.regionCode}
+                AND v.region_code = #{query.regionCode}
             </if>
             <!--
                 ILIKE 는 PostgreSQL 전용이다(대소문자 무시 LIKE). 이 저장소는 PostgreSQL
@@ -27,7 +27,19 @@
                 키워드는 파라미터 바인딩 뒤에 이어 붙여 % 가 값으로 들어가게 한다.
             -->
             <if test="query.keyword != null and query.keyword != ''">
-                AND title ILIKE '%' || #{query.keyword} || '%'
+                AND v.title ILIKE '%' || #{query.keyword} || '%'
+            </if>
+            <!--
+                expo_categories 도 expo_id 컬럼을 갖고 있어서, 바깥 v_public_expo_cards 에
+                별칭 없이 그냥 expo_id 라고만 쓰면 안쪽 expo_categories.expo_id 로 스코프가
+                잡혀 "이 카테고리를 가진 행이 테이블 어딘가에 하나라도 있으면" 식으로
+                잘못 걸린다(전체 박람회가 다 걸리는 버그). v. 로 바깥 컬럼을 명시한다.
+            -->
+            <if test="query.categoryId != null">
+                AND EXISTS (
+                    SELECT 1 FROM expo_categories ec
+                    WHERE ec.expo_id = v.expo_id AND ec.category_id = #{query.categoryId}
+                )
             </if>
         </where>
         ORDER BY

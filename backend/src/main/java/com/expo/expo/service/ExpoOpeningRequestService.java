@@ -1,5 +1,6 @@
 package com.expo.expo.service;
 
+import com.expo.admin.repository.CategoryRepository;
 import com.expo.auth.repository.ClientProfileRepository;
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
@@ -10,17 +11,23 @@ import com.expo.expo.dto.ExpoOpeningRequestResponse;
 import com.expo.expo.dto.UpdateExpoOpeningRequestRequest;
 import com.expo.expo.entity.DesiredVenue;
 import com.expo.expo.entity.Expo;
+import com.expo.expo.entity.ExpoCategory;
 import com.expo.expo.entity.ExpoOpeningRequest;
+import com.expo.expo.entity.ExpoOpeningRequestCategory;
 import com.expo.expo.entity.ExpoOpeningRequestStatus;
 import com.expo.expo.entity.ExpoPeriod;
 import com.expo.expo.entity.ExpoReviewHistory;
 import com.expo.expo.entity.ReviewDecision;
+import com.expo.expo.repository.ExpoCategoryRepository;
+import com.expo.expo.repository.ExpoOpeningRequestCategoryRepository;
 import com.expo.expo.repository.ExpoOpeningRequestRepository;
 import com.expo.expo.repository.ExpoRepository;
 import com.expo.expo.repository.ExpoReviewHistoryRepository;
 import com.expo.venue.entity.VirtualVenue;
 import com.expo.venue.repository.VirtualVenueRepository;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +52,9 @@ public class ExpoOpeningRequestService {
     private final ExpoReviewHistoryRepository reviewHistoryRepository;
     private final VirtualVenueRepository virtualVenueRepository;
     private final ClientProfileRepository clientProfileRepository;
+    private final ExpoOpeningRequestCategoryRepository openingRequestCategoryRepository;
+    private final ExpoCategoryRepository expoCategoryRepository;
+    private final CategoryRepository categoryRepository;
     private final ExpoOpeningRequestConverter converter;
 
     // ---------- 주최사 ----------
@@ -54,6 +64,7 @@ public class ExpoOpeningRequestService {
             Long hostClientId, CreateExpoOpeningRequestRequest request) {
         ExpoOpeningRequestPayload content = request.content();
         requireVenueExists(content.desiredVenueId());
+        List<Long> categoryIds = requireCategoriesExist(content.categoryIds());
 
         ExpoOpeningRequest saved =
                 openingRequestRepository.save(
@@ -66,6 +77,7 @@ public class ExpoOpeningRequestService {
                                 desiredVenueOf(content),
                                 request.submitNow(),
                                 Instant.now()));
+        saveCategories(saved.getId(), categoryIds);
         return toResponse(saved);
     }
 
@@ -84,6 +96,7 @@ public class ExpoOpeningRequestService {
             Long requestId, Long hostClientId, UpdateExpoOpeningRequestRequest request) {
         ExpoOpeningRequestPayload content = request.content();
         requireVenueExists(content.desiredVenueId());
+        List<Long> categoryIds = requireCategoriesExist(content.categoryIds());
 
         ExpoOpeningRequest entity = findOwned(requestId, hostClientId);
         entity.updateContent(
@@ -92,6 +105,9 @@ public class ExpoOpeningRequestService {
                 eventPeriodOf(content),
                 salesPeriodOf(content),
                 desiredVenueOf(content));
+        // updateContent() 가 DRAFT 아니면 이미 예외를 던지므로, 여기 도달했다는 건 다시 써도 되는 상태다.
+        openingRequestCategoryRepository.deleteAllByOpeningRequestId(requestId);
+        saveCategories(requestId, categoryIds);
         return toResponse(entity);
     }
 
@@ -144,6 +160,13 @@ public class ExpoOpeningRequestService {
                 expoRepository.save(
                         Expo.createFromOpeningRequest(entity, venue.getRegionCode(), adminId, now));
 
+        List<Long> categoryIds =
+                openingRequestCategoryRepository.findCategoryIdsByOpeningRequestId(requestId);
+        expoCategoryRepository.saveAll(
+                categoryIds.stream()
+                        .map(categoryId -> ExpoCategory.create(expo.getId(), categoryId))
+                        .toList());
+
         reviewHistoryRepository.save(
                 ExpoReviewHistory.record(
                         expo.getId(),
@@ -185,6 +208,25 @@ public class ExpoOpeningRequestService {
                 content.desiredVenueId(),
                 content.desiredVenueHallId(),
                 content.desiredVenueZoneId());
+    }
+
+    /** 카테고리는 선택 항목이라 안 보내면 빈 목록으로 다룬다. 보냈으면 전부 실재하는 ID 여야 한다. */
+    private List<Long> requireCategoriesExist(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> distinctIds = List.copyOf(new LinkedHashSet<>(categoryIds));
+        if (categoryRepository.findAllById(distinctIds).size() != distinctIds.size()) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        return distinctIds;
+    }
+
+    private void saveCategories(Long requestId, List<Long> categoryIds) {
+        openingRequestCategoryRepository.saveAll(
+                categoryIds.stream()
+                        .map(categoryId -> ExpoOpeningRequestCategory.create(requestId, categoryId))
+                        .toList());
     }
 
     private ExpoOpeningRequest findOrThrow(Long requestId) {
@@ -261,6 +303,18 @@ public class ExpoOpeningRequestService {
                                         Expo::getId,
                                         (first, second) -> first));
 
+        Map<Long, List<Long>> categoryIdsByRequest =
+                openingRequestCategoryRepository
+                        .findAllByIdOpeningRequestIdIn(
+                                requests.stream().map(ExpoOpeningRequest::getId).toList())
+                        .stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        ExpoOpeningRequestCategory::getOpeningRequestId,
+                                        Collectors.mapping(
+                                                ExpoOpeningRequestCategory::getCategoryId,
+                                                Collectors.toCollection(ArrayList::new))));
+
         Function<ExpoOpeningRequest, ExpoOpeningRequestResponse> map =
                 request ->
                         converter.toResponse(
@@ -269,7 +323,8 @@ public class ExpoOpeningRequestService {
                                 Optional.ofNullable(request.getDesiredVenueId())
                                         .map(venueNames::get)
                                         .orElse(null),
-                                expoIdsByRequest.get(request.getId()));
+                                expoIdsByRequest.get(request.getId()),
+                                categoryIdsByRequest.getOrDefault(request.getId(), List.of()));
 
         return requests.stream().map(map).toList();
     }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.util.List;
 
 /**
  * 박람회 개최 신청 작성·수정 공통 본문.
@@ -12,8 +13,9 @@ import java.time.Instant;
  * <p>작성과 수정이 받는 값이 완전히 같아 하나로 쓴다. 다른 것은 {@code submitNow}(작성 시에만 의미가 있다) 뿐이라 그것만
  * 작성 요청에서 따로 받는다.
  *
- * <p><b>카테고리·대표 이미지·소개 자료는 받지 않는다.</b> 디자인에는 있지만 {@code expo_opening_requests} 에 담을
- * 컬럼이 없고, 파일 도메인 자체가 아직 없다(이슈 #93). 이슈 #116 에 남겨 뒀다.
+ * <p><b>카테고리는 받는다.</b> {@code expo_opening_request_categories}(승인 전 임시 연결)에 담아 뒀다가
+ * 승인 시 {@code expo_categories} 로 그대로 복사한다. <b>대표 이미지·소개 자료는 여전히 받지 않는다</b> — 파일
+ * 도메인 자체가 아직 없다(이슈 #93). 이슈 #116 에 남겨 뒀다.
  */
 @Schema(description = "박람회 개최 신청 본문")
 public record ExpoOpeningRequestPayload(
@@ -33,4 +35,6 @@ public record ExpoOpeningRequestPayload(
                 @NotNull(message = "희망 장소는 필수입니다.")
                 Long desiredVenueId,
         @Schema(description = "희망 전시관(홀) ID") Long desiredVenueHallId,
-        @Schema(description = "희망 구역 ID") Long desiredVenueZoneId) {}
+        @Schema(description = "희망 구역 ID") Long desiredVenueZoneId,
+        @Schema(description = "카테고리 ID 목록. 선택 항목 — 안 보내면 카테고리 없음으로 처리한다.")
+                List<Long> categoryIds) {}

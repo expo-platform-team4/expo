@@ -35,6 +35,7 @@ export type ExpoOpeningRequest = {
   desiredVenueName?: string
   desiredVenueHallId?: number
   desiredVenueZoneId?: number
+  categoryIds?: number[]
   status: ExpoOpeningRequestStatus
   submittedAt?: string
   reviewedByAdminId?: number
@@ -56,6 +57,7 @@ export type ExpoOpeningRequestPayload = {
   desiredVenueId: number
   desiredVenueHallId?: number
   desiredVenueZoneId?: number
+  categoryIds?: number[]
 }
 
 /** `POST /api/client/expo-opening-requests` — 개최 신청 작성. */

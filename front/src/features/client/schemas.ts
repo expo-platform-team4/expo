@@ -23,6 +23,7 @@ export const expoOpeningRequestSchema = z
     desiredVenueId: z.string().min(1, '희망 장소는 필수입니다.'),
     desiredVenueHallId: z.string().optional(),
     desiredVenueZoneId: z.string().optional(),
+    categoryId: z.string().optional(),
   })
   .refine((data) => new Date(data.eventEndAt) > new Date(data.eventStartAt), {
     message: '행사 종료일은 시작일보다 늦어야 합니다.',
