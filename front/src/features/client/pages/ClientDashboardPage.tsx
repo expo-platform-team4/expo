@@ -14,7 +14,11 @@ import {
 import { NOTICE_STATUS } from '@/features/recruitment/statusLabels'
 import { formatDate } from '@/lib/date'
 
-import { EXPO_EVENT_STATUS_LABEL, EXPO_REVIEW_STATUS_LABEL, type ClientDashboardRecruitment } from '../api'
+import {
+  EXPO_EVENT_STATUS_LABEL,
+  EXPO_REVIEW_STATUS_LABEL,
+  type ClientDashboardRecruitment,
+} from '../api'
 import {
   useClientMyConfirmedBooths,
   useClientMyExpos,
@@ -156,8 +160,7 @@ const ClientDashboardPage = () => {
 
 const RecruitmentNoticeRow = ({ notice }: { notice: ClientDashboardRecruitment }) => {
   const status = NOTICE_STATUS[notice.status as keyof typeof NOTICE_STATUS] as
-    | (typeof NOTICE_STATUS)[keyof typeof NOTICE_STATUS]
-    | undefined
+    (typeof NOTICE_STATUS)[keyof typeof NOTICE_STATUS] | undefined
   const content = (
     <div className="flex items-center justify-between gap-4 px-6 py-4">
       <div>
