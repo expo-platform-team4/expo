@@ -501,7 +501,17 @@ const AdminBoothRegistrationPage = () => {
               <Select
                 label="공고 (부스 상품 등록용)"
                 value={noticeId ?? ''}
-                onChange={(e) => setNoticeId(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) => {
+                  const id = e.target.value ? Number(e.target.value) : null
+                  setNoticeId(id)
+                  const notice = notices?.find((item) => item.id === id)
+                  if (notice?.venueHallId) {
+                    // 제어형 select 라 zoneId 옵션이 아직 없어도(구역 목록이 늦게 로드돼도)
+                    // 값은 그대로 유지되고, 옵션이 뜨는 순간 화면에 알아서 반영된다.
+                    setHallId(notice.venueHallId)
+                    setZoneId(notice.venueZoneIds[0] ?? null)
+                  }
+                }}
                 disabled={noticesPending}
               >
                 <option value="">공고를 선택하세요</option>
