@@ -17,6 +17,7 @@ import {
   Select,
   Textarea,
 } from '@/components/ui'
+import { useExpoCategories } from '@/features/expo/hooks'
 import { useVenueHalls, useVenueZones, useVirtualVenues } from '@/features/recruitment/hooks'
 import { formatDate } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
@@ -44,9 +45,12 @@ const STATUS_VARIANT: Record<ExpoOpeningRequestStatus, 'success' | 'neutral' | '
  * 디자인(`13484d75`)의 "임시저장"·"심사요청" 두 버튼을 그대로 살렸다 — 백엔드 상태도
  * DRAFT/SUBMITTED 로 나뉜다.
  *
- * **카테고리·대표 이미지·소개 자료는 뺐다.** 디자인에는 있지만 신청 테이블에 담을 컬럼이
- * 없고 파일 도메인 자체가 아직 없다(이슈 #93). 대신 디자인에 없던 **판매 기간**을 넣었다 —
- * 승인 시 만들 `expos` 행이 이 값을 NOT NULL 로 요구한다. 자세한 배경은 이슈 #116.
+ * **카테고리**는 관리자가 미리 만들어 둔 활성 카테고리 중 하나를 고르는 드롭다운이다 — 승인 시
+ * `expo_categories` 로 그대로 옮겨져 박람회 검색·필터에 쓰인다. 백엔드는 목록(`categoryIds`)을
+ * 받지만 폼에서는 한 개만 고르게 해서 배열에 담아 보낸다. **대표 이미지·소개 자료는 아직
+ * 뺐다.** 디자인에는 있지만 파일 도메인 자체가 아직 없다(이슈 #93). 대신 디자인에 없던
+ * **판매 기간**을 넣었다 — 승인 시 만들 `expos` 행이 이 값을 NOT NULL 로 요구한다. 자세한
+ * 배경은 이슈 #116.
  */
 const ClientExpoApplicationPage = () => {
   const router = useRouter()
@@ -54,6 +58,7 @@ const ClientExpoApplicationPage = () => {
 
   const { data: requests, isPending, isError, error, refetch } = useMyExpoOpeningRequests()
   const { data: venues, isPending: venuesPending } = useVirtualVenues()
+  const { data: categories, isPending: categoriesPending } = useExpoCategories()
   const createMutation = useCreateExpoOpeningRequest()
   const submitMutation = useSubmitExpoOpeningRequest()
 
@@ -76,6 +81,7 @@ const ClientExpoApplicationPage = () => {
       desiredVenueId: '',
       desiredVenueHallId: '',
       desiredVenueZoneId: '',
+      categoryId: '',
     },
   })
 
@@ -107,6 +113,7 @@ const ClientExpoApplicationPage = () => {
           desiredVenueZoneId: values.desiredVenueZoneId
             ? Number(values.desiredVenueZoneId)
             : undefined,
+          categoryIds: values.categoryId ? [Number(values.categoryId)] : undefined,
         },
       },
       {
@@ -224,6 +231,19 @@ const ClientExpoApplicationPage = () => {
               ))}
             </Select>
           </div>
+
+          {categoriesPending ? (
+            <LoadingBlock label="카테고리를 불러오는 중입니다" />
+          ) : (
+            <Select label="카테고리 (선택)" {...register('categoryId')}>
+              <option value="">미정</option>
+              {categories?.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          )}
 
           {formError && <p className="text-label-sm text-error">{formError}</p>}
 

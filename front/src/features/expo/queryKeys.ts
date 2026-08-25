@@ -12,4 +12,5 @@ export const expoKeys = {
   detail: (expoId: number) => [...expoKeys.all, 'detail', expoId] as const,
   purchasableTicketProducts: (expoId: number) =>
     [...expoKeys.all, 'purchasableTicketProducts', expoId] as const,
+  categories: () => [...expoKeys.all, 'categories'] as const,
 }

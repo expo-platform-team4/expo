@@ -5,6 +5,7 @@ import {
   fetchExpoCards,
   fetchExpoDetail,
   fetchPurchasableTicketProducts,
+  listPublicCategories,
 } from './api'
 import { expoKeys } from './queryKeys'
 
@@ -42,4 +43,11 @@ export const usePurchasableTicketProducts = (expoId: number | null) =>
     queryFn: () => fetchPurchasableTicketProducts(expoId as number),
     enabled: expoId !== null,
     retry: false,
+  })
+
+/** 공개 카테고리 목록 (활성만). 로그인 여부와 무관하게 조회 가능 — 목록 필터·개최 신청 폼이 쓴다. */
+export const useExpoCategories = () =>
+  useQuery({
+    queryKey: expoKeys.categories(),
+    queryFn: listPublicCategories,
   })

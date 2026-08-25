@@ -33,6 +33,16 @@ public class CategoryService {
                 .toList();
     }
 
+    /**
+     * 노출 순서 기준 활성 카테고리 목록을 조회한다. 비로그인·클라이언트 모두 볼 수 있는 공개 조회라
+     * 비활성(숨김) 카테고리는 뺀다 — 관리자 목록 조회({@link #getCategories()})와 다른 점이다.
+     */
+    public List<CategoryResponse> getPublicCategories() {
+        return categoryRepository.findAllByActiveTrueOrderBySortOrderAsc().stream()
+                .map(categoryConverter::toResponse)
+                .toList();
+    }
+
     /** 박람회 카테고리를 등록한다 (E-API-015). */
     @Transactional
     public CategoryResponse createCategory(CategoryCreateRequest request) {
