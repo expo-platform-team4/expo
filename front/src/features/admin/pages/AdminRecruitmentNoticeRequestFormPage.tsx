@@ -89,20 +89,37 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
     : undefined
 
   useEffect(() => {
-    if (!openingRequest) return
+    if (!openingRequest) {
+      // 승인된 신청이 없는 박람회로 바꾼 경우 — 이전에 골랐던 박람회의 값이 남아있으면 안 된다.
+      setValue('eventStartAt', '')
+      setValue('eventEndAt', '')
+      setValue('applicationStartAt', '')
+      setValue('applicationEndAt', '')
+      setValue('virtualVenueId', '')
+      setValue('venueHallId', '')
+      setValue('venueZoneIds', [])
+      return
+    }
     setValue('eventStartAt', toDatetimeLocalValue(openingRequest.eventStartAt))
     setValue('eventEndAt', toDatetimeLocalValue(openingRequest.eventEndAt))
     setValue(
       'applicationStartAt',
       toDatetimeLocalValue(subtractDays(openingRequest.eventStartAt, APPLICATION_START_OFFSET_DAYS))
     )
-    setValue(
-      'applicationEndAt',
-      toDatetimeLocalValue(subtractDays(openingRequest.eventEndAt, APPLICATION_END_OFFSET_DAYS))
+    // 행사가 APPLICATION_END_OFFSET_DAYS(2주)보다 짧으면 "종료 2주 전"이 행사 시작일보다
+    // 늦어져 버린다 — 스키마가 신청 종료를 행사 시작 이하로 요구하므로, 그 이하로 잡는다.
+    const applicationEndCandidate = subtractDays(
+      openingRequest.eventEndAt,
+      APPLICATION_END_OFFSET_DAYS
     )
+    const applicationEndAt =
+      new Date(applicationEndCandidate) > new Date(openingRequest.eventStartAt)
+        ? openingRequest.eventStartAt
+        : applicationEndCandidate
+    setValue('applicationEndAt', toDatetimeLocalValue(applicationEndAt))
     setValue('virtualVenueId', String(openingRequest.desiredVenueId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openingRequest?.id])
+  }, [selectedExpoId, openingRequest?.id])
 
   // 전시장 선택지는 virtualVenueId 를 고른 뒤 별도 쿼리로 늦게 들어온다 — <option> 이 실제로
   // DOM 에 있어야 select 값이 반영되므로, 목록이 뜨고 나서(그리고 실제로 그 전시장이 있을 때만)
