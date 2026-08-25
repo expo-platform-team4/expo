@@ -14,8 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 공개 배너 조회 API (비로그인 허용) — B-API-024.
  *
- * <p>경로 {@code /api/banners}. SecurityConfig 에서 {@code GET /api/banners/**} 를 permitAll 로 연다
- * (ExpoPublicController 와 동일 컨벤션).
+ * <p>경로 {@code /api/banners}. SecurityConfig 가 {@code GET /api/banners/active} 를 permitAll 로
+ * 연다 — 접두어 전체가 아니라 경로 하나다. {@code /api/expos} 와 같은 방식으로, 이 아래에 관리자용
+ * 조회가 생겨도 저절로 공개되지 않게 하기 위해서다.
+ *
+ * <p>이 문단이 한동안 "permitAll 로 연다" 고만 적어 두고 실제 규칙은 없어서, 비로그인 요청이
+ * {@code anyRequest().authenticated()} 에 걸려 401 이 났다. 문서가 코드를 앞질러 있었다.
  */
 @Tag(name = "Banner - Public", description = "공개 배너 조회 API")
 @RestController
