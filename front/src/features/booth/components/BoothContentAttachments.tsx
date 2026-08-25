@@ -120,6 +120,7 @@ export const BoothContentFileManager = ({
       <div className="flex flex-wrap items-end gap-2">
         <Select
           label="종류"
+          hint=" "
           value={fileType}
           onChange={(e) => setFileType(e.target.value as BoothContentFileType)}
           className="w-40"
@@ -137,20 +138,24 @@ export const BoothContentFileManager = ({
           onChange={(e) => setTitle(e.target.value)}
           className="w-48"
         />
-        <label>
-          <span className="border-outline text-label-md hover:bg-surface-container-low inline-flex h-11 cursor-pointer items-center rounded border px-3">
-            {isUploading ? '업로드 중...' : '파일 추가'}
-          </span>
-          <input
-            type="file"
-            accept={
-              fileType === 'GALLERY_IMAGE' ? 'image/jpeg,image/png,image/webp' : 'application/pdf'
-            }
-            className="hidden"
-            disabled={isUploading}
-            onChange={handleFileSelected}
-          />
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-label-md invisible font-medium">파일</span>
+          <label>
+            <span className="border-outline text-label-md hover:bg-surface-container-low inline-flex h-11 cursor-pointer items-center rounded border px-3">
+              {isUploading ? '업로드 중...' : '파일 추가'}
+            </span>
+            <input
+              type="file"
+              accept={
+                fileType === 'GALLERY_IMAGE' ? 'image/jpeg,image/png,image/webp' : 'application/pdf'
+              }
+              className="hidden"
+              disabled={isUploading}
+              onChange={handleFileSelected}
+            />
+          </label>
+          <p className="text-label-sm invisible"> </p>
+        </div>
       </div>
       {error && <p className="text-label-sm text-error">{error}</p>}
     </div>
@@ -231,6 +236,7 @@ export const BoothContentLinkManager = ({
       <div className="flex flex-wrap items-end gap-2">
         <Select
           label="종류"
+          hint=" "
           value={linkType}
           onChange={(e) => setLinkType(e.target.value as ExternalLinkType)}
           className="w-32"
@@ -248,10 +254,20 @@ export const BoothContentLinkManager = ({
           onChange={(e) => setLabel(e.target.value)}
           className="w-40"
         />
-        <Input label="URL" value={url} onChange={(e) => setUrl(e.target.value)} className="w-64" />
-        <Button type="button" size="sm" loading={addMutation.isPending} onClick={handleAdd}>
-          추가
-        </Button>
+        <Input
+          label="URL"
+          hint=" "
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="w-64"
+        />
+        <div className="flex flex-col gap-1.5">
+          <span className="text-label-md invisible font-medium">추가</span>
+          <Button type="button" loading={addMutation.isPending} onClick={handleAdd}>
+            추가
+          </Button>
+          <p className="text-label-sm invisible"> </p>
+        </div>
       </div>
       {error && <p className="text-label-sm text-error">{error}</p>}
     </div>
