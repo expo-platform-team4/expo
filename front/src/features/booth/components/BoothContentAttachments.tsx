@@ -120,7 +120,6 @@ export const BoothContentFileManager = ({
       <div className="flex flex-wrap items-end gap-2">
         <Select
           label="종류"
-          hint=" "
           value={fileType}
           onChange={(e) => setFileType(e.target.value as BoothContentFileType)}
           className="w-40"
@@ -133,7 +132,6 @@ export const BoothContentFileManager = ({
         </Select>
         <Input
           label="제목"
-          hint="선택 항목입니다."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-48"
@@ -154,7 +152,6 @@ export const BoothContentFileManager = ({
               onChange={handleFileSelected}
             />
           </label>
-          <p className="text-label-sm invisible"> </p>
         </div>
       </div>
       {error && <p className="text-label-sm text-error">{error}</p>}
@@ -236,7 +233,6 @@ export const BoothContentLinkManager = ({
       <div className="flex flex-wrap items-end gap-2">
         <Select
           label="종류"
-          hint=" "
           value={linkType}
           onChange={(e) => setLinkType(e.target.value as ExternalLinkType)}
           className="w-32"
@@ -249,24 +245,16 @@ export const BoothContentLinkManager = ({
         </Select>
         <Input
           label="표시 라벨"
-          hint="선택 항목입니다."
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="w-40"
         />
-        <Input
-          label="URL"
-          hint=" "
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="w-64"
-        />
+        <Input label="URL" value={url} onChange={(e) => setUrl(e.target.value)} className="w-64" />
         <div className="flex flex-col gap-1.5">
           <span className="text-label-md invisible font-medium">추가</span>
           <Button type="button" loading={addMutation.isPending} onClick={handleAdd}>
             추가
           </Button>
-          <p className="text-label-sm invisible"> </p>
         </div>
       </div>
       {error && <p className="text-label-sm text-error">{error}</p>}
