@@ -201,6 +201,7 @@ const BulkCreateBoothProductsSection = ({
   const [formError, setFormError] = useState<string | null>(null)
   const [rowState, setRowState] = useState<Record<number, ProductRowState>>({})
   const [groupPrices, setGroupPrices] = useState<Record<string, GroupPriceState>>({})
+  const [showIndividualRows, setShowIndividualRows] = useState(false)
   const {
     data: booths,
     isPending: boothsPending,
@@ -352,40 +353,72 @@ const BulkCreateBoothProductsSection = ({
       )}
 
       {registrableBooths.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {registrableBooths.map((booth) => {
-            const state = stateFor(booth.id)
-            return (
-              <div
-                key={booth.id}
-                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_1fr_1fr]"
-              >
-                <Checkbox
-                  label={booth.boothNumber}
-                  checked={state.included}
-                  onChange={(e) => updateRow(booth.id, { included: e.target.checked })}
-                />
-                <Input
-                  label="공급가(원)"
-                  type="number"
-                  value={state.supplyPrice}
-                  onChange={(e) => updateRow(booth.id, { supplyPrice: e.target.value })}
-                  disabled={!state.included}
-                />
-                <Input
-                  label="부가세(원)"
-                  type="number"
-                  value={state.vatAmount}
-                  onChange={(e) => updateRow(booth.id, { vatAmount: e.target.value })}
-                  disabled={!state.included}
-                />
-                <p className="text-label-sm text-on-surface-variant">
-                  총액{' '}
-                  {formatCurrency(Number(state.supplyPrice || 0) + Number(state.vatAmount || 0))}
-                </p>
-              </div>
-            )
-          })}
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => setShowIndividualRows((prev) => !prev)}
+          >
+            {showIndividualRows
+              ? '개별 부스 목록 접기'
+              : `개별 부스 목록 펼치기 (${registrableBooths.length}개)`}
+          </Button>
+
+          {showIndividualRows && (
+            <div className="border-outline-variant max-h-[480px] overflow-y-auto rounded border">
+              <table className="w-full text-left">
+                <thead className="bg-surface-container-low sticky top-0">
+                  <tr className="text-label-sm text-on-surface-variant">
+                    <th className="px-3 py-2 font-medium">부스</th>
+                    <th className="px-3 py-2 font-medium">공급가(원)</th>
+                    <th className="px-3 py-2 font-medium">부가세(원)</th>
+                    <th className="px-3 py-2 font-medium">총액</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrableBooths.map((booth) => {
+                    const state = stateFor(booth.id)
+                    return (
+                      <tr key={booth.id} className="border-outline-variant border-t">
+                        <td className="px-3 py-1.5">
+                          <Checkbox
+                            label={booth.boothNumber}
+                            checked={state.included}
+                            onChange={(e) => updateRow(booth.id, { included: e.target.checked })}
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <Input
+                            type="number"
+                            value={state.supplyPrice}
+                            onChange={(e) => updateRow(booth.id, { supplyPrice: e.target.value })}
+                            disabled={!state.included}
+                            className="w-28"
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <Input
+                            type="number"
+                            value={state.vatAmount}
+                            onChange={(e) => updateRow(booth.id, { vatAmount: e.target.value })}
+                            disabled={!state.included}
+                            className="w-24"
+                          />
+                        </td>
+                        <td className="text-label-sm text-on-surface-variant px-3 py-1.5">
+                          {formatCurrency(
+                            Number(state.supplyPrice || 0) + Number(state.vatAmount || 0)
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
