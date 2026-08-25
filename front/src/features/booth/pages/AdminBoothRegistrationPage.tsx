@@ -179,6 +179,14 @@ type ProductRowState = {
   vatAmount: string
 }
 
+/** "A-01" → "A". 하이픈이 없으면 부스 번호 전체를 그룹으로 본다. */
+const boothGroupPrefix = (boothNumber: string) => boothNumber.split('-')[0] || boothNumber
+
+type GroupPriceState = {
+  supplyPrice: string
+  vatAmount: string
+}
+
 /**
  * 선택한 공고에, 선택한 구역의 부스들을 판매 상품으로 일괄 등록하는 섹션.
  * 이미 그 공고에 상품으로 등록된 부스는 목록에서 아예 뺀다 — 중복 등록을 시도할 일이 없다.
@@ -192,6 +200,7 @@ const BulkCreateBoothProductsSection = ({
 }) => {
   const [formError, setFormError] = useState<string | null>(null)
   const [rowState, setRowState] = useState<Record<number, ProductRowState>>({})
+  const [groupPrices, setGroupPrices] = useState<Record<string, GroupPriceState>>({})
   const {
     data: booths,
     isPending: boothsPending,
@@ -234,6 +243,35 @@ const BulkCreateBoothProductsSection = ({
     setRowState((prev) => ({ ...prev, [boothId]: { ...stateFor(boothId), ...patch } }))
   }
 
+  const groups = registrableBooths.reduce<Record<string, typeof registrableBooths>>(
+    (acc, booth) => {
+      const key = boothGroupPrefix(booth.boothNumber)
+      acc[key] = [...(acc[key] ?? []), booth]
+      return acc
+    },
+    {}
+  )
+  const groupKeys = Object.keys(groups).sort()
+
+  const groupPriceFor = (key: string): GroupPriceState =>
+    groupPrices[key] ?? { supplyPrice: '', vatAmount: '0' }
+
+  const updateGroupPrice = (key: string, patch: Partial<GroupPriceState>) => {
+    setGroupPrices((prev) => ({ ...prev, [key]: { ...groupPriceFor(key), ...patch } }))
+  }
+
+  const applyGroupPrice = (key: string) => {
+    const { supplyPrice, vatAmount } = groupPriceFor(key)
+    if (!supplyPrice) return
+    setRowState((prev) => {
+      const next = { ...prev }
+      for (const booth of groups[key]) {
+        next[booth.id] = { included: true, supplyPrice, vatAmount: vatAmount || '0' }
+      }
+      return next
+    })
+  }
+
   const handleSubmit = () => {
     setFormError(null)
     const selected = registrableBooths.filter((booth) => stateFor(booth.id).included)
@@ -272,6 +310,48 @@ const BulkCreateBoothProductsSection = ({
           description="이 구역의 부스가 이미 전부 이 공고의 판매 상품으로 등록돼 있거나, 구역에 등록된 부스가 없습니다."
         />
       ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-label-sm text-on-surface-variant">
+            그룹별 가격 일괄 적용 — 부스 번호 접두어(A, B, C…)가 같은 부스끼리 한 번에 가격을
+            채웁니다.
+          </p>
+          {groupKeys.map((key) => {
+            const price = groupPriceFor(key)
+            return (
+              <div
+                key={key}
+                className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[auto_1fr_1fr_auto]"
+              >
+                <p className="text-label-md font-medium">
+                  {key}그룹 ({groups[key].length}개)
+                </p>
+                <Input
+                  label="공급가(원)"
+                  type="number"
+                  value={price.supplyPrice}
+                  onChange={(e) => updateGroupPrice(key, { supplyPrice: e.target.value })}
+                />
+                <Input
+                  label="부가세(원)"
+                  type="number"
+                  value={price.vatAmount}
+                  onChange={(e) => updateGroupPrice(key, { vatAmount: e.target.value })}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => applyGroupPrice(key)}
+                >
+                  그룹에 적용
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {registrableBooths.length > 0 && (
         <div className="flex flex-col gap-3">
           {registrableBooths.map((booth) => {
             const state = stateFor(booth.id)
