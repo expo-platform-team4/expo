@@ -93,6 +93,11 @@ public enum ErrorCode {
     VENUE_RESERVATION_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "사용 종료 일시는 시작 일시보다 늦어야 합니다."),
     VENUE_RESERVATION_PERIOD_CONFLICT(HttpStatus.CONFLICT, "같은 장소·기간에 이미 확정된 예약이 있습니다."),
     VENUE_RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 장소 예약입니다."),
+    // 위와 갈라 두는 이유: 위는 "내가 지정한 예약 번호를 못 찾았다" 이고, 아래는 "이 요청에 예약이
+    // 아직 없다" 다. 관리자는 초안 생성 화면에서 예약을 지정한 적이 없으므로 위 문구를 받으면
+    // 무엇을 하라는 말인지 알 수 없다. 실제로 그렇게 막혔다.
+    VENUE_RESERVATION_NOT_CONFIRMED(
+            HttpStatus.CONFLICT, "장소 예약이 확정되지 않은 요청입니다. 공고 신청 관리에서 장소 예약을 먼저 확정해 주세요."),
     VENUE_RESERVATION_ALREADY_RELEASED(HttpStatus.CONFLICT, "이미 해제되었거나 취소된 예약입니다."),
     VENUE_RESERVATION_LINKED_TO_ACTIVE_NOTICE(
             HttpStatus.CONFLICT, "진행 중인 모집공고에 연결된 예약입니다. 공고를 먼저 취소해야 해제할 수 있습니다."),

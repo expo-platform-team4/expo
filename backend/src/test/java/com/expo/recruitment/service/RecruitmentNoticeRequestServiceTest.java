@@ -24,6 +24,7 @@ import com.expo.recruitment.entity.RecruitmentNoticeRequestHistory;
 import com.expo.recruitment.entity.RecruitmentNoticeRequestStatus;
 import com.expo.recruitment.entity.VenueConflictStatus;
 import com.expo.recruitment.entity.VenueDecision;
+import com.expo.recruitment.repository.RecruitmentNoticeRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestHistoryRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestRepository;
 import com.expo.recruitment.repository.RecruitmentNoticeRequestZoneRepository;
@@ -60,6 +61,7 @@ class RecruitmentNoticeRequestServiceTest {
     private VenueZoneRepository venueZoneRepository;
     private VenueReservationRepository venueReservationRepository;
     private ExpoRepository expoRepository;
+    private RecruitmentNoticeRepository recruitmentNoticeRepository;
     private RecruitmentNoticeRequestService service;
 
     @BeforeEach
@@ -76,6 +78,7 @@ class RecruitmentNoticeRequestServiceTest {
         Expo expo = mock(Expo.class);
         when(expo.getHostClientId()).thenReturn(HOST_CLIENT_ID);
         when(expoRepository.findById(EXPO_ID)).thenReturn(Optional.of(expo));
+        recruitmentNoticeRepository = mock(RecruitmentNoticeRepository.class);
         service =
                 new RecruitmentNoticeRequestService(
                         recruitmentNoticeRequestRepository,
@@ -86,6 +89,7 @@ class RecruitmentNoticeRequestServiceTest {
                         venueZoneRepository,
                         venueReservationRepository,
                         expoRepository,
+                        recruitmentNoticeRepository,
                         new RecruitmentNoticeRequestConverter());
     }
 

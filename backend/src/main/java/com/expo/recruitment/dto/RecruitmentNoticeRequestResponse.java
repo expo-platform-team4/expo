@@ -28,4 +28,10 @@ public record RecruitmentNoticeRequestResponse(
         @Schema(description = "장소 충돌 검토 상태") VenueConflictStatus venueConflictStatus,
         @Schema(description = "장소 최종 결정") VenueDecision venueDecision,
         @Schema(description = "생성 일시") Instant createdAt,
-        @Schema(description = "수정 일시") Instant updatedAt) {}
+        @Schema(description = "수정 일시") Instant updatedAt,
+        @Schema(
+                        description =
+                                "장소 예약이 확정되어 있는지. 이 요청으로 공고 초안을 만들 수 있는 조건 중 하나다 "
+                                        + "(예약이 한 건도 없거나 해제된 예약이 섞여 있으면 false)")
+                boolean venueReservationConfirmed,
+        @Schema(description = "이 요청으로 만든 공고가 이미 있는지. 요청 하나당 공고는 하나다") boolean noticeCreated) {}
