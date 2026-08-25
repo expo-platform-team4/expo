@@ -69,6 +69,7 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const [rows, setRows] = useState<BoothRow[]>([])
   const [bulkCount, setBulkCount] = useState('10')
   const [formError, setFormError] = useState<string | null>(null)
+  const [showExistingBooths, setShowExistingBooths] = useState(false)
   const { data: existingBooths } = useAdminBooths(zoneId)
   const createMutation = useCreateBoothsBulk(zoneId ?? 0)
 
@@ -127,13 +128,23 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
     <Card className="flex flex-col gap-4">
       <CardTitle>부스 공간 일괄 등록</CardTitle>
       {existingBooths && existingBooths.length > 0 && (
-        <div>
-          <p className="text-label-sm text-on-surface-variant mb-1">
-            이미 등록된 부스 {existingBooths.length}개
-          </p>
-          <p className="text-body-md text-on-surface">
-            {existingBooths.map((booth) => booth.boothNumber).join(', ')}
-          </p>
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            onClick={() => setShowExistingBooths((prev) => !prev)}
+          >
+            {showExistingBooths
+              ? '이미 등록된 부스 목록 접기'
+              : `이미 등록된 부스 ${existingBooths.length}개 보기`}
+          </Button>
+          {showExistingBooths && (
+            <p className="text-body-md text-on-surface border-outline-variant max-h-40 overflow-y-auto rounded border p-3">
+              {existingBooths.map((booth) => booth.boothNumber).join(', ')}
+            </p>
+          )}
         </div>
       )}
 
