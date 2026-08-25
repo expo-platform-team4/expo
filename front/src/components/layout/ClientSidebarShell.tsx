@@ -16,17 +16,41 @@ import { ErrorState, LoadingBlock } from '@/components/ui'
 import { useLogout } from '@/features/auth/hooks'
 import { useClientDashboardProfile } from '@/features/client/hooks'
 
-import { SidebarShell, type SidebarMenuItem } from './SidebarShell'
+import { SidebarShell, type SidebarMenuSection } from './SidebarShell'
 
-const CLIENT_MENU_ITEMS: SidebarMenuItem[] = [
-  { label: '대시보드', href: '/client/dashboard', icon: LayoutDashboard },
-  { label: '내 박람회', href: '/client/expos', icon: Building2 },
-  { label: '부스 관리', href: '/client/booths', icon: Store },
-  { label: '모집공고 요청 현황', href: '/client/recruitment-notice-requests', icon: Megaphone },
-  { label: '배너 노출 신청', href: '/client/banner-requests', icon: ImageIcon },
-  { label: '참여 신청 내역', href: '/client/participations', icon: Users },
-  { label: '정산 리포트', href: '/client/settlements', icon: Receipt },
-  { label: '체크인 현황', href: '/client/check-in', icon: ScanLine },
+/**
+ * CLIENT 계정은 "박람회 주최사"와 "부스 참가기업" 두 역할을 겸한다 — 같은 계정으로 자기
+ * 박람회도 열고, 남의 박람회에 부스로 참가도 한다. 이 둘을 섞어서 나열하면 지금 내가 뭘
+ * 하려는 화면인지 헷갈려서, 역할별로 묶고 그 안에서는 실제 진행 순서대로 둔다.
+ */
+const CLIENT_MENU_SECTIONS: SidebarMenuSection[] = [
+  { items: [{ label: '대시보드', href: '/client/dashboard', icon: LayoutDashboard }] },
+  {
+    title: '주최사 기능',
+    items: [
+      { label: '내 박람회', href: '/client/expos', icon: Building2 },
+      {
+        label: '모집공고 요청 현황',
+        href: '/client/recruitment-notice-requests',
+        icon: Megaphone,
+      },
+      { label: '체크인 현황', href: '/client/check-in', icon: ScanLine },
+    ],
+  },
+  {
+    title: '참가기업 기능',
+    items: [
+      { label: '부스 관리', href: '/client/booths', icon: Store },
+      { label: '참여 신청 내역', href: '/client/participations', icon: Users },
+    ],
+  },
+  {
+    title: '기타',
+    items: [
+      { label: '배너 노출 신청', href: '/client/banner-requests', icon: ImageIcon },
+      { label: '정산 리포트', href: '/client/settlements', icon: Receipt },
+    ],
+  },
 ]
 
 /** `/client/**` 전용 조립. `MemberSidebarShell` 과 `SidebarShell` 은 공유하고 데이터 출처만 다르다. */
@@ -53,7 +77,7 @@ export const ClientSidebarShell = ({ children }: { children: ReactNode }) => {
         subtitle: profile.companyName,
         editHref: '/client/profile',
       }}
-      menuItems={CLIENT_MENU_ITEMS}
+      sections={CLIENT_MENU_SECTIONS}
       onLogout={() => logoutMutation.mutate()}
     >
       {children}

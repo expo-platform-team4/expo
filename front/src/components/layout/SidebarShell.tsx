@@ -15,6 +15,11 @@ export type SidebarMenuItem = {
   icon: ComponentType<{ className?: string }>
 }
 
+export type SidebarMenuSection = {
+  title?: string
+  items: SidebarMenuItem[]
+}
+
 export type SidebarProfile = {
   name: string
   subtitle: string
@@ -31,12 +36,12 @@ export type SidebarProfile = {
  */
 export const SidebarShell = ({
   profile,
-  menuItems,
+  sections,
   onLogout,
   children,
 }: {
   profile: SidebarProfile
-  menuItems: SidebarMenuItem[]
+  sections: SidebarMenuSection[]
   onLogout: () => void
   children: ReactNode
 }) => {
@@ -70,26 +75,35 @@ export const SidebarShell = ({
 
           <hr className="border-outline-variant" />
 
-          <nav className="flex flex-col gap-1">
-            {menuItems.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'text-label-md flex items-center gap-3 rounded px-3 py-2.5 font-medium transition-colors',
-                    active
-                      ? 'bg-secondary-container text-on-secondary'
-                      : 'text-on-surface-variant hover:bg-surface-container-low'
-                  )}
-                >
-                  <Icon className="h-5 w-5" aria-hidden />
-                  {item.label}
-                </Link>
-              )
-            })}
+          <nav className="flex flex-col gap-4">
+            {sections.map((section, index) => (
+              <div key={section.title ?? index} className="flex flex-col gap-1">
+                {section.title && (
+                  <p className="text-label-sm text-on-surface-variant px-3 font-semibold">
+                    {section.title}
+                  </p>
+                )}
+                {section.items.map((item) => {
+                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'text-label-md flex items-center gap-3 rounded px-3 py-2.5 font-medium transition-colors',
+                        active
+                          ? 'bg-secondary-container text-on-secondary'
+                          : 'text-on-surface-variant hover:bg-surface-container-low'
+                      )}
+                    >
+                      <Icon className="h-5 w-5" aria-hidden />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
           </nav>
 
           <hr className="border-outline-variant" />

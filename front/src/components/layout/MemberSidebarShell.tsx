@@ -6,11 +6,15 @@ import type { ReactNode } from 'react'
 import { ErrorState, LoadingBlock } from '@/components/ui'
 import { useLogout, useMyProfile } from '@/features/auth/hooks'
 
-import { SidebarShell, type SidebarMenuItem } from './SidebarShell'
+import { SidebarShell, type SidebarMenuSection } from './SidebarShell'
 
-const MEMBER_MENU_ITEMS: SidebarMenuItem[] = [
-  { label: '예매 내역', href: '/mypage/orders', icon: Receipt },
-  { label: '나의 티켓', href: '/mypage/tickets', icon: Ticket },
+const MEMBER_MENU_SECTIONS: SidebarMenuSection[] = [
+  {
+    items: [
+      { label: '예매 내역', href: '/mypage/orders', icon: Receipt },
+      { label: '나의 티켓', href: '/mypage/tickets', icon: Ticket },
+    ],
+  },
 ]
 
 /** `/mypage/**` 전용 조립. `SidebarShell` 은 그대로 두고 프로필·메뉴만 회원용으로 채운다. */
@@ -40,7 +44,7 @@ export const MemberSidebarShell = ({ children }: { children: ReactNode }) => {
           ? `/api/files/${profile.profileImageFileId}/content`
           : undefined,
       }}
-      menuItems={MEMBER_MENU_ITEMS}
+      sections={MEMBER_MENU_SECTIONS}
       onLogout={() => logoutMutation.mutate()}
     >
       {children}
