@@ -131,6 +131,15 @@ public class SecurityConfig {
                                 "/api/recruitment-notices",
                                 "/api/recruitment-notices/*")
                         .permitAll()
+                        // 메인 상단 광고 배너(B-API-024). 로그인 화면에도 뜰 수 있어야 하므로
+                        // 비로그인에 열어야 한다 — BannerPublicController 는 처음부터 공개용으로
+                        // 만들어졌는데 이 규칙만 빠져 있었다.
+                        //
+                        // /api/banners/** 가 아니라 경로를 적는다. 위 expos·recruitment-notices 와
+                        // 같은 방식이다 — 나중에 이 접두어 아래에 관리자용 조회가 생겨도
+                        // 저절로 열리지 않는다.
+                        .requestMatchers(HttpMethod.GET, "/api/banners/active")
+                        .permitAll()
                         // 장소 카탈로그(읽기 전용). availability 는 여기 없다 —
                         // 부르는 화면이 없어 기본값(인증 필요)에 맡긴다.
                         .requestMatchers(
