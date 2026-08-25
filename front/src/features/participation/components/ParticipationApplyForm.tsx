@@ -72,9 +72,7 @@ export const ParticipationApplyForm = ({ noticeId }: { noticeId: number }) => {
         companyNameSnapshot: values.companyNameSnapshot,
         participationPurpose: values.participationPurpose || undefined,
         exhibitDescription: values.exhibitDescription || undefined,
-        selectedBoothProductId: values.selectedBoothProductId
-          ? Number(values.selectedBoothProductId)
-          : undefined,
+        selectedBoothProductId: Number(values.selectedBoothProductId),
       },
       { onError: (error) => setFormError(getErrorMessage(error)) }
     )
@@ -101,11 +99,11 @@ export const ParticipationApplyForm = ({ noticeId }: { noticeId: number }) => {
       />
       <Select
         label="선택한 부스 상품"
-        hint="선택 항목입니다. 이 공고에 등록된, 구매 가능한 부스 상품만 나타납니다."
+        hint="이 공고에 등록된, 구매 가능한 부스 상품 중 하나를 반드시 선택해야 신청할 수 있습니다."
         error={errors.selectedBoothProductId?.message}
         {...register('selectedBoothProductId')}
       >
-        <option value="">선택 안 함</option>
+        <option value="">부스를 선택하세요</option>
         {boothProducts?.map((product) => (
           <option key={product.id} value={product.id}>
             {product.boothNumber} · {product.venueHallName} {product.venueZoneName} ·{' '}

@@ -172,20 +172,6 @@ class ParticipationApplicationServiceTest {
     }
 
     @Test
-    void createSucceedsWithoutBoothProduct() {
-        when(recruitmentNoticeRepository.findById(NOTICE_ID))
-                .thenReturn(Optional.of(noticeWithStatus(RecruitmentNoticeStatus.OPEN)));
-        when(participationApplicationRepository.saveAndFlush(any()))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        ParticipationApplicationResponse response =
-                service.create(CLIENT_USER_ID, requestWithBoothProduct(null));
-
-        assertThat(response.recruitmentNoticeId()).isEqualTo(NOTICE_ID);
-        assertThat(response.companyNameSnapshot()).isEqualTo("테스트 참가기업");
-    }
-
-    @Test
     void getMineRejectsWhenNotFoundOrNotOwned() {
         when(participationApplicationRepository.findByIdAndClientUserId(1L, CLIENT_USER_ID))
                 .thenReturn(Optional.empty());

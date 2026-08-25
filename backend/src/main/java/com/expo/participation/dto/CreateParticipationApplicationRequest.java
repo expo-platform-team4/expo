@@ -16,4 +16,5 @@ public record CreateParticipationApplicationRequest(
                 String companyNameSnapshot,
         @Schema(description = "참여 목적") String participationPurpose,
         @Schema(description = "전시 품목 설명") String exhibitDescription,
-        @Schema(description = "선택한 부스 상품 ID") Long selectedBoothProductId) {}
+        @Schema(description = "선택한 부스 상품 ID") @NotNull(message = "부스 상품 선택은 필수입니다.")
+                Long selectedBoothProductId) {}

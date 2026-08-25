@@ -40,7 +40,7 @@ export type CreateParticipationApplicationPayload = {
   companyNameSnapshot: string
   participationPurpose?: string
   exhibitDescription?: string
-  selectedBoothProductId?: number
+  selectedBoothProductId: number
 }
 
 /** `POST /api/client/participation-applications` — 참여 신청서 작성. CLIENT 전용. */
@@ -82,7 +82,7 @@ export type UpdateParticipationApplicationPayload = {
   companyNameSnapshot: string
   participationPurpose?: string
   exhibitDescription?: string
-  selectedBoothProductId?: number
+  selectedBoothProductId: number
 }
 
 /** `PATCH /api/client/participation-applications/{applicationId}` — 참여 신청서 초안 수정. */
