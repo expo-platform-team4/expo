@@ -50,6 +50,20 @@ const boothNumberForIndex = (index: number) => {
   return `${prefix}-${String(seq).padStart(2, '0')}`
 }
 
+const AUTO_BOOTH_NUMBER_PATTERN = /^([A-Z])-(\d+)$/
+
+/**
+ * "A-01" 형태의 자동 채번 부스 번호를 0부터 시작하는 전체 순번으로 되돌린다. 이 형태가
+ * 아닌(수동으로 붙인) 부스 번호는 채번 기준에서 무시하도록 null 을 돌려준다.
+ */
+const indexForBoothNumber = (boothNumber: string): number | null => {
+  const match = AUTO_BOOTH_NUMBER_PATTERN.exec(boothNumber.trim().toUpperCase())
+  if (!match) return null
+  const seq = Number(match[2])
+  if (!Number.isInteger(seq) || seq < 1) return null
+  return (match[1].charCodeAt(0) - 65) * AUTO_PREFIX_GROUP_SIZE + (seq - 1)
+}
+
 /** 구역 안에 부스 공간을 여러 개 한 번에 등록하는 반복 행 폼. */
 const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const [rows, setRows] = useState<BoothRow[]>([])
@@ -66,7 +80,15 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const addAutoNumberedRows = () => {
     const count = Number(bulkCount)
     if (!count || count < 1) return
-    const base = (existingBooths?.length ?? 0) + rows.length
+    const knownIndices = [
+      ...(existingBooths ?? []).map((booth) => indexForBoothNumber(booth.boothNumber)),
+      ...rows.map((row) => indexForBoothNumber(row.boothNumber)),
+    ]
+    const maxIndex = knownIndices.reduce<number>(
+      (max, index) => (index !== null && index > max ? index : max),
+      -1
+    )
+    const base = maxIndex + 1
     const newRows = Array.from({ length: count }, (_, i) => ({
       boothNumber: boothNumberForIndex(base + i),
     }))
@@ -483,7 +505,11 @@ const AdminBoothRegistrationPage = () => {
         </Card>
 
         <BulkCreateBoothsSection key={zoneId ?? 'none'} zoneId={zoneId} />
-        <BulkCreateBoothProductsSection noticeId={noticeId} zoneId={zoneId} />
+        <BulkCreateBoothProductsSection
+          key={`${zoneId ?? 'none'}-${noticeId ?? 'none'}`}
+          noticeId={noticeId}
+          zoneId={zoneId}
+        />
       </div>
     </div>
   )
