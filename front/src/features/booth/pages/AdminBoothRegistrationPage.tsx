@@ -34,23 +34,27 @@ import {
 
 type BoothRow = {
   boothNumber: string
-  shapeCode: string
-  width: string
-  depth: string
-  sortOrder: string
 }
 
-const emptyBoothRow = (): BoothRow => ({
-  boothNumber: '',
-  shapeCode: 'STANDARD-3X3',
-  width: '3',
-  depth: '3',
-  sortOrder: '',
-})
+/** 기본 부스 규격 — 화면에서는 입력받지 않고 그대로 등록에 실어 보낸다. */
+const DEFAULT_SHAPE_CODE = 'STANDARD-3X3'
+const DEFAULT_WIDTH = '3'
+const DEFAULT_DEPTH = '3'
+
+/** 자동 채번 시 몇 개마다 접두어(A, B, C…)를 바꿀지. */
+const AUTO_PREFIX_GROUP_SIZE = 100
+
+/** 0부터 시작하는 전체 순번을 "A-01" 형태의 부스 번호로 바꾼다 — 100개마다 접두어가 넘어간다. */
+const boothNumberForIndex = (index: number) => {
+  const prefix = String.fromCharCode(65 + Math.floor(index / AUTO_PREFIX_GROUP_SIZE))
+  const seq = (index % AUTO_PREFIX_GROUP_SIZE) + 1
+  return `${prefix}-${String(seq).padStart(2, '0')}`
+}
 
 /** 구역 안에 부스 공간을 여러 개 한 번에 등록하는 반복 행 폼. */
 const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
-  const [rows, setRows] = useState<BoothRow[]>([emptyBoothRow()])
+  const [rows, setRows] = useState<BoothRow[]>([])
+  const [bulkCount, setBulkCount] = useState('10')
   const [formError, setFormError] = useState<string | null>(null)
   const { data: existingBooths } = useAdminBooths(zoneId)
   const createMutation = useCreateBoothsBulk(zoneId ?? 0)
@@ -58,29 +62,33 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const updateRow = (index: number, patch: Partial<BoothRow>) => {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
-  const addRow = () => setRows((prev) => [...prev, emptyBoothRow()])
   const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index))
+
+  const addAutoNumberedRows = () => {
+    const count = Number(bulkCount)
+    if (!count || count < 1) return
+    const base = (existingBooths?.length ?? 0) + rows.length
+    const newRows = Array.from({ length: count }, (_, i) => ({
+      boothNumber: boothNumberForIndex(base + i),
+    }))
+    setRows((prev) => [...prev, ...newRows])
+  }
 
   const handleSubmit = () => {
     if (!zoneId) return
     setFormError(null)
-    if (
-      rows.some(
-        (row) => !row.boothNumber.trim() || !row.shapeCode.trim() || !row.width || !row.depth
-      )
-    ) {
-      setFormError('부스 번호·형태 코드·가로·세로는 모든 행에서 채워야 합니다.')
+    if (rows.some((row) => !row.boothNumber.trim())) {
+      setFormError('부스 번호는 모든 행에서 채워야 합니다.')
       return
     }
     const payload = rows.map((row) => ({
       boothNumber: row.boothNumber.trim(),
-      shapeCode: row.shapeCode.trim(),
-      width: Number(row.width),
-      depth: Number(row.depth),
-      sortOrder: row.sortOrder ? Number(row.sortOrder) : undefined,
+      shapeCode: DEFAULT_SHAPE_CODE,
+      width: Number(DEFAULT_WIDTH),
+      depth: Number(DEFAULT_DEPTH),
     }))
     createMutation.mutate(payload, {
-      onSuccess: () => setRows([emptyBoothRow()]),
+      onSuccess: () => setRows([]),
       onError: (err) => setFormError(getErrorMessage(err)),
     })
   }
@@ -108,67 +116,58 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {rows.map((row, index) => (
-          <div
-            key={index}
-            className="border-outline-variant grid grid-cols-2 items-end gap-2 rounded border p-3 sm:grid-cols-[1.2fr_1.2fr_0.8fr_0.8fr_0.8fr_auto]"
-          >
-            <Input
-              label={index === 0 ? '부스 번호' : undefined}
-              placeholder="A-01"
-              value={row.boothNumber}
-              onChange={(e) => updateRow(index, { boothNumber: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '형태 코드' : undefined}
-              placeholder="STANDARD-3X3"
-              value={row.shapeCode}
-              onChange={(e) => updateRow(index, { shapeCode: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '가로(m)' : undefined}
-              type="number"
-              step="0.01"
-              value={row.width}
-              onChange={(e) => updateRow(index, { width: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '세로(m)' : undefined}
-              type="number"
-              step="0.01"
-              value={row.depth}
-              onChange={(e) => updateRow(index, { depth: e.target.value })}
-            />
-            <Input
-              label={index === 0 ? '정렬순서' : undefined}
-              type="number"
-              placeholder="선택"
-              value={row.sortOrder}
-              onChange={(e) => updateRow(index, { sortOrder: e.target.value })}
-            />
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={() => removeRow(index)}
-              disabled={rows.length === 1}
-              aria-label="이 행 삭제"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        ))}
+      <div className="flex items-end gap-2">
+        <Input
+          label="생성 개수"
+          type="number"
+          min="1"
+          value={bulkCount}
+          onChange={(e) => setBulkCount(e.target.value)}
+          className="w-32"
+        />
+        <Button type="button" variant="secondary" size="sm" onClick={addAutoNumberedRows}>
+          자동 채번해서 추가
+        </Button>
       </div>
+      <p className="text-label-sm text-on-surface-variant -mt-2">
+        부스 번호는 100개마다 A, B, C… 접두어가 바뀌며 자동으로 채워집니다(예: A-01 ~ A-100, B-01
+        ~). 필요하면 아래에서 개별 수정할 수 있습니다.
+      </p>
 
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" size="sm" onClick={addRow}>
-          행 추가
-        </Button>
-        <Button type="button" size="sm" loading={createMutation.isPending} onClick={handleSubmit}>
-          일괄 등록
-        </Button>
-      </div>
+      {rows.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {rows.map((row, index) => (
+            <div
+              key={index}
+              className="border-outline-variant grid grid-cols-[1fr_auto] items-end gap-2 rounded border p-3"
+            >
+              <Input
+                label={index === 0 ? '부스 번호' : undefined}
+                placeholder="A-01"
+                value={row.boothNumber}
+                onChange={(e) => updateRow(index, { boothNumber: e.target.value })}
+              />
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => removeRow(index)}
+                aria-label="이 행 삭제"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="flex gap-2">
+          <Button type="button" size="sm" loading={createMutation.isPending} onClick={handleSubmit}>
+            일괄 등록
+          </Button>
+        </div>
+      )}
       {formError && <p className="text-label-sm text-error">{formError}</p>}
     </Card>
   )
@@ -396,7 +395,7 @@ const AdminBoothRegistrationPage = () => {
           )}
         </Card>
 
-        <BulkCreateBoothsSection zoneId={zoneId} />
+        <BulkCreateBoothsSection key={zoneId ?? 'none'} zoneId={zoneId} />
         <BulkCreateBoothProductsSection noticeId={noticeId} zoneId={zoneId} />
       </div>
     </div>
