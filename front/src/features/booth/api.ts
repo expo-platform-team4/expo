@@ -82,7 +82,7 @@ export type BoothContentFile = {
 export type BoothContentLink = {
   id: number
   linkType: ExternalLinkType
-  label: string
+  label: string | null
   url: string
   sortOrder: number
 }

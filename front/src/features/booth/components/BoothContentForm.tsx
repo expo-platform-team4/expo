@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button, Input, Textarea } from '@/components/ui'
@@ -33,12 +33,20 @@ const SingleImageUploader = ({
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 로컬 미리보기용 objectURL은 쓰고 나면 반드시 지운다 — 안 지우면 메모리에 계속 쌓인다.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
 
     setError(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(URL.createObjectURL(file))
     setIsUploading(true)
     try {
@@ -86,6 +94,7 @@ const SingleImageUploader = ({
               type="button"
               className="text-label-sm text-error text-left"
               onClick={() => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl)
                 setPreviewUrl(null)
                 onChange(null)
               }}
