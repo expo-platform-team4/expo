@@ -19,17 +19,71 @@ import {
   Textarea,
 } from '@/components/ui'
 import { useCreateBoothOrder } from '@/features/booth/hooks'
+import { formatDateTime } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errorMessage'
 
 import { BoothProductLayoutPreview } from '../components/BoothProductLayoutPreview'
 import {
   useAvailableBoothProducts,
   useMyParticipationApplication,
+  useMyParticipationApplicationHistory,
   useUpdateParticipationApplication,
   useWithdrawParticipationApplication,
 } from '../hooks'
 import { applyParticipationSchema, type ApplyParticipationFormValues } from '../schemas'
-import type { ParticipationApplication, ParticipationApplicationStatus } from '../api'
+import type {
+  ParticipationApplication,
+  ParticipationApplicationHistoryActionType,
+  ParticipationApplicationStatus,
+} from '../api'
+
+const HISTORY_ACTION_LABEL: Record<ParticipationApplicationHistoryActionType, string> = {
+  CHECKED: '운영 확인',
+  CORRECTION_REQUESTED: '보완 요청',
+  CORRECTION_COMPLETED: '보완 완료',
+}
+
+/**
+ * 운영 확인·보완 요청 현황. 관리자가 `/admin/participation-applications`에서 처리한 내용을
+ * 신청 기업이 볼 수 있는 유일한 화면이다 — 그전까진 관리자만 보고 기업은 알 방법이 없었다.
+ */
+const ApplicationOperationStatus = ({ application }: { application: ParticipationApplication }) => {
+  const { data: history } = useMyParticipationApplicationHistory(application.id)
+
+  const latestCorrection = history?.find(
+    (entry) =>
+      entry.actionType === 'CORRECTION_REQUESTED' || entry.actionType === 'CORRECTION_COMPLETED'
+  )
+  const correctionPending = latestCorrection?.actionType === 'CORRECTION_REQUESTED'
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <CardTitle className="mb-0">운영 확인 현황</CardTitle>
+      <p className="text-label-sm text-on-surface-variant">
+        {application.adminCheckedAt
+          ? `운영 확인됨 · ${formatDateTime(application.adminCheckedAt)}`
+          : '아직 운영 확인 전입니다.'}
+      </p>
+
+      {correctionPending && (
+        <p className="bg-error-container text-on-error-container text-body-md rounded px-3 py-2">
+          보완 요청: {latestCorrection.message}
+        </p>
+      )}
+
+      {history && history.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {history.map((entry) => (
+            <li key={entry.id} className="text-label-sm text-on-surface-variant">
+              [{HISTORY_ACTION_LABEL[entry.actionType]}] {formatDateTime(entry.createdAt)}
+              {entry.message && ` · ${entry.message}`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
 
 const toFormValues = (application: ParticipationApplication): ApplyParticipationFormValues => ({
   companyNameSnapshot: application.companyNameSnapshot,
@@ -283,6 +337,10 @@ const ClientParticipationDetailPage = () => {
             <p className="text-label-sm text-error">{getErrorMessage(withdrawMutation.error)}</p>
           )}
         </Card>
+
+        {application.status !== 'DRAFT' && application.status !== 'CANCELED' && (
+          <ApplicationOperationStatus application={application} />
+        )}
 
         {isDraft && application.selectedBoothProductId != null && (
           <Card className="flex flex-col gap-3">

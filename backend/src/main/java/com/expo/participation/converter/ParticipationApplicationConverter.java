@@ -18,6 +18,7 @@ public class ParticipationApplicationConverter {
                 application.getSelectedBoothProductId(),
                 application.getBoothOrderId(),
                 application.getStatus(),
+                application.getAdminCheckedAt(),
                 application.getCreatedAt(),
                 application.getUpdatedAt());
     }

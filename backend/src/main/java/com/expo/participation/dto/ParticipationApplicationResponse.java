@@ -15,5 +15,6 @@ public record ParticipationApplicationResponse(
         @Schema(description = "선택한 부스 상품 ID") Long selectedBoothProductId,
         @Schema(description = "부스 주문 ID") Long boothOrderId,
         @Schema(description = "처리 상태") ParticipationApplicationStatus status,
+        @Schema(description = "관리자 확인 일시") Instant adminCheckedAt,
         @Schema(description = "생성 일시") Instant createdAt,
         @Schema(description = "수정 일시") Instant updatedAt) {}

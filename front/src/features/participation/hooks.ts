@@ -6,6 +6,7 @@ import {
   createParticipationApplication,
   getMyParticipationApplication,
   listAvailableBoothProducts,
+  listMyParticipationApplicationHistory,
   listMyParticipations,
   updateParticipationApplication,
   withdrawParticipationApplication,
@@ -41,6 +42,16 @@ export const useMyParticipations = () => {
     queryKey: participationKeys.myList(),
     queryFn: listMyParticipations,
     enabled: Boolean(accessToken),
+  })
+}
+
+/** 내 참여 신청서의 운영 확인·보완요청 이력. */
+export const useMyParticipationApplicationHistory = (applicationId: number | null) => {
+  const accessToken = useAuthStore((state) => state.accessToken)
+  return useQuery({
+    queryKey: participationKeys.history(applicationId ?? 0),
+    queryFn: () => listMyParticipationApplicationHistory(applicationId as number),
+    enabled: Boolean(accessToken) && applicationId !== null && Number.isFinite(applicationId),
   })
 }
 
