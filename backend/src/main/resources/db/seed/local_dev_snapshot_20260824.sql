@@ -84,13 +84,13 @@ INSERT INTO public.client_profiles VALUES (7, '1111111111', '전시참가 테스
 -- Data for Name: recruitment_notice_requests; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.recruitment_notice_requests VALUES (1, 4, '이엔이 테스트 박람회 부스 모집', '오버나이트 세션 테스트용 모집공고 요청입니다.', '2026-08-21 00:00:00+00', '2026-09-05 00:00:00+00', '2026-09-19 00:00:00+00', '2026-09-21 00:00:00+00', 1, 1, 5, NULL, 'APPROVED', 'RESOLVED', 'ALLOWED', NULL, NULL, 6, '2026-08-20 00:21:46.667512+00', '오버나이트 테스트 승인', '2026-08-20 00:21:13.824942+00', '2026-08-20 00:21:46.690057+00') ON CONFLICT DO NOTHING;
+INSERT INTO public.recruitment_notice_requests VALUES (1, 4, '이엔이 테스트 박람회 부스 모집', '오버나이트 세션 테스트용 모집공고 요청입니다.', '2026-08-21 00:00:00+00', '2026-09-05 00:00:00+00', '2026-09-19 00:00:00+00', '2026-09-21 00:00:00+00', 1, 1, 5, NULL, 'APPROVED', 'RESOLVED', 'ALLOWED', NULL, NULL, 6, '2026-08-20 00:21:46.667512+00', '오버나이트 테스트 승인', '2026-08-20 00:21:13.824942+00', '2026-08-20 00:21:46.690057+00', NULL) ON CONFLICT DO NOTHING;
 
 --
 -- Data for Name: recruitment_notices; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.recruitment_notices VALUES (1, 1, 4, '이엔이 테스트 박람회 부스 모집', '이엔이 테스트 박람회에서 함께할 참가 기업을 모집합니다. 오버나이트 세션 시드 데이터입니다.', '사업자등록번호 보유 기업', NULL, '2026-08-21 00:00:00+00', '2026-09-05 00:00:00+00', 'CLOSED', '2026-08-20 00:23:28.17262+00', '2026-08-20 04:30:40.980953+00', 6, '2026-08-20 00:23:21.239898+00', '2026-08-20 04:30:41.24258+00') ON CONFLICT DO NOTHING;
+INSERT INTO public.recruitment_notices VALUES (1, 1, 4, '이엔이 테스트 박람회 부스 모집', '이엔이 테스트 박람회에서 함께할 참가 기업을 모집합니다. 오버나이트 세션 시드 데이터입니다.', '사업자등록번호 보유 기업', NULL, '2026-08-21 00:00:00+00', '2026-09-05 00:00:00+00', 'CLOSED', '2026-08-20 00:23:28.17262+00', '2026-08-20 04:30:40.980953+00', 6, '2026-08-20 00:23:21.239898+00', '2026-08-20 04:30:41.24258+00', NULL) ON CONFLICT DO NOTHING;
 
 --
 -- Data for Name: booth_products; Type: TABLE DATA; Schema: public; Owner: -

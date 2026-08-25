@@ -33,6 +33,10 @@ public class RecruitmentNotice extends BaseTimeEntity {
     @Column(name = "host_client_id", nullable = false)
     private Long hostClientId;
 
+    /** 근거 요청의 {@code expoId} 를 그대로 이어받는다(host_client_id 와 같은 비정규화 패턴). */
+    @Column(name = "expo_id")
+    private Long expoId;
+
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -91,6 +95,12 @@ public class RecruitmentNotice extends BaseTimeEntity {
     public RecruitmentNotice withDetails(String eligibility, String submissionRequirements) {
         this.eligibility = eligibility;
         this.submissionRequirements = submissionRequirements;
+        return this;
+    }
+
+    /** 근거 요청의 expoId 를 이어받는다. */
+    public RecruitmentNotice withExpoId(Long expoId) {
+        this.expoId = expoId;
         return this;
     }
 

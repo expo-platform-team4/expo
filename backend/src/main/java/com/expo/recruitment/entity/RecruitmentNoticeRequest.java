@@ -30,6 +30,13 @@ public class RecruitmentNoticeRequest extends BaseTimeEntity {
     @Column(name = "host_client_id", nullable = false)
     private Long hostClientId;
 
+    /**
+     * 이 요청이 어느 박람회를 위한 것인지. 지금은 항상 NULL이다 — 모집공고 생성 주체를
+     * 클라이언트→관리자로 옮기는 작업이 뒤따라야 {@link #withExpoId} 로 실제 값이 들어간다.
+     */
+    @Column(name = "expo_id")
+    private Long expoId;
+
     @Column(nullable = false, length = 255)
     private String title;
 

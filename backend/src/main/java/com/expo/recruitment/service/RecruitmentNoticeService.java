@@ -121,7 +121,8 @@ public class RecruitmentNoticeService {
                                 request.applicationStartAt(),
                                 request.applicationEndAt(),
                                 createdByAdminId)
-                        .withDetails(request.eligibility(), request.submissionRequirements());
+                        .withDetails(request.eligibility(), request.submissionRequirements())
+                        .withExpoId(noticeRequest.getExpoId());
         RecruitmentNotice saved = recruitmentNoticeRepository.save(notice);
         reservations.forEach(r -> r.linkToNotice(saved.getId()));
         recruitmentNoticeHistoryRepository.save(
