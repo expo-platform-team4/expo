@@ -31,7 +31,7 @@ export type SidebarProfile = {
  * 마이페이지·클라이언트 포털이 공유하는 셸. Style.md 5-2 절 —
  * "둘이 완전히 같은 구조를 공유한다. 내용(메뉴 항목, 프로필 데이터)만 주입한다."
  *
- * 역할별로 다른 컴포넌트를 만들지 않는다 — `menuItems`·`profile` 로만 갈라서, 메뉴가
+ * 역할별로 다른 컴포넌트를 만들지 않는다 — `sections`·`profile` 로만 갈라서, 메뉴가
  * "회원 마이페이지용", "클라이언트 포털용" 처럼 겹치는 두 컴포넌트가 생기지 않게 한다.
  */
 export const SidebarShell = ({
