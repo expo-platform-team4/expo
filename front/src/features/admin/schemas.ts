@@ -88,7 +88,6 @@ export const createAdminNoticeRequestSchema = z
       .min(1, '목표 참가 기업 수는 필수입니다.')
       .regex(/^\d+$/, '숫자만 입력해 주세요.')
       .refine((value) => Number(value) >= 1, '목표 참가 기업 수는 1 이상이어야 합니다.'),
-    requestedBoothConfig: z.string().optional(),
   })
   // 신청 마감이 행사 시작보다 늦으면 행사가 시작한 뒤에야 모집을 마감하는 꼴이 된다 — 백엔드
   // `APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD` 검증과 같은 규칙이다.

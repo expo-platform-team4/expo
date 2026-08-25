@@ -62,7 +62,6 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
       venueHallId: '',
       venueZoneIds: [],
       targetCompanyCount: '',
-      requestedBoothConfig: '',
     },
   })
 
@@ -85,6 +84,9 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
   // 직접 고르게 둔다. 값이 있을 때만 잠근다.
   const hallLocked = Boolean(openingRequest?.desiredVenueHallId)
   const zoneLocked = Boolean(openingRequest?.desiredVenueZoneId)
+  const lockedZone = zoneLocked
+    ? venueZones?.find((zone) => zone.id === openingRequest?.desiredVenueZoneId)
+    : undefined
 
   useEffect(() => {
     if (!openingRequest) return
@@ -135,7 +137,6 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
         venueHallId: Number(values.venueHallId),
         venueZoneIds: values.venueZoneIds.map(Number),
         targetCompanyCount: Number(values.targetCompanyCount),
-        requestedBoothConfig: values.requestedBoothConfig || undefined,
       },
       {
         onSuccess: () => router.push('/admin/recruitment-notice-requests'),
@@ -254,44 +255,49 @@ const AdminRecruitmentNoticeRequestFormPage = () => {
             ))}
           </Select>
 
-          <Select
-            label="희망 구역 (여러 개 선택 가능)"
-            multiple
-            size={4}
-            disabled={zoneLocked || !selectedHallId}
-            hint={
-              zoneLocked
-                ? '박람회 신청 때 정한 구역입니다.'
-                : !selectedHallId
+          {zoneLocked ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-md text-on-surface-variant font-medium">희망 구역</label>
+              <div className="border-outline-variant bg-surface-container-low text-body-md flex h-11 items-center rounded border px-3">
+                {lockedZone
+                  ? `${lockedZone.name} · 최대 ${lockedZone.maxBoothCount}부스`
+                  : '불러오는 중…'}
+              </div>
+              <p className="text-label-sm text-on-surface-variant">
+                박람회 신청 때 정한 구역입니다.
+              </p>
+            </div>
+          ) : (
+            <Select
+              label="희망 구역 (여러 개 선택 가능)"
+              multiple
+              size={4}
+              disabled={!selectedHallId}
+              hint={
+                !selectedHallId
                   ? '먼저 전시관(홀)을 선택해 주세요.'
                   : 'Ctrl(⌘) 클릭으로 여러 구역을 고를 수 있습니다.'
-            }
-            error={errors.venueZoneIds?.message}
-            {...register('venueZoneIds')}
-          >
-            {zonesPending && selectedHallId ? (
-              <option disabled>불러오는 중…</option>
-            ) : (
-              venueZones?.map((zone) => (
-                <option key={zone.id} value={zone.id}>
-                  {zone.name} · 최대 {zone.maxBoothCount}부스
-                </option>
-              ))
-            )}
-          </Select>
+              }
+              error={errors.venueZoneIds?.message}
+              {...register('venueZoneIds')}
+            >
+              {zonesPending && selectedHallId ? (
+                <option disabled>불러오는 중…</option>
+              ) : (
+                venueZones?.map((zone) => (
+                  <option key={zone.id} value={zone.id}>
+                    {zone.name} · 최대 {zone.maxBoothCount}부스
+                  </option>
+                ))
+              )}
+            </Select>
+          )}
           <Input
             label="목표 참가 기업 수"
             inputMode="numeric"
             error={errors.targetCompanyCount?.message}
             {...register('targetCompanyCount')}
           />
-          <Textarea
-            label="희망 부스 구성"
-            hint="선택 항목입니다."
-            error={errors.requestedBoothConfig?.message}
-            {...register('requestedBoothConfig')}
-          />
-
           {formError && <p className="text-label-sm text-error">{formError}</p>}
 
           <Button type="submit" size="lg" loading={createMutation.isPending}>
