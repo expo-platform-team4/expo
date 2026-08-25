@@ -305,7 +305,7 @@ const AdminBoothContentsPage = () => {
   return (
     <div>
       <PageHeader
-        title="부스 콘텐츠 관리"
+        title="부스 콘텐츠 검수"
         description="기업이 작성한 부스 소개를 검수·승인·숨김 처리합니다."
       />
 

@@ -14,7 +14,7 @@ export type AdminMenuItem = {
 }
 
 export type AdminMenuSection = {
-  title: string
+  title?: string
   items: AdminMenuItem[]
 }
 
@@ -46,9 +46,11 @@ export const AdminShell = ({
         </Link>
 
         <nav className="flex flex-1 flex-col gap-6">
-          {sections.map((section) => (
-            <div key={section.title} className="flex flex-col gap-1">
-              <p className="text-label-sm px-3 font-semibold text-white/50">{section.title}</p>
+          {sections.map((section, index) => (
+            <div key={section.title ?? index} className="flex flex-col gap-1">
+              {section.title && (
+                <p className="text-label-sm px-3 font-semibold text-white/50">{section.title}</p>
+              )}
               {section.items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
                 const Icon = item.icon

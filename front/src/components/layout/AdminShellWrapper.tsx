@@ -23,11 +23,16 @@ import { useAuthStore } from '@/lib/auth'
 
 import { AdminShell, type AdminMenuSection } from './AdminShell'
 
+/**
+ * 실제 업무가 흘러가는 순서대로 섹션·항목을 둔다 — 처음 보는 사람이 위에서 아래로 읽으면
+ * "다음엔 뭘 해야 하는지"가 그대로 드러나게. (박람회 승인 → 모집공고 요청·판정·게시 →
+ * 부스 등록·참여 신청 처리 → 배너·정산 같은 부가 업무 → 자주 안 쓰는 시스템 설정 순.)
+ */
 const ADMIN_SECTIONS: AdminMenuSection[] = [
+  { items: [{ label: '대시보드', href: '/admin', icon: LayoutDashboard }] },
   {
-    title: '핵심 관리',
+    title: '박람회·모집공고',
     items: [
-      { label: '대시보드', href: '/admin', icon: LayoutDashboard },
       { label: '박람회 개최 승인 관리', href: '/admin/expos', icon: Building2 },
       {
         label: '모집공고 요청 관리',
@@ -35,24 +40,34 @@ const ADMIN_SECTIONS: AdminMenuSection[] = [
         icon: ListChecks,
       },
       { label: '모집공고 관리', href: '/admin/recruitment-notices', icon: Megaphone },
+    ],
+  },
+  {
+    title: '부스·참가기업',
+    items: [
+      { label: '부스 등록', href: '/admin/booths', icon: LayoutGrid },
       {
         label: '참여 신청서 관리',
         href: '/admin/participation-applications',
         icon: ClipboardList,
       },
-      { label: '배너 신청 심사', href: '/admin/banner-requests', icon: ImageIcon },
-      { label: '부스 콘텐츠 관리', href: '/admin/booth-contents', icon: ClipboardCheck },
       { label: '부스 배정 관리', href: '/admin/booth-allocations', icon: Shuffle },
+      { label: '부스 콘텐츠 검수', href: '/admin/booth-contents', icon: ClipboardCheck },
+    ],
+  },
+  {
+    title: '부가 서비스',
+    items: [
+      { label: '배너 신청 심사', href: '/admin/banner-requests', icon: ImageIcon },
       { label: '정산 관리', href: '/admin/settlements', icon: Receipt },
     ],
   },
   {
-    title: '시스템 관리',
+    title: '시스템 설정',
     items: [
       { label: '카테고리 관리', href: '/admin/categories', icon: Tag },
       { label: '가상 장소 관리', href: '/admin/venues', icon: MapPin },
       { label: '장소 예약 관리', href: '/admin/venue-reservations', icon: CalendarCheck },
-      { label: '부스 등록', href: '/admin/booths', icon: LayoutGrid },
       { label: '알림 이력·재발송', href: '/admin/notifications', icon: Bell },
     ],
   },
