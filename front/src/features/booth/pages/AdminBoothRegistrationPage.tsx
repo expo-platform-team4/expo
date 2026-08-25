@@ -17,7 +17,11 @@ import {
   Select,
 } from '@/components/ui'
 import { useAdminRecruitmentNotices } from '@/features/recruitment/hooks'
-import { useAdminVenueHalls, useAdminVenueZones, useAdminVirtualVenues } from '@/features/venue/hooks'
+import {
+  useAdminVenueHalls,
+  useAdminVenueZones,
+  useAdminVirtualVenues,
+} from '@/features/venue/hooks'
 import { formatCurrency } from '@/lib/currency'
 import { getErrorMessage } from '@/lib/errorMessage'
 
@@ -60,7 +64,11 @@ const BulkCreateBoothsSection = ({ zoneId }: { zoneId: number | null }) => {
   const handleSubmit = () => {
     if (!zoneId) return
     setFormError(null)
-    if (rows.some((row) => !row.boothNumber.trim() || !row.shapeCode.trim() || !row.width || !row.depth)) {
+    if (
+      rows.some(
+        (row) => !row.boothNumber.trim() || !row.shapeCode.trim() || !row.width || !row.depth
+      )
+    ) {
       setFormError('부스 번호·형태 코드·가로·세로는 모든 행에서 채워야 합니다.')
       return
     }
@@ -185,9 +193,18 @@ const BulkCreateBoothProductsSection = ({
 }) => {
   const [formError, setFormError] = useState<string | null>(null)
   const [rowState, setRowState] = useState<Record<number, ProductRowState>>({})
-  const { data: booths, isPending: boothsPending, isError: boothsError, error: boothsErr } =
-    useAdminBooths(zoneId)
-  const { data: products, isPending: productsPending } = useAdminBoothProducts(noticeId)
+  const {
+    data: booths,
+    isPending: boothsPending,
+    isError: boothsError,
+    error: boothsErr,
+  } = useAdminBooths(zoneId)
+  const {
+    data: products,
+    isPending: productsPending,
+    isError: productsError,
+    error: productsErr,
+  } = useAdminBoothProducts(noticeId)
   const createMutation = useCreateBoothProductsBulk(noticeId ?? 0)
 
   if (!noticeId || !zoneId) {
@@ -204,8 +221,11 @@ const BulkCreateBoothProductsSection = ({
   if (boothsError) {
     return <ErrorState error={boothsErr} />
   }
+  if (productsError) {
+    return <ErrorState error={productsErr} />
+  }
 
-  const registeredBoothIds = new Set((products ?? []).map((product) => product.boothId))
+  const registeredBoothIds = new Set(products.map((product) => product.boothId))
   const registrableBooths = booths.filter((booth) => !registeredBoothIds.has(booth.id))
 
   const stateFor = (boothId: number): ProductRowState =>

@@ -323,9 +323,7 @@ export type CreateBoothPayload = {
 
 /** `GET /api/admin/venue-zones/{zoneId}/booths` — 구역 내 부스 공간 목록. ADMIN 전용. */
 export const listAdminBooths = async (zoneId: number): Promise<AdminBooth[]> => {
-  const { data } = await api.get<ApiEnvelope<AdminBooth[]>>(
-    `/admin/venue-zones/${zoneId}/booths`
-  )
+  const { data } = await api.get<ApiEnvelope<AdminBooth[]>>(`/admin/venue-zones/${zoneId}/booths`)
   return data.data
 }
 
