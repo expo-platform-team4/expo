@@ -12,6 +12,8 @@ import static org.mockito.Mockito.when;
 
 import com.expo.common.exception.BusinessException;
 import com.expo.common.exception.ErrorCode;
+import com.expo.expo.entity.Expo;
+import com.expo.expo.repository.ExpoRepository;
 import com.expo.recruitment.converter.RecruitmentNoticeRequestConverter;
 import com.expo.recruitment.dto.CreateRecruitmentNoticeRequestRequest;
 import com.expo.recruitment.dto.DecideVenueRequest;
@@ -40,6 +42,7 @@ class RecruitmentNoticeRequestServiceTest {
 
     private static final Long HOST_CLIENT_ID = 1L;
     private static final Long ADMIN_ID = 2L;
+    private static final Long EXPO_ID = 400L;
     private static final Long VENUE_ID = 100L;
     private static final Long HALL_ID = 200L;
     private static final Long ZONE_ID = 300L;
@@ -56,6 +59,7 @@ class RecruitmentNoticeRequestServiceTest {
     private VenueHallRepository venueHallRepository;
     private VenueZoneRepository venueZoneRepository;
     private VenueReservationRepository venueReservationRepository;
+    private ExpoRepository expoRepository;
     private RecruitmentNoticeRequestService service;
 
     @BeforeEach
@@ -68,6 +72,10 @@ class RecruitmentNoticeRequestServiceTest {
         venueHallRepository = mock(VenueHallRepository.class);
         venueZoneRepository = mock(VenueZoneRepository.class);
         venueReservationRepository = mock(VenueReservationRepository.class);
+        expoRepository = mock(ExpoRepository.class);
+        Expo expo = mock(Expo.class);
+        when(expo.getHostClientId()).thenReturn(HOST_CLIENT_ID);
+        when(expoRepository.findById(EXPO_ID)).thenReturn(Optional.of(expo));
         service =
                 new RecruitmentNoticeRequestService(
                         recruitmentNoticeRequestRepository,
@@ -77,18 +85,20 @@ class RecruitmentNoticeRequestServiceTest {
                         venueHallRepository,
                         venueZoneRepository,
                         venueReservationRepository,
+                        expoRepository,
                         new RecruitmentNoticeRequestConverter());
     }
 
     private CreateRecruitmentNoticeRequestRequest requestWith(Long hallId, List<Long> zoneIds) {
         return new CreateRecruitmentNoticeRequestRequest(
-                "제목", "설명", T1, T2, T3, T4, VENUE_ID, hallId, zoneIds, null, null);
+                EXPO_ID, "제목", "설명", T1, T2, T3, T4, VENUE_ID, hallId, zoneIds, null, null);
     }
 
     @Test
     void createRejectsWhenApplicationPeriodInvalid() {
         CreateRecruitmentNoticeRequestRequest request =
                 new CreateRecruitmentNoticeRequestRequest(
+                        EXPO_ID,
                         "제목",
                         "설명",
                         T2,
@@ -101,7 +111,7 @@ class RecruitmentNoticeRequestServiceTest {
                         null,
                         null);
 
-        assertThatThrownBy(() -> service.create(HOST_CLIENT_ID, request))
+        assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.APPLICATION_PERIOD_INVALID);
@@ -112,6 +122,7 @@ class RecruitmentNoticeRequestServiceTest {
     void createRejectsWhenEventPeriodInvalid() {
         CreateRecruitmentNoticeRequestRequest request =
                 new CreateRecruitmentNoticeRequestRequest(
+                        EXPO_ID,
                         "제목",
                         "설명",
                         T1,
@@ -124,44 +135,27 @@ class RecruitmentNoticeRequestServiceTest {
                         null,
                         null);
 
-        assertThatThrownBy(() -> service.create(HOST_CLIENT_ID, request))
+        assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.EVENT_PERIOD_INVALID);
     }
 
     @Test
-    void createRejectsWhenApplicationPeriodExceedsEventPeriod() {
-        // 신청 마감(T4)이 행사 시작(T3)보다 늦다 - 행사가 시작한 뒤에야 모집을 마감하는 꼴이라 막아야 한다.
-        CreateRecruitmentNoticeRequestRequest request =
-                new CreateRecruitmentNoticeRequestRequest(
-                        "제목",
-                        "설명",
-                        T1,
-                        T4,
-                        T3,
-                        T4.plusSeconds(3600),
-                        VENUE_ID,
-                        HALL_ID,
-                        List.of(ZONE_ID),
-                        null,
-                        null);
+    void createRejectsWhenExpoNotFound() {
+        when(expoRepository.findById(EXPO_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(HOST_CLIENT_ID, request))
+        assertThatThrownBy(() -> service.create(requestWith(HALL_ID, List.of(ZONE_ID))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.APPLICATION_PERIOD_EXCEEDS_EVENT_PERIOD);
-        verify(virtualVenueRepository, never()).existsById(any());
+                .isEqualTo(ErrorCode.EXPO_NOT_FOUND);
     }
 
     @Test
     void createRejectsWhenVenueNotFound() {
         when(virtualVenueRepository.existsById(VENUE_ID)).thenReturn(false);
 
-        assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID))))
+        assertThatThrownBy(() -> service.create(requestWith(HALL_ID, List.of(ZONE_ID))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VIRTUAL_VENUE_NOT_FOUND);
@@ -173,10 +167,7 @@ class RecruitmentNoticeRequestServiceTest {
         when(venueHallRepository.existsById(HALL_ID)).thenReturn(true);
         when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(false);
 
-        assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID))))
+        assertThatThrownBy(() -> service.create(requestWith(HALL_ID, List.of(ZONE_ID))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
@@ -189,10 +180,7 @@ class RecruitmentNoticeRequestServiceTest {
         when(venueHallRepository.existsByIdAndVenueId(HALL_ID, VENUE_ID)).thenReturn(true);
         when(venueZoneRepository.existsByIdAndHallId(ZONE_ID, HALL_ID)).thenReturn(false);
 
-        assertThatThrownBy(
-                        () ->
-                                service.create(
-                                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID))))
+        assertThatThrownBy(() -> service.create(requestWith(HALL_ID, List.of(ZONE_ID))))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VENUE_HALL_ZONE_MISMATCH);
@@ -209,8 +197,7 @@ class RecruitmentNoticeRequestServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         RecruitmentNoticeRequestResponse response =
-                service.create(
-                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
+                service.create(requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
 
         assertThat(response.status()).isEqualTo(RecruitmentNoticeRequestStatus.SUBMITTED);
         assertThat(response.venueConflictStatus()).isEqualTo(VenueConflictStatus.CLEAR);
@@ -237,8 +224,7 @@ class RecruitmentNoticeRequestServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         RecruitmentNoticeRequestResponse response =
-                service.create(
-                        HOST_CLIENT_ID, requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
+                service.create(requestWith(HALL_ID, List.of(ZONE_ID, OTHER_ZONE_ID)));
 
         assertThat(response.venueConflictStatus()).isEqualTo(VenueConflictStatus.CONFLICT_PENDING);
     }
