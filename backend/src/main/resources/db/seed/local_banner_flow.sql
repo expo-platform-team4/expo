@@ -54,12 +54,28 @@ BEGIN
 
   SELECT host_client_id INTO v_host FROM expos WHERE id = v_expo1;
 
-  -- 배너 이미지. 실제 파일은 없다 — 화면이 file_id 만 쓰므로 메타데이터로 충분하다.
-  INSERT INTO file_metadata (storage_provider, bucket_name, storage_key, original_filename,
-         content_type, file_size, file_status)
-  VALUES ('S3', 'expo-local', 'seed/banner-main.png', 'banner-main.png',
-          'image/png', 204800, 'ACTIVE')
-  RETURNING id INTO v_file;
+  -- 배너 이미지.
+  --
+  -- 새 file_metadata 행을 만들지 않는다. 메타데이터만 있고 스토리지에 실물이 없으면
+  -- /api/files/{id}/content 가 404 를 주고 화면에 깨진 이미지가 뜬다 - 실제로 그렇게 만들었다가
+  -- 브라우저에서 확인하고 고쳤다.
+  --
+  -- 그래서 이미 업로드된 이미지를 재사용한다. 배너 전용 이미지가 필요하면 파일 업로드 API 로
+  -- 올린 뒤 그 fileId 를 쓰면 된다.
+  --
+  -- 크기로 거른다. 저장소에는 테스트가 남긴 70바이트짜리 1x1 png 도 있어서, 그것을 고르면
+  -- 200 은 뜨지만 화면에는 늘어난 점 하나가 보인다. 사람이 볼 배너로 쓸 수 있는 크기만 고른다.
+  SELECT id INTO v_file
+    FROM file_metadata
+   WHERE file_status = 'ACTIVE'
+     AND content_type LIKE 'image/%'
+     AND file_size BETWEEN 10000 AND 2000000
+   ORDER BY id
+   LIMIT 1;
+
+  IF v_file IS NULL THEN
+    RAISE EXCEPTION '쓸 만한 이미지가 없다. 파일 업로드 API 로 이미지를 하나 올린 뒤 다시 실행하라.';
+  END IF;
 
   -- ── 1. 지금 노출 중인 배너 2건 ─────────────────────────────────────────
   --    공개 화면(GET /api/banners/active)에 바로 뜬다.
@@ -147,4 +163,4 @@ SELECT display_status, count(*) AS 배너 FROM banners
 -- 되돌리기
 --   DELETE FROM banners WHERE headline LIKE '[시드]%';
 --   DELETE FROM banner_applications WHERE headline LIKE '[시드]%';
---   DELETE FROM file_metadata WHERE storage_key = 'seed/banner-main.png';
+--   (파일은 지우지 않는다 - 기존 업로드 이미지를 재사용할 뿐 새로 만들지 않는다)
