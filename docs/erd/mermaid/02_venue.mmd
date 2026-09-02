@@ -1,0 +1,99 @@
+---
+title: 02. 가상 장소 (com.expo.venue) — 현재는 킨텍스 1곳/홀 2개/구역별 5개로 제한
+---
+erDiagram
+
+VIRTUAL_VENUES {
+    bigint id PK
+    varchar name UK
+    varchar address
+    varchar region_code
+    text description
+    bigint map_file_id FK "-> file_metadata (다른 다이어그램)"
+    varchar operational_status "ACTIVE/INACTIVE"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+VENUE_HALLS {
+    bigint id PK
+    bigint venue_id FK
+    varchar hall_code "UK with venue_id"
+    varchar name
+    numeric width
+    numeric depth
+    bigint layout_file_id FK "-> file_metadata"
+    varchar operational_status
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+VENUE_ZONES {
+    bigint id PK
+    bigint hall_id FK
+    varchar zone_code "UK with hall_id"
+    varchar name
+    int max_booth_count
+    numeric width
+    numeric depth
+    bigint layout_file_id FK "-> file_metadata"
+    varchar operational_status
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+VENUE_RESERVATIONS {
+    bigint id PK
+    varchar reservation_source_type "RECRUITMENT_NOTICE/EXPO_DIRECT"
+    bigint notice_request_id FK,UK "-> recruitment_notice_requests"
+    bigint opening_request_id FK,UK "-> expo_opening_requests"
+    bigint recruitment_notice_id FK "-> recruitment_notices"
+    bigint virtual_venue_id FK
+    bigint venue_hall_id FK "NULL 허용"
+    bigint venue_zone_id FK "NULL 허용"
+    timestamptz use_start_at
+    timestamptz use_end_at
+    varchar status "CONFIRMED/RELEASED/CANCELED"
+    bigint confirmed_by_admin_id FK "-> users"
+    timestamptz confirmed_at
+    timestamptz released_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+VENUE_RESERVATION_HISTORIES {
+    bigint id PK
+    bigint venue_reservation_id FK
+    varchar action_type "CONFIRMED/RELEASED"
+    jsonb before_data
+    jsonb after_data
+    text reason
+    bigint processed_by_admin_id FK "-> users"
+    timestamptz created_at
+}
+
+%% 외부 클러스터 참조용 스텁 (상세 컬럼은 해당 클러스터 다이어그램 참조)
+RECRUITMENT_NOTICE_REQUESTS_EXT["recruitment_notice_requests (외부)"] {
+    bigint id PK
+}
+EXPO_OPENING_REQUESTS_EXT["expo_opening_requests (외부)"] {
+    bigint id PK
+}
+RECRUITMENT_NOTICES_EXT["recruitment_notices (외부)"] {
+    bigint id PK
+}
+USERS_EXT["users (외부)"] {
+    bigint id PK
+}
+
+VIRTUAL_VENUES ||--o{ VENUE_HALLS : venue_id
+VENUE_HALLS ||--o{ VENUE_ZONES : hall_id
+VIRTUAL_VENUES ||--o{ VENUE_RESERVATIONS : virtual_venue_id
+VENUE_HALLS ||--o{ VENUE_RESERVATIONS : venue_hall_id
+VENUE_ZONES ||--o{ VENUE_RESERVATIONS : venue_zone_id
+VENUE_RESERVATIONS ||--o{ VENUE_RESERVATION_HISTORIES : venue_reservation_id
+RECRUITMENT_NOTICE_REQUESTS_EXT ||--o| VENUE_RESERVATIONS : notice_request_id
+EXPO_OPENING_REQUESTS_EXT ||--o| VENUE_RESERVATIONS : opening_request_id
+RECRUITMENT_NOTICES_EXT ||--o{ VENUE_RESERVATIONS : recruitment_notice_id
+USERS_EXT ||--o{ VENUE_RESERVATIONS : confirmed_by_admin_id
+USERS_EXT ||--o{ VENUE_RESERVATION_HISTORIES : processed_by_admin_id

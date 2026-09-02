@@ -1,0 +1,58 @@
+---
+title: 뷰 매핑 2 - 클라이언트(주최사) 대시보드 (R__05~R__10)
+---
+flowchart LR
+
+subgraph VIEWS["SQL VIEW (조회 전용, PK/FK 없음)"]
+  v_client_dashboard_profile
+  v_client_dashboard_expos
+  v_client_dashboard_daily_sales
+  v_client_dashboard_recruitment
+  v_client_dashboard_booths
+  v_client_dashboard_settlements
+end
+
+subgraph TABLES["참조하는 물리 테이블"]
+  client_profiles
+  users
+  file_metadata
+  expos
+  ticket_products
+  expo_daily_sales_summaries
+  recruitment_notices
+  participation_applications
+  booth_allocations
+  booths
+  booth_products
+  booth_orders
+  booth_payments
+  settlements
+  remittances
+  settlement_reports
+end
+
+v_client_dashboard_profile --> client_profiles
+v_client_dashboard_profile --> users
+v_client_dashboard_profile --> file_metadata
+
+v_client_dashboard_expos --> expos
+v_client_dashboard_expos --> ticket_products
+
+v_client_dashboard_daily_sales --> expos
+v_client_dashboard_daily_sales --> expo_daily_sales_summaries
+
+v_client_dashboard_recruitment --> recruitment_notices
+v_client_dashboard_recruitment --> participation_applications
+v_client_dashboard_recruitment --> booth_allocations
+
+v_client_dashboard_booths --> booths
+v_client_dashboard_booths --> booth_products
+v_client_dashboard_booths --> participation_applications
+v_client_dashboard_booths --> booth_orders
+v_client_dashboard_booths --> booth_payments
+v_client_dashboard_booths --> booth_allocations
+
+v_client_dashboard_settlements --> settlements
+v_client_dashboard_settlements --> expos
+v_client_dashboard_settlements --> remittances
+v_client_dashboard_settlements --> settlement_reports

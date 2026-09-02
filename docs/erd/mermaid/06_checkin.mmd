@@ -1,0 +1,59 @@
+---
+title: 06. 발권 및 QR 체크인 (com.expo.checkin)
+---
+erDiagram
+
+ISSUED_TICKETS {
+    bigint id PK
+    bigint ticket_order_item_id FK
+    bigint expo_id FK
+    varchar ticket_code UK "EXPO-생성일자-일련번호6자리 (seq_issued_ticket_code)"
+    varchar qr_token_hash UK
+    varchar status "ISSUED/CHECKED_IN/CANCELED/INVALIDATED"
+    timestamptz issued_at
+    timestamptz checked_in_at
+    timestamptz invalidated_at
+    bigint version "낙관적 락"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+TICKET_ACCESS_TOKENS {
+    bigint id PK
+    bigint ticket_order_id FK
+    bigint issued_ticket_id FK "NULL 허용"
+    varchar token_hash UK
+    varchar scope "ORDER_VIEW/QR_VIEW"
+    varchar status "ACTIVE/EXPIRED/REVOKED"
+    timestamptz expires_at
+    timestamptz last_accessed_at
+    int access_count
+    timestamptz revoked_at
+    timestamptz created_at
+}
+
+CHECK_IN_HISTORIES {
+    bigint id PK
+    bigint issued_ticket_id FK "NULL 허용 (V202608211639: INVALID_TOKEN만 NULL)"
+    bigint expo_id FK
+    bigint processed_by_client_id FK
+    varchar method "QR/MANUAL_CODE"
+    varchar result "SUCCESS/ALREADY_USED/CANCELED_TICKET/WRONG_EXPO/INVALID_TOKEN"
+    timestamptz checked_at
+    varchar request_ip
+    text detail
+}
+
+%% 외부 클러스터 참조 스텁
+TICKET_ORDER_ITEMS_EXT["ticket_order_items (외부)"] { bigint id PK }
+EXPOS_EXT["expos (외부)"] { bigint id PK }
+TICKET_ORDERS_EXT["ticket_orders (외부)"] { bigint id PK }
+CLIENT_PROFILES_EXT["client_profiles (외부)"] { bigint user_id PK }
+
+TICKET_ORDER_ITEMS_EXT ||--o{ ISSUED_TICKETS : ticket_order_item_id
+EXPOS_EXT ||--o{ ISSUED_TICKETS : expo_id
+TICKET_ORDERS_EXT ||--o{ TICKET_ACCESS_TOKENS : ticket_order_id
+ISSUED_TICKETS ||--o{ TICKET_ACCESS_TOKENS : issued_ticket_id
+ISSUED_TICKETS ||--o{ CHECK_IN_HISTORIES : issued_ticket_id
+EXPOS_EXT ||--o{ CHECK_IN_HISTORIES : expo_id
+CLIENT_PROFILES_EXT ||--o{ CHECK_IN_HISTORIES : processed_by_client_id

@@ -1,0 +1,42 @@
+---
+title: 07. 알림 (com.expo.notification)
+---
+erDiagram
+
+NOTIFICATIONS {
+    bigint id PK
+    bigint recipient_user_id FK "NULL 허용"
+    varchar recipient_phone_number
+    varchar channel "KAKAO/SMS/EMAIL/IN_APP (V202608071533: SMS 추가)"
+    varchar template_code
+    varchar reference_type "개방형, CHECK 없음"
+    bigint reference_id
+    jsonb payload
+    varchar status "PENDING/SENT/FAILED/RETRYING/CANCELED"
+    timestamptz scheduled_at
+    timestamptz sent_at
+    int retry_count
+    text last_error
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+MESSAGE_HISTORIES {
+    bigint id PK
+    bigint notification_id FK "UK with attempt_no"
+    varchar provider_message_id
+    varchar status "REQUESTED/SENT/DELIVERED/FAILED"
+    varchar channel "KAKAO/SMS/EMAIL (V202608071533 추가; 원래 이름 kakao_message_histories)"
+    jsonb request_payload
+    jsonb response_payload
+    varchar error_code
+    int attempt_no
+    timestamptz requested_at
+    timestamptz completed_at
+}
+
+%% 외부 클러스터 참조 스텁
+USERS_EXT["users (외부)"] { bigint id PK }
+
+USERS_EXT ||--o{ NOTIFICATIONS : recipient_user_id
+NOTIFICATIONS ||--o{ MESSAGE_HISTORIES : notification_id

@@ -1,0 +1,95 @@
+---
+title: 뷰 매핑 3 - 관리자 대시보드 및 운영 (R__11~R__18)
+---
+flowchart LR
+
+subgraph VIEWS["SQL VIEW (조회 전용, PK/FK 없음)"]
+  v_admin_dashboard_counts
+  v_admin_pending_reviews
+  v_admin_venue_conflicts
+  v_admin_participation_operations
+  v_admin_payment_refund_status
+  v_admin_settlement_status
+  v_admin_users
+  v_admin_audit_logs
+end
+
+subgraph TABLES["참조하는 물리 테이블"]
+  expo_opening_requests
+  expo_change_requests
+  expo_cancellation_requests
+  recruitment_notice_requests
+  recruitment_notice_request_zones
+  participation_applications
+  banner_applications
+  settlements
+  expos
+  booth_orders
+  booth_payments
+  booth_allocations
+  application_operation_histories
+  ticket_orders
+  ticket_order_items
+  ticket_products
+  ticket_payments
+  ticket_refunds
+  client_profiles
+  remittances
+  users
+  expo_review_histories
+  expo_change_histories
+  recruitment_notice_request_histories
+  recruitment_notice_histories
+  banner_review_histories
+  booth_management_histories
+  booth_payment_histories
+  ticket_payment_histories
+end
+
+v_admin_dashboard_counts --> expo_opening_requests
+v_admin_dashboard_counts --> expo_change_requests
+v_admin_dashboard_counts --> expo_cancellation_requests
+v_admin_dashboard_counts --> recruitment_notice_requests
+v_admin_dashboard_counts --> participation_applications
+v_admin_dashboard_counts --> banner_applications
+v_admin_dashboard_counts --> settlements
+
+v_admin_pending_reviews --> expo_opening_requests
+v_admin_pending_reviews --> expos
+v_admin_pending_reviews --> recruitment_notice_requests
+v_admin_pending_reviews --> banner_applications
+
+v_admin_venue_conflicts --> recruitment_notice_requests
+v_admin_venue_conflicts --> recruitment_notice_request_zones
+
+v_admin_participation_operations --> participation_applications
+v_admin_participation_operations --> booth_orders
+v_admin_participation_operations --> booth_payments
+v_admin_participation_operations --> booth_allocations
+v_admin_participation_operations --> application_operation_histories
+
+v_admin_payment_refund_status --> ticket_orders
+v_admin_payment_refund_status --> ticket_order_items
+v_admin_payment_refund_status --> ticket_products
+v_admin_payment_refund_status --> ticket_payments
+v_admin_payment_refund_status --> ticket_refunds
+v_admin_payment_refund_status --> booth_orders
+v_admin_payment_refund_status --> booth_payments
+
+v_admin_settlement_status --> settlements
+v_admin_settlement_status --> expos
+v_admin_settlement_status --> client_profiles
+v_admin_settlement_status --> remittances
+
+v_admin_users --> users
+v_admin_users --> client_profiles
+
+v_admin_audit_logs --> expo_review_histories
+v_admin_audit_logs --> expo_change_histories
+v_admin_audit_logs --> recruitment_notice_request_histories
+v_admin_audit_logs --> recruitment_notice_histories
+v_admin_audit_logs --> banner_review_histories
+v_admin_audit_logs --> booth_management_histories
+v_admin_audit_logs --> booth_payment_histories
+v_admin_audit_logs --> ticket_payment_histories
+v_admin_audit_logs --> application_operation_histories

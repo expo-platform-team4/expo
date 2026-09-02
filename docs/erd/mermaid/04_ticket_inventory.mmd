@@ -1,0 +1,50 @@
+---
+title: 04. 티켓 및 재고 (com.expo.ticket)
+---
+erDiagram
+
+TICKET_PRODUCTS {
+    bigint id PK
+    bigint expo_id FK
+    varchar name
+    text description
+    numeric price
+    timestamptz sales_start_at
+    timestamptz sales_end_at
+    int max_quantity_per_order "1~4"
+    varchar status "DRAFT/ON_SALE/SOLD_OUT/SALE_ENDED/CANCELED"
+    bigint version "낙관적 락"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+TICKET_INVENTORIES {
+    bigint id PK
+    bigint ticket_product_id "FK,UK"
+    int total_quantity
+    int reserved_quantity
+    int sold_quantity
+    int available_quantity "GENERATED: total-reserved-sold"
+    bigint version "낙관적 락"
+    timestamptz updated_at
+}
+
+INVENTORY_RESERVATIONS {
+    bigint id PK
+    bigint ticket_product_id FK
+    bigint ticket_order_id FK
+    int quantity
+    varchar status "ACTIVE/CONFIRMED/EXPIRED/RELEASED"
+    timestamptz reserved_at
+    timestamptz expires_at
+    timestamptz released_at
+}
+
+%% 외부 클러스터 참조 스텁
+EXPOS_EXT["expos (외부)"] { bigint id PK }
+TICKET_ORDERS_EXT["ticket_orders (외부)"] { bigint id PK }
+
+EXPOS_EXT ||--o{ TICKET_PRODUCTS : expo_id
+TICKET_PRODUCTS ||--|| TICKET_INVENTORIES : ticket_product_id
+TICKET_PRODUCTS ||--o{ INVENTORY_RESERVATIONS : ticket_product_id
+TICKET_ORDERS_EXT ||--o{ INVENTORY_RESERVATIONS : ticket_order_id

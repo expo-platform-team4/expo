@@ -1,0 +1,107 @@
+---
+title: 05. 주문 · 결제 · 환불 (com.expo.order, com.expo.payment, com.expo.refund)
+---
+erDiagram
+
+TICKET_ORDERS {
+    bigint id PK
+    varchar order_number UK "V202608200243: 40자->50자"
+    bigint member_user_id FK "NULL 허용 (orderer_type=GUEST면 NULL)"
+    varchar orderer_type "MEMBER/GUEST"
+    numeric ticket_subtotal_amount
+    numeric booking_fee_rate "기본 0.03000, 스냅샷"
+    numeric booking_fee_amount
+    numeric total_amount "= subtotal + booking_fee"
+    int total_quantity "1~4"
+    varchar status "PENDING/PAID/CANCELED/PAYMENT_FAILED/EXPIRED"
+    timestamptz paid_at
+    timestamptz canceled_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+TICKET_ORDER_ITEMS {
+    bigint id PK
+    bigint ticket_order_id FK
+    bigint ticket_product_id FK "UK with ticket_order_id"
+    int quantity
+    numeric unit_price
+    numeric item_subtotal_amount "= unit_price * quantity"
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+GUEST_ORDER_INFOS {
+    bigint ticket_order_id "PK,FK"
+    varchar guest_name
+    varchar phone_number
+    int age
+    varchar lookup_password_hash
+    int failed_lookup_count
+    timestamptz locked_until
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+TICKET_PAYMENTS {
+    bigint id PK
+    bigint ticket_order_id FK
+    varchar payment_key UK
+    varchar pg_order_id UK
+    varchar method
+    varchar status "READY/IN_PROGRESS/DONE/FAILED/CANCELED"
+    numeric requested_amount
+    numeric approved_amount
+    numeric ticket_subtotal_amount
+    numeric booking_fee_amount
+    timestamptz approved_at
+    numeric canceled_amount
+    varchar last_failure_code
+    varchar idempotency_key UK
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+TICKET_PAYMENT_HISTORIES {
+    bigint id PK
+    bigint ticket_payment_id FK
+    varchar event_type "REQUEST/APPROVE/FAIL/CANCEL"
+    varchar from_status
+    varchar to_status
+    numeric amount
+    varchar pg_transaction_key
+    jsonb response_payload
+    timestamptz occurred_at
+}
+
+TICKET_REFUNDS {
+    bigint id PK
+    bigint ticket_order_id "FK,UK"
+    bigint ticket_payment_id FK
+    numeric refund_ticket_amount
+    numeric refund_booking_fee_amount
+    numeric refund_amount "= ticket + booking_fee"
+    varchar status "REQUESTED/PROCESSING/COMPLETED/FAILED"
+    text reason
+    varchar pg_refund_key UK
+    timestamptz requested_at
+    timestamptz completed_at
+    varchar last_failure_code
+    bigint processed_by_admin_id FK
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+%% 외부 클러스터 참조 스텁
+USERS_EXT["users (외부)"] { bigint id PK }
+TICKET_PRODUCTS_EXT["ticket_products (외부)"] { bigint id PK }
+
+USERS_EXT ||--o{ TICKET_ORDERS : member_user_id
+TICKET_ORDERS ||--o{ TICKET_ORDER_ITEMS : ticket_order_id
+TICKET_PRODUCTS_EXT ||--o{ TICKET_ORDER_ITEMS : ticket_product_id
+TICKET_ORDERS ||--o| GUEST_ORDER_INFOS : ticket_order_id
+TICKET_ORDERS ||--o{ TICKET_PAYMENTS : ticket_order_id
+TICKET_PAYMENTS ||--o{ TICKET_PAYMENT_HISTORIES : ticket_payment_id
+TICKET_ORDERS ||--o| TICKET_REFUNDS : ticket_order_id
+TICKET_PAYMENTS ||--o{ TICKET_REFUNDS : ticket_payment_id
+USERS_EXT ||--o{ TICKET_REFUNDS : processed_by_admin_id
